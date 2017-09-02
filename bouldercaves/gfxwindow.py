@@ -74,7 +74,7 @@ class Tilesheet:
     def get_tiles(self, x, y, width, height):
         if x < 0 or x >= self.width or y < 0 or y >= self.height:
             raise ValueError("tile xy out of bounds")
-        if width <=0 or x + width > self.width or height <= 0 or y + height >= self.height:
+        if width <= 0 or x + width > self.width or height <= 0 or y + height >= self.height:
             raise ValueError("width or heigth out of bounds")
         start = x + self.width * y
         result = []
@@ -281,7 +281,7 @@ class BoulderWindow(tkinter.Tk):
                     spritex, spritey, sframes, sfps = GameObject.ROCKFORD.blink
                 else:
                     spritex, spritey, sframes, sfps = GameObject.ROCKFORD.spritex, GameObject.ROCKFORD.spritey,\
-                                                      GameObject.ROCKFORD.sframes, GameObject.ROCKFORD.sfps
+                        GameObject.ROCKFORD.sframes, GameObject.ROCKFORD.sfps
                 if sframes:
                     animframe = int(sfps / self.update_fps *
                                     (self.graphics_frame - self.gamestate.rockford_cell.anim_start_gfx_frame)) % sframes
@@ -310,7 +310,7 @@ class BoulderWindow(tkinter.Tk):
         if isinstance(gameobject_or_spritexy, GameObject):
             if gameobject_or_spritexy.sframes:
                 return gameobject_or_spritexy.spritex + self.tile_image_numcolumns * gameobject_or_spritexy.spritey +\
-                       animframe % gameobject_or_spritexy.sframes
+                    animframe % gameobject_or_spritexy.sframes
             return gameobject_or_spritexy.spritex + self.tile_image_numcolumns * gameobject_or_spritexy.spritey
         return gameobject_or_spritexy[0] + self.tile_image_numcolumns * gameobject_or_spritexy[1] + animframe
 
@@ -336,14 +336,14 @@ class BoulderWindow(tkinter.Tk):
             # can only recolor tiles if the c64 colors tile image is used
             return
         tiles_filename = "c64_gfx.png" if self.c64colors else "boulder_rush.png"
-        with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/"+tiles_filename))) as tile_image:
+        with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/" + tiles_filename))) as tile_image:
             num_tiles = tile_image.width * tile_image.height // 16 // 16
             assert num_tiles == 432, "tile image should contain 432 tiles"
             if self.c64colors:
                 tile_image = tile_image.copy().convert('P', 0)
                 palettevalues = tile_image.getpalette()
                 assert 768 - palettevalues.count(0) <= 16, "must be an image with <= 16 colors"
-                palette = [(r, g, b) for r, g, b in zip(palettevalues[0:16*3:3], palettevalues[1:16*3:3], palettevalues[2:16*3:3])]
+                palette = [(r, g, b) for r, g, b in zip(palettevalues[0:16 * 3:3], palettevalues[1:16 * 3:3], palettevalues[2:16 * 3:3])]
                 palette[1] = (color2 >> 16, (color2 & 0xff00) >> 8, color2 & 0xff)   # pink replace (255,0,255)
                 palette[4] = (color1 >> 16, (color1 & 0xff00) >> 8, color1 & 0xff)   # red replace (255,0,0)
                 if color3 < 0x808080:

@@ -313,6 +313,7 @@ class GameState:
         self.graphics_frame_counter = 0    # will be set via the update() method
         self.fps = 10      # game logic updates every 0.1 seconds
         self.update_timestep = 1 / self.fps
+        self.bonusbg_frame = 0    # till what frame should the bg be the bonus sparkly things instead of spaces
         self.width = gfxwindow.tilesheet.width
         self.height = gfxwindow.tilesheet.height
         self._dirxy = {
@@ -344,6 +345,7 @@ class GameState:
         self.intermission = False
         self.diamonds = 0
         self.score = 0
+        self.extralife_score = 0
         self.lives = 3
         self.idle = {
             "blink": False,
@@ -374,6 +376,7 @@ class GameState:
         self.diamondvalue_extra = c64cave.diamondvalue_extra
         self.timeremaining = datetime.timedelta(seconds=c64cave.time)
         self.frame = 0
+        self.bonusbg_frame = 0
         self.timelimit = None   # will be set as soon as Rockford spawned
         self.idle["blink"] = self.idle["tap"] = False
         self.idle["uncover"] = True
@@ -461,6 +464,9 @@ class GameState:
         self.gfxwindow.tilesheet[cell.x, cell.y] = obj.spritex + self.gfxwindow.tile_image_numcolumns * obj.spritey
         # animation is handled by the graphics refresh
 
+    def clear_cell(self, cell):
+        self.draw_single_cell(cell, GameObject.BONUSBG if self.bonusbg_frame > self.frame else GameObject.EMPTY)
+
     def get(self, cell, direction=None):
         # retrieve the cell relative to the given cell
         return self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
@@ -473,7 +479,7 @@ class GameState:
         self.draw_single_cell(newcell, cell.obj)
         newcell.falling = cell.falling
         newcell.direction = cell.direction
-        self.draw_single_cell(cell, GameObject.EMPTY)
+        self.clear_cell(cell)
         cell.falling = False
         cell.direction = None
         return newcell
@@ -515,6 +521,9 @@ class GameState:
                         self.update_amoeba(cell)
                     elif cell.obj is GameObject.OUTBOXCLOSED:
                         self.update_outboxclosed(cell)
+                    elif cell.obj is GameObject.BONUSBG:
+                        if self.bonusbg_frame < self.frame:
+                            self.draw_single_cell(cell, GameObject.EMPTY)
         self.frame_end()
 
     def frame_start(self):
@@ -547,6 +556,8 @@ class GameState:
             if self.timeremaining.seconds > 0:
                 add_score = min(self.timeremaining.seconds, 5)
                 self.score += add_score
+                self.extralife_score += add_score
+                self.check_extralife_score()
                 self.timeremaining -= datetime.timedelta(seconds=add_score)
             else:
                 self.load_c64level(self.level + 1)
@@ -657,10 +668,10 @@ class GameState:
             targetcell = self.get(cell, self.movement.direction)
             if self.movement.grab:
                 if targetcell.isdirt():
-                    self.draw_single_cell(targetcell, GameObject.EMPTY)
+                    self.clear_cell(targetcell)
                 elif targetcell.isdiamond():
                     self.collect_diamond()
-                    self.draw_single_cell(targetcell, GameObject.EMPTY)
+                    self.clear_cell(targetcell)
                 elif self.movement.direction in ("l", "r") and targetcell.isboulder():
                     self.push(cell, self.movement.direction)
             elif targetcell.isempty() or targetcell.isdirt():
@@ -677,11 +688,23 @@ class GameState:
         self.rockford_cell = cell
 
     def collect_diamond(self):
-        # @todo extra life + stars every 500 points
         self.diamonds += 1
-        self.score += self.diamondvalue_extra if self.diamonds > self.diamonds_needed else self.diamondvalue_initial
+        points = self.diamondvalue_extra if self.diamonds > self.diamonds_needed else self.diamondvalue_initial
+        self.score += points
+        self.extralife_score += points
         if self.diamonds >= self.diamonds_needed and not self.flash:
             self.flash = self.frame + self.fps // 2
+        self.check_extralife_score()
+
+    def check_extralife_score(self):
+        # extra life every 500 points
+        if self.extralife_score >= 500:
+            self.extralife_score -= 500
+            self.lives += 1
+            for cell in self.cave:
+                if cell.obj is GameObject.EMPTY:
+                    self.draw_single_cell(cell, GameObject.BONUSBG)
+                    self.bonusbg_frame = self.frame + self.fps * 6   # sparkle for 6 seconds
 
     def end_rockfordbirth(self, cell):
         # rockfordbirth eventually creates the real Rockford and starts the level timer.
@@ -737,21 +760,31 @@ class GameState:
         }[direction]
 
     def update_scorebar(self):
-        # draw the score bar:
-        tiles = self.gfxwindow.text2tiles("\x08{lives:2d}  \x0c {keys:02d}\x7f\x7f\x7f  {diamonds:<10s}  {time:s}  $ {score:06d}".format(
+        # draw the score bar.
+        # note: the following is a complex score bar including keys, but those are not used in the C64 boulderdash:
+        # text = ("\x08{lives:2d}  \x0c {keys:02d}\x7f\x7f\x7f  {diamonds:<10s}  {time:s}  $ {score:06d}".format(
+        #     lives=self.lives,
+        #     time=str(self.timeremaining)[3:7],
+        #     score=self.score,
+        #     diamonds="\x0e {:02d}/{:02d}".format(self.diamonds, self.diamonds_needed),
+        #     keys=self.keys["diamond"]
+        # )).ljust(self.width)
+        # self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.gfxwindow.text2tiles(text))
+        # if self.keys["one"]:
+        #     self.gfxwindow.tilesheet_score[9, 0] = GameObject.KEY1.spritex + GameObject.KEY1.spritey * self.gfxwindow.tile_image_numcolumns
+        # if self.keys["two"]:
+        #     self.gfxwindow.tilesheet_score[10, 0] = GameObject.KEY2.spritex + GameObject.KEY2.spritey * self.gfxwindow.tile_image_numcolumns
+        # if self.keys["three"]:
+        #     self.gfxwindow.tilesheet_score[11, 0] = GameObject.KEY3.spritex + GameObject.KEY3.spritey * self.gfxwindow.tile_image_numcolumns
+        text = ("\x08{lives:2d}   {normal:d}\x0e{extra:d}  {diamonds:<10s}  {time:s}  $ {score:06d}".format(
             lives=self.lives,
             time=str(self.timeremaining)[3:7],
             score=self.score,
-            diamonds="\x0e {:02d}/{:02d}".format(self.diamonds, self.diamonds_needed),
-            keys=self.keys["diamond"]
-        ))
-        self.gfxwindow.tilesheet_score.set_tiles(0, 0, tiles)
-        if self.keys["one"]:
-            self.gfxwindow.tilesheet_score[9, 0] = GameObject.KEY1.spritex + GameObject.KEY1.spritey * self.gfxwindow.tile_image_numcolumns
-        if self.keys["two"]:
-            self.gfxwindow.tilesheet_score[10, 0] = GameObject.KEY2.spritex + GameObject.KEY2.spritey * self.gfxwindow.tile_image_numcolumns
-        if self.keys["three"]:
-            self.gfxwindow.tilesheet_score[11, 0] = GameObject.KEY3.spritex + GameObject.KEY3.spritey * self.gfxwindow.tile_image_numcolumns
+            normal=self.diamondvalue_initial,
+            extra=self.diamondvalue_extra,
+            diamonds="{:02d}/{:02d}".format(self.diamonds, self.diamonds_needed),
+        )).ljust(self.width)
+        self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.gfxwindow.text2tiles(text))
         if self.lives > 0:
             tiles = self.gfxwindow.text2tiles("Level: {:d}. {:s} (ENTER=skip)".format(self.level, self.level_name).ljust(self.width))
         else:

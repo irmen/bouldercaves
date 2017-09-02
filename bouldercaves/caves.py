@@ -220,7 +220,7 @@ class Cave:
 
     @classmethod
     def decode_from_lvl(cls, levelnumber):
-        name, description, data= CAVES[levelnumber - 1]
+        name, description, data = CAVES[levelnumber - 1]
         cave = cls(data[0], name, description, 40, 22)   # size hardcoded
         cave.intermission = name.lower().startswith("intermission")
         cave.magicwall_millingtime = cave.amoeba_slowgrowthtime = data[0x01]
