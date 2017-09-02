@@ -17,8 +17,10 @@ import pkgutil
 import time
 from PIL import Image
 from .game import GameState, GameObject
+from .caves import colorpalette
 
 # @todo fix magic wall : should not spin at the start
+# @todo fix magic wall : should let stuff through
 
 
 class Tilesheet:
@@ -313,26 +315,8 @@ class BoulderWindow(tkinter.Tk):
         return gameobject_or_spritexy[0] + self.tile_image_numcolumns * gameobject_or_spritexy[1] + animframe
 
     def create_tile_images(self):
-        tile_filename = "c64_gfx.png" if self.c64colors else "boulder_rush.png"
-        with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/"+tile_filename))) as tile_image:
-            if self.c64colors:
-                tile_image = tile_image.copy().convert('P', 0)
-                palette = tile_image.getpalette()
-                assert 768 - palette.count(0) < 16
-            tile_num = 0
-            self.tile_image_numcolumns = tile_image.width // 16      # the tileset image contains 16x16 pixel tiles
-            while True:
-                row, col = divmod(tile_num, self.tile_image_numcolumns)
-                if row * 16 > tile_image.height:
-                    break
-                ci = tile_image.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16))
-                if self.scalexy != 1:
-                    ci = ci.resize((16 * self.scalexy, 16 * self.scalexy), Image.NONE)
-                out = io.BytesIO()
-                ci.save(out, "png")
-                img = tkinter.PhotoImage(data=out.getvalue())
-                self.tile_images.append(img)
-                tile_num += 1
+        self.tile_images = [None] * 432    # the number of tiles in the tile image(s)
+        self.create_colored_tiles(colorpalette[8], colorpalette[11], colorpalette[9])
         # create the images on the canvas for all tiles (fixed position):
         for y in range(self.playfield_rows):
             for x in range(self.playfield_columns):
@@ -346,6 +330,44 @@ class BoulderWindow(tkinter.Tk):
                 self.tilesheet_score[x, y] = 0
                 tile = self.scorecanvas.create_image(sx, sy, image=self.tile_images[0], anchor=tkinter.NW, tags="tile")
                 self.cscore_tiles.append(tile)
+
+    def create_colored_tiles(self, color1=0, color2=0, color3=0):
+        if self.tile_images[0] is not None and not self.c64colors:
+            # can only recolor tiles if the c64 colors tile image is used
+            return
+        tiles_filename = "c64_gfx.png" if self.c64colors else "boulder_rush.png"
+        with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/"+tiles_filename))) as tile_image:
+            num_tiles = tile_image.width * tile_image.height // 16 // 16
+            assert num_tiles == 432, "tile image should contain 432 tiles"
+            if self.c64colors:
+                tile_image = tile_image.copy().convert('P', 0)
+                palettevalues = tile_image.getpalette()
+                assert 768 - palettevalues.count(0) <= 16, "must be an image with <= 16 colors"
+                palette = [(r, g, b) for r, g, b in zip(palettevalues[0:16*3:3], palettevalues[1:16*3:3], palettevalues[2:16*3:3])]
+                palette[1] = (color2 >> 16, (color2 & 0xff00) >> 8, color2 & 0xff)   # pink replace (255,0,255)
+                palette[4] = (color1 >> 16, (color1 & 0xff00) >> 8, color1 & 0xff)   # red replace (255,0,0)
+                if color3 < 0x808080:
+                    color3 = 0xffffff
+                palette[3] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)   # yellow replace (255, 255, 0) foreground color
+                palette[6] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)   # green replace (0, 255, 0) foreground color
+                palettevalues = []
+                for rgb in palette:
+                    palettevalues.extend(rgb)
+                tile_image.putpalette(palettevalues)
+            tile_num = 0
+            self.tile_image_numcolumns = tile_image.width // 16      # the tileset image contains 16x16 pixel tiles
+            while True:
+                row, col = divmod(tile_num, self.tile_image_numcolumns)
+                if row * 16 >= tile_image.height:
+                    break
+                ci = tile_image.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16))
+                if self.scalexy != 1:
+                    ci = ci.resize((16 * self.scalexy, 16 * self.scalexy), Image.NONE)
+                out = io.BytesIO()
+                ci.save(out, "png")
+                img = tkinter.PhotoImage(data=out.getvalue())
+                self.tile_images[tile_num] = img
+                tile_num += 1
 
     def create_font_tiles(self):
         font_tiles_startindex = len(self.tile_images)
@@ -448,6 +470,12 @@ def start(args):
     ap.add_argument("-s", "--scale", type=int, help="graphics scale factor", default=2, choices=(1, 2, 3, 4))
     ap.add_argument("-c", "--c64colors", help="use Commodore-64 colors", action="store_true")
     args = ap.parse_args(args)
+    if args.c64colors:
+        print("Using the original Commodore-64 colors.")
+        print("Start without the '-c' or '--c64colors' argument to use the multicolor replacement graphics.")
+    else:
+        print("Using multicolor replacement graphics.")
+        print("You can use the '-c' or '--c64colors' argument to get the original C-64 colors.")
     window = BoulderWindow("Boulder Caves", args.fps, args.scale, args.c64colors)
     window.start()
     window.mainloop()

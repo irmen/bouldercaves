@@ -416,6 +416,7 @@ class GameState:
             y, x = divmod(i, self.width)
             obj, direction = conversion[obj]
             self.draw_single(obj, x, y, initial_direction=direction)
+        self.gfxwindow.create_colored_tiles(c64cave.bgcolor1, c64cave.bgcolor2, c64cave.fgcolor)
         self.gfxwindow.tilesheet.all_dirty()
         if level_intro_popup:
             self.gfxwindow.popup("Level {:d}: {:s}\n\n{:s}".format(self.level, self.level_name, self.level_description))
@@ -676,6 +677,7 @@ class GameState:
         self.rockford_cell = cell
 
     def collect_diamond(self):
+        # @todo extra life + stars every 500 points
         self.diamonds += 1
         self.score += self.diamondvalue_extra if self.diamonds > self.diamonds_needed else self.diamondvalue_initial
         if self.diamonds >= self.diamonds_needed and not self.flash:
