@@ -463,7 +463,9 @@ class BoulderWindow(tkinter.Tk):
         self.popup_tiles_save = None
 
 
-def start(args):
+def start(args=None):
+    if args is None:
+        args = sys.argv[1:]
     import argparse
     ap = argparse.ArgumentParser(description="Boulder Caves - a Boulder Dash (tm) clone")
     ap.add_argument("-f", "--fps", type=int, help="frames per second", default=30)
