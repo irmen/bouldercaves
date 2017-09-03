@@ -108,6 +108,7 @@ class BoulderWindow(tkinter.Tk):
     scalexy = 2
 
     def __init__(self, title, fps=30, scale=2, c64colors=False):
+        scale = scale / 2
         super().__init__()
         self.update_fps = fps
         self.update_timestep = 1 / fps
@@ -117,8 +118,8 @@ class BoulderWindow(tkinter.Tk):
             raise ValueError("invalid playfield size")
         if self.visible_columns <= 0 or self.visible_columns > 128 or self.visible_rows <= 0 or self.visible_rows > 128:
             raise ValueError("invalid visible size")
-        if self.scalexy not in (1, 2, 3, 4):
-            raise ValueError("invalid scalexy factor")
+        if self.scalexy not in (1, 1.5, 2, 2.5, 3):
+            raise ValueError("invalid scalexy factor", self.scalexy)
         self.geometry("+200+40")
         self.configure(borderwidth=16, background="black")
         self.wm_title(title)
@@ -373,7 +374,7 @@ class BoulderWindow(tkinter.Tk):
                     break
                 ci = tile_image.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16))
                 if self.scalexy != 1:
-                    ci = ci.resize((16 * self.scalexy, 16 * self.scalexy), Image.NONE)
+                    ci = ci.resize((int(16 * self.scalexy), int(16 * self.scalexy)), Image.NONE)
                 out = io.BytesIO()
                 ci.save(out, "png")
                 img = tkinter.PhotoImage(data=out.getvalue())
@@ -388,7 +389,7 @@ class BoulderWindow(tkinter.Tk):
                 if row * 8 > image.height:
                     break
                 ci = image.crop((col * 8, row * 8, col * 8 + 8, row * 8 + 8))
-                ci = ci.resize((16 * self.scalexy, 16 * self.scalexy), Image.NONE)
+                ci = ci.resize((int(16 * self.scalexy), int(16 * self.scalexy)), Image.NONE)
                 out = io.BytesIO()
                 ci.save(out, "png")
                 img = tkinter.PhotoImage(data=out.getvalue())
@@ -480,8 +481,8 @@ def start(args=None):
         args = sys.argv[1:]
     import argparse
     ap = argparse.ArgumentParser(description="Boulder Caves - a Boulder Dash (tm) clone")
-    ap.add_argument("-f", "--fps", type=int, help="frames per second", default=30)
-    ap.add_argument("-s", "--scale", type=int, help="graphics scale factor", default=2, choices=(1, 2, 3, 4))
+    ap.add_argument("-f", "--fps", type=int, help="frames per second (default=%(default)d)", default=30)
+    ap.add_argument("-s", "--size", type=int, help="graphics size (default=%(default)d)", default=3, choices=(1, 2, 3, 4, 5))
     ap.add_argument("-c", "--c64colors", help="use Commodore-64 colors", action="store_true")
     args = ap.parse_args(args)
     if args.c64colors:
@@ -490,7 +491,7 @@ def start(args=None):
     else:
         print("Using multicolor replacement graphics.")
         print("You can use the '-c' or '--c64colors' argument to get the original C-64 colors.")
-    window = BoulderWindow("Boulder Caves - created by Irmen de Jong", args.fps, args.scale, args.c64colors)
+    window = BoulderWindow("Boulder Caves - created by Irmen de Jong", args.fps, args.size + 1, args.c64colors)
     window.start()
     window.mainloop()
 
