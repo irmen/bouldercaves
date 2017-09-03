@@ -19,7 +19,6 @@ from PIL import Image
 from .game import GameState, GameObject
 from .caves import colorpalette
 
-# @todo fix magic wall : should not spin at the start
 # @todo fix magic wall : should let stuff through
 
 
@@ -214,7 +213,7 @@ class BoulderWindow(tkinter.Tk):
             if not self.uncover_tiles and self.gamestate.lives < 0:
                 self.gamestate.restart()
             if self.gamestate.level < 1:
-                self.gamestate.load_c64level(1)
+                self.gamestate.load_c64level(9)    # XXX 1
         elif event.keysym == "F5":
             self.gamestate.add_extra_life()
         elif event.keysym == "F6":
@@ -231,7 +230,7 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.movement.stop_left()
         elif event.keysym == "Right":
             self.gamestate.movement.stop_right()
-        if event.keysym == "F7":
+        elif event.keysym == "F7":
             self.gamestate.cheat_skip_level()
 
     def repaint(self):
@@ -299,6 +298,9 @@ class BoulderWindow(tkinter.Tk):
             # other animations:
             for cell in self.gamestate.cells_with_animations():
                 obj = cell.obj
+                if obj is GameObject.MAGICWALL:
+                    if not self.gamestate.magicwall["active"]:
+                        obj = GameObject.BRICK
                 animframe = int(obj.sfps / self.update_fps * (self.graphics_frame - cell.anim_start_gfx_frame))
                 tile = self.sprite2tile(obj, animframe)
                 self.tilesheet[cell.x, cell.y] = tile

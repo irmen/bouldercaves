@@ -362,8 +362,8 @@ class GameState:
             "three": True
         }
         self.magicwall = {
-            "enabled": False,
-            "duration": 0
+            "active": False,
+            "time": 0
         }
         self.amoeba = {
             "size": 0,
@@ -409,8 +409,8 @@ class GameState:
         self.timelimit = None   # will be set as soon as Rockford spawned
         self.idle["blink"] = self.idle["tap"] = False
         self.idle["uncover"] = True
-        self.magicwall["duration"] = c64cave.magicwall_millingtime / self.update_timestep
-        print("milling time", c64cave.magicwall_millingtime, self.magicwall["duration"])
+        self.magicwall["active"] = False
+        self.magicwall["time"] = c64cave.magicwall_millingtime / self.update_timestep
         self.rockford_cell = None     # the cell where Rockford currently is
         self.rockford_found_frame = 0
         self.movement = self.MovementInfo()
@@ -487,14 +487,14 @@ class GameState:
         self.draw_single_cell(self.cave[x + y * self.width], obj, initial_direction)
 
     def draw_single_cell(self, cell, obj, initial_direction=None):
-        if obj is GameObject.MAGICWALL:
-            if not self.magicwall["enabled"]:
-                obj = GameObject.BRICK
         cell.obj = obj
         cell.direction = initial_direction
         cell.frame = self.frame
         cell.anim_start_gfx_frame = self.graphics_frame_counter
         cell.falling = False
+        if obj is GameObject.MAGICWALL:
+            if not self.magicwall["active"]:
+                obj = GameObject.BRICK
         self.gfxwindow.tilesheet[cell.x, cell.y] = obj.spritex + self.gfxwindow.tile_image_numcolumns * obj.spritey
         # animation is handled by the graphics refresh
 
@@ -586,6 +586,9 @@ class GameState:
                 self.amoeba["dead"] = GameObject.BOULDER
             elif self.amoeba["slow"] > 0:
                 self.amoeba["slow"] -= 1
+        if self.magicwall["active"]:
+            self.magicwall["time"] -= 1
+            self.magicwall["active"] = self.magicwall["time"] > 0
         if self.level_won:
             if self.timeremaining.seconds > 0:
                 add_score = min(self.timeremaining.seconds, 5)
