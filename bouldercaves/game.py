@@ -122,7 +122,7 @@ GameObject.ROCKFORD.right = (0, 30, 8, 20)
 GameObject.DIAMOND = GameObject("DIAMOND", True, False, True, 0, 31, sframes=8, sfps=20)
 # row 32
 GameObject.ROCKFORD.stirring = (0, 32, 8, 20)
-# row 33   @todo hammer
+# row 33   # ...contains hammer
 # row 34
 GameObject.MEGABOULDER = GameObject("MEGABOULDER", True, False, True, 0, 34)
 GameObject.SKELETON = GameObject("SKELETON", True, False, True, 1, 34)
@@ -219,6 +219,9 @@ class GameState:
 
         def isconsumable(self):
             return self.obj.consumable
+
+        def ismagic(self):
+            return self.obj is GameObject.MAGICWALL
 
         def isbutterfly(self):
             # these explode to diamonds
@@ -342,9 +345,9 @@ class GameState:
         self.frame = 0
         self.bonusbg_frame = 0    # till what frame should the bg be the bonus sparkly things instead of spaces
         self.level = -1
-        self.level_name = "???"
-        self.level_description = "???"
+        self.level_name = self.level_description = "???"
         self.level_won = False
+        self.game_status = "waiting"    # waiting / playing / lost / won
         self.intermission = False
         self.score = self.extralife_score = 0
         self.diamondvalue_initial = self.diamondvalue_extra = 0
@@ -379,15 +382,46 @@ class GameState:
         self.movement = self.MovementInfo()
         self.flash = 0
         # draw the 'title screen'
-        self.draw_rectangle(GameObject.STEEL, 0, 0, self.width, self.height, GameObject.BONUSBG)
-        self.draw_line(GameObject.FLYINGDIAMOND, 10, 2, self.height - 4, "rd")
-        self.draw_line(GameObject.STONEFLY, self.width - 10, 2, self.height - 4, "ld")
+        self.draw_rectangle(GameObject.DIRT2, 0, 0, self.width, self.height, GameObject.EMPTY)
+        title = r"""
+/**\           *\     *
+*  *   +        *   + *        +
+****\ /**\ *  * *  /*** /**\ */*\
+*   * *  * *  * *  *  * *  * ** 
+*   * *  * *  * *  *  * ***$ *$   f
+* #+* *  * *+ * *  * #* *    *  
+@***$ @**$ @**$ @* @*** @**\ *#
+
+     /*\
+ f   *      +              +
+     *    /**\  \  / /**\ /**\
+     *    *  *  *  * *+ * * +    f
+  f  *+   *  *  *  * ***$ @**\
+     *#+  *  *  @  $ * #   # *  f
+     @*** @***\  @$  @**\ ***$
+"""
+        for y, tl in enumerate(title.splitlines()):
+            for x, c in enumerate(tl):
+                if c == ' ':
+                    continue
+                obj = {
+                    '*': GameObject.BRICK,
+                    '/': GameObject.BRICKSLOPEDUPLEFT,
+                    '\\': GameObject.BRICKSLOPEDUPRIGHT,
+                    '@': GameObject.BRICKSLOPEDDOWNLEFT,
+                    '$': GameObject.BRICKSLOPEDDOWNRIGHT,
+                    '+': GameObject.FLYINGDIAMOND,
+                    '#': GameObject.BOULDER,
+                    'f': GameObject.ALTFIREFLY
+                }[c]
+                self.draw_single(obj, 2+x, 1+y)
+
         self.draw_line(GameObject.LAVA, 4, self.height - 3, self.width - 8, "r")
-        self.draw_line(GameObject.BRICK, 3, self.height - 2, self.width - 6, "r")
-        self.draw_single(GameObject.BRICKSLOPEDUPLEFT, 3, self.height - 3)
-        self.draw_single(GameObject.BRICKSLOPEDUPLEFT, 2, self.height - 2)
-        self.draw_single(GameObject.BRICKSLOPEDUPRIGHT, self.width - 4, self.height - 3)
-        self.draw_single(GameObject.BRICKSLOPEDUPRIGHT, self.width - 3, self.height - 2)
+        self.draw_line(GameObject.DIRT, 3, self.height - 2, self.width - 6, "r")
+        self.draw_single(GameObject.DIRTSLOPEDUPLEFT, 3, self.height - 3)
+        self.draw_single(GameObject.DIRTSLOPEDUPLEFT, 2, self.height - 2)
+        self.draw_single(GameObject.DIRTSLOPEDUPRIGHT, self.width - 4, self.height - 3)
+        self.draw_single(GameObject.DIRTSLOPEDUPRIGHT, self.width - 3, self.height - 2)
 
     def load_c64level(self, levelnumber):
         c64cave = caves.Cave.decode_from_lvl(levelnumber)
@@ -398,6 +432,7 @@ class GameState:
         level_intro_popup = levelnumber != self.level
         self.level = levelnumber
         self.level_won = False
+        self.game_status = "playing"
         self.flash = 0
         self.diamonds = 0
         self.diamonds_needed = c64cave.diamonds_needed
@@ -529,14 +564,30 @@ class GameState:
                     cell = self.move(cell, direction)
         return cell
 
+    def domagic(self, cell):
+        # something (diamond, boulder) is falling on a magic wall
+        if self.magicwall["time"] > 0:
+            self.magicwall["active"] = True
+            obj = cell.obj
+            self.clear_cell(cell)
+            cell_under_wall = self.get(self.get(cell, 'd'), 'd')
+            if cell_under_wall.isempty():
+                obj = {
+                    GameObject.DIAMOND: GameObject.BOULDER,
+                    GameObject.BOULDER: GameObject.DIAMOND
+                }[obj]
+                self.draw_single_cell(cell_under_wall, obj)
+
     def cells_with_animations(self):
         return [cell for cell in self.cave if cell.obj.sframes]
 
     def update(self, graphics_frame_counter):
         self.graphics_frame_counter = graphics_frame_counter    # we store this to properly sync up animation frames
+        if self.game_status != "playing":
+            return
         self.frame_start()
-        # sweep
         if not self.level_won:
+            # sweep the cave
             for cell in self.cave:
                 if cell.frame < self.frame:
                     if cell.falling:
@@ -597,18 +648,38 @@ class GameState:
                 self.check_extralife_score()
                 self.timeremaining -= datetime.timedelta(seconds=add_score)
             else:
-                self.load_c64level(self.level + 1)
+                self.load_next_level()
         elif self.timelimit and self.update_timestep * (self.frame - self.rockford_found_frame) > 5:
             # after 5 seconds with dead rockford we reload the current level
             self.life_lost()
 
     def life_lost(self):
-        level = self.level
         if self.intermission:
-            level += 1   # don't lose a life, instead skip out of the intermission.
-        else:
-            self.lives = max(0, self.lives - 1)
+            self.load_next_level()  # don't lose a life, instead skip out of the intermission.
+            return
+        self.lives = max(0, self.lives - 1)
         if self.lives > 0:
+            self.load_c64level(self.level)  # retry current level
+        else:
+            self.stop_game("lost")
+
+    def stop_game(self, status):
+        self.game_status = status
+        if self.rockford_cell:
+            self.clear_cell(self.rockford_cell)
+        self.rockford_found_frame = 0
+        if status == "lost":
+            self.gfxwindow.popup("Game Over.\n\nYour final score: {:d}\n\npress Escape to return to the title screen".format(self.score))
+        elif status == "won":
+            self.lives = 0
+            self.gfxwindow.popup("Congratulations, you finished the game!\n\nYour final score: {:d}\n\n"
+                                 "press Escape to return to the title screen".format(self.score))
+
+    def load_next_level(self):
+        level = self.level + 1
+        if level > len(caves.CAVES):
+            self.stop_game("won")
+        else:
             self.load_c64level(level)
 
     def update_canfall(self, cell):
@@ -628,6 +699,8 @@ class GameState:
             self.move(cell, 'd')
         elif cellbelow.isexplodable():
             self.explode(cell, 'd')
+        elif cellbelow.ismagic():
+            self.domagic(cell)
         elif cellbelow.isrounded() and self.get(cell, 'l').isempty() and self.get(cell, 'ld').isempty():
             self.move(cell, 'l')
         elif cellbelow.isrounded() and self.get(cell, 'r').isempty() and self.get(cell, 'rd').isempty():
@@ -751,8 +824,9 @@ class GameState:
 
     def end_rockfordbirth(self, cell):
         # rockfordbirth eventually creates the real Rockford and starts the level timer.
-        self.draw_single_cell(cell, GameObject.ROCKFORD)
-        self.timelimit = datetime.datetime.now() + self.timeremaining
+        if self.game_status == "playing":
+            self.draw_single_cell(cell, GameObject.ROCKFORD)
+            self.timelimit = datetime.datetime.now() + self.timeremaining
 
     def end_explosion(self, cell):
         # a normal explosion ends with an empty cell
@@ -841,9 +915,10 @@ class GameState:
             diamonds="{:02d}/{:02d}".format(self.diamonds, self.diamonds_needed),
         )).ljust(self.width)
         self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.gfxwindow.text2tiles(text))
-        if self.lives > 0:
-            tiles = self.gfxwindow.text2tiles("Level {:d}: {:s}".format(self.level, self.level_name).center(self.width))
-        else:
+        if self.game_status == "won":
+            tiles = self.gfxwindow.text2tiles("\x0e  C O N G R A T U L A T I O N S  \x0e".center(self.width))
+        elif self.game_status == "lost":
             tiles = self.gfxwindow.text2tiles("\x0b  G A M E   O V E R  \x0b".center(self.width))
-            self.gfxwindow.popup("Game Over.\n\nYour final score: {:d}\n\npress Escape to return to the title screen".format(self.score))
+        else:
+            tiles = self.gfxwindow.text2tiles("Level {:d}: {:s}".format(self.level, self.level_name).center(self.width))
         self.gfxwindow.tilesheet_score.set_tiles(0, 1, tiles[:40])

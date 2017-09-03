@@ -19,8 +19,6 @@ from PIL import Image
 from .game import GameState, GameObject
 from .caves import colorpalette
 
-# @todo fix magic wall : should let stuff through
-
 
 class Tilesheet:
     def __init__(self, width, height, view_width, view_height):
@@ -200,20 +198,24 @@ class BoulderWindow(tkinter.Tk):
         elif event.keysym == "Right":
             self.gamestate.movement.start_right()
         elif event.keysym == "Escape":
-            if not self.uncover_tiles:
+            if self.gamestate.game_status in ("lost", "won"):
+                self.popup_tiles_save = None
+                self.gamestate.restart()
+            elif not self.uncover_tiles and self.gamestate.game_status == "playing":
                 self.popup_frame = 0
                 if self.gamestate.rockford_cell:
                     self.gamestate.explode(self.gamestate.rockford_cell)
                 if self.gamestate.lives > 0:
                     self.gamestate.life_lost()
                 else:
+                    self.popup_tiles_save = None
                     self.gamestate.restart()
         elif event.keysym == "F1":
             self.popup_frame = 0
             if not self.uncover_tiles and self.gamestate.lives < 0:
                 self.gamestate.restart()
             if self.gamestate.level < 1:
-                self.gamestate.load_c64level(9)    # XXX 1
+                self.gamestate.load_c64level(1)
         elif event.keysym == "F5":
             self.gamestate.add_extra_life()
         elif event.keysym == "F6":
