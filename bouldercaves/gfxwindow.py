@@ -76,10 +76,10 @@ class Tilesheet:
             raise ValueError("tile xy out of bounds")
         if width <= 0 or x + width > self.width or height <= 0 or y + height >= self.height:
             raise ValueError("width or heigth out of bounds")
-        start = x + self.width * y
+        offset = x + self.width * y
         result = []
         for dy in range(height):
-            result.append(self.tiles[start + self.width * dy: start + self.width * dy + width])
+            result.append(self.tiles[offset + self.width * dy: offset + self.width * dy + width])
         return result
 
     def all_dirty(self):
@@ -134,6 +134,7 @@ class BoulderWindow(tkinter.Tk):
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         self.tilesheet = Tilesheet(self.playfield_columns, self.playfield_rows, self.visible_columns, self.visible_rows)
         self.tilesheet_score = Tilesheet(self.visible_columns, 2, self.visible_columns, 2)
+        self.popup_tiles_save = None
         self.scorecanvas = tkinter.Canvas(self, width=self.visible_columns * 16 * self.scalexy,
                                           height=2 * 16 * self.scalexy, borderwidth=0, highlightthickness=0, background="black")
         self.canvas = tkinter.Canvas(self, width=self.visible_columns * 16 * self.scalexy,
@@ -212,6 +213,12 @@ class BoulderWindow(tkinter.Tk):
             self.popup_frame = 0
             if not self.uncover_tiles and self.gamestate.lives < 0:
                 self.gamestate.restart()
+            if self.gamestate.level < 1:
+                self.gamestate.load_c64level(1)
+        elif event.keysym == "F5":
+            self.gamestate.add_extra_life()
+        elif event.keysym == "F6":
+            self.gamestate.add_extra_time(10)
 
     def keyrelease(self, event):
         if event.keysym.startswith("Shift") or not (event.state & 1):
@@ -384,7 +391,8 @@ class BoulderWindow(tkinter.Tk):
                 self.tile_images.append(img)
         return font_tiles_startindex
 
-    def tile2screencor(self, cx, cy):
+    @staticmethod
+    def tile2screencor(cx, cy):
         return cx * 16, cy * 16     # a tile is 16x16 pixels
 
     def physcoor(self, sx, sy):

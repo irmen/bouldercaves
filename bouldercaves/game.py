@@ -183,6 +183,7 @@ GameObject.ROCKFORD.pushleft = (0, 49, 8, 20)
 GameObject.ROCKFORD.pushright = (0, 50, 8, 20)
 
 
+# noinspection PyAttributeOutsideInit
 class GameState:
     class Cell:
         __slots__ = ("obj", "x", "y", "frame", "falling", "direction", "anim_start_gfx_frame")
@@ -313,7 +314,6 @@ class GameState:
         self.graphics_frame_counter = 0    # will be set via the update() method
         self.fps = 10      # game logic updates every 0.1 seconds
         self.update_timestep = 1 / self.fps
-        self.bonusbg_frame = 0    # till what frame should the bg be the bonus sparkly things instead of spaces
         self.width = gfxwindow.tilesheet.width
         self.height = gfxwindow.tilesheet.height
         self._dirxy = {
@@ -328,7 +328,6 @@ class GameState:
             "rd": self.width + 1
         }
         self.cave = []
-        self.level_name = "???"
         for y in range(self.height):
             for x in range(self.width):
                 self.cave.append(self.Cell(GameObject.EMPTY, x, y))
@@ -341,11 +340,15 @@ class GameState:
 
     def restart(self):
         self.frame = 0
+        self.bonusbg_frame = 0    # till what frame should the bg be the bonus sparkly things instead of spaces
         self.level = -1
+        self.level_name = "???"
+        self.level_description = "???"
+        self.level_won = False
         self.intermission = False
-        self.diamonds = 0
-        self.score = 0
-        self.extralife_score = 0
+        self.score = self.extralife_score = 0
+        self.diamondvalue_initial = self.diamondvalue_extra = 0
+        self.diamonds = self.diamonds_needed = 0
         self.lives = 3
         self.idle = {
             "blink": False,
@@ -358,7 +361,33 @@ class GameState:
             "two": True,
             "three": True
         }
-        self.load_c64level(1)
+        self.magicwall = {
+            "enabled": False,
+            "duration": 0
+        }
+        self.amoeba = {
+            "size": 0,
+            "max": 0,
+            "slow": 0,
+            "enclosed": False,
+            "dead": None
+        }
+        self.timeremaining = None
+        self.timelimit = None
+        self.rockford_cell = None
+        self.rockford_found_frame = -1
+        self.movement = self.MovementInfo()
+        self.flash = 0
+        # draw the 'title screen'
+        self.draw_rectangle(GameObject.STEEL, 0, 0, self.width, self.height, GameObject.BONUSBG)
+        self.draw_line(GameObject.FLYINGDIAMOND, 10, 2, self.height - 4, "rd")
+        self.draw_line(GameObject.STONEFLY, self.width - 10, 2, self.height - 4, "ld")
+        self.draw_line(GameObject.LAVA, 4, self.height - 3, self.width - 8, "r")
+        self.draw_line(GameObject.BRICK, 3, self.height - 2, self.width - 6, "r")
+        self.draw_single(GameObject.BRICKSLOPEDUPLEFT, 3, self.height - 3)
+        self.draw_single(GameObject.BRICKSLOPEDUPLEFT, 2, self.height - 2)
+        self.draw_single(GameObject.BRICKSLOPEDUPRIGHT, self.width - 4, self.height - 3)
+        self.draw_single(GameObject.BRICKSLOPEDUPRIGHT, self.width - 3, self.height - 2)
 
     def load_c64level(self, levelnumber):
         c64cave = caves.Cave.decode_from_lvl(levelnumber)
@@ -380,6 +409,8 @@ class GameState:
         self.timelimit = None   # will be set as soon as Rockford spawned
         self.idle["blink"] = self.idle["tap"] = False
         self.idle["uncover"] = True
+        self.magicwall["duration"] = c64cave.magicwall_millingtime / self.update_timestep
+        print("milling time", c64cave.magicwall_millingtime, self.magicwall["duration"])
         self.rockford_cell = None     # the cell where Rockford currently is
         self.rockford_found_frame = 0
         self.movement = self.MovementInfo()
@@ -456,6 +487,9 @@ class GameState:
         self.draw_single_cell(self.cave[x + y * self.width], obj, initial_direction)
 
     def draw_single_cell(self, cell, obj, initial_direction=None):
+        if obj is GameObject.MAGICWALL:
+            if not self.magicwall["enabled"]:
+                obj = GameObject.BRICK
         cell.obj = obj
         cell.direction = initial_direction
         cell.frame = self.frame
@@ -700,11 +734,17 @@ class GameState:
         # extra life every 500 points
         if self.extralife_score >= 500:
             self.extralife_score -= 500
-            self.lives += 1
-            for cell in self.cave:
-                if cell.obj is GameObject.EMPTY:
-                    self.draw_single_cell(cell, GameObject.BONUSBG)
-                    self.bonusbg_frame = self.frame + self.fps * 6   # sparkle for 6 seconds
+            self.add_extra_life()
+
+    def add_extra_life(self):
+        self.lives += 1
+        for cell in self.cave:
+            if cell.obj is GameObject.EMPTY:
+                self.draw_single_cell(cell, GameObject.BONUSBG)
+                self.bonusbg_frame = self.frame + self.fps * 6   # sparkle for 6 seconds
+
+    def add_extra_time(self, seconds):
+        self.timelimit += datetime.timedelta(seconds=seconds)
 
     def end_rockfordbirth(self, cell):
         # rockfordbirth eventually creates the real Rockford and starts the level timer.
@@ -713,7 +753,7 @@ class GameState:
 
     def end_explosion(self, cell):
         # a normal explosion ends with an empty cell
-        self.draw_single_cell(cell, GameObject.EMPTY)
+        self.clear_cell(cell)
 
     def end_diamondbirth(self, cell):
         # diamondbirth ends with a diamond
@@ -733,7 +773,8 @@ class GameState:
             elif cell.isconsumable():
                 self.draw_single_cell(cell, obj)
 
-    def rotate90left(self, direction):
+    @staticmethod
+    def rotate90left(direction):
         return {
             None: None,
             "u": "l",
@@ -746,7 +787,8 @@ class GameState:
             "rd": "ru"
         }[direction]
 
-    def rotate90right(self, direction):
+    @staticmethod
+    def rotate90right(direction):
         return {
             None: None,
             "u": "r",
@@ -776,6 +818,17 @@ class GameState:
         #     self.gfxwindow.tilesheet_score[10, 0] = GameObject.KEY2.spritex + GameObject.KEY2.spritey * self.gfxwindow.tile_image_numcolumns
         # if self.keys["three"]:
         #     self.gfxwindow.tilesheet_score[11, 0] = GameObject.KEY3.spritex + GameObject.KEY3.spritey * self.gfxwindow.tile_image_numcolumns
+        if self.level < 1:
+            # level has not been loaded yet (we're still at the title screen)
+            ts = self.gfxwindow.tilesheet_score
+            ts.set_tiles(0, 0, self.gfxwindow.text2tiles("Boulder Caves".center(self.width)))
+            ts.set_tiles(0, 1, self.gfxwindow.text2tiles("F1  to start new game!".center(self.width)))
+            ts[0, 0] = ts[self.width-1, 0] = ts[0, 1] = ts[self.width-1, 1] = self.gfxwindow.sprite2tile(GameObject.MEGABOULDER)
+            ts[1, 0] = ts[self.width-2, 0] = ts[1, 1] = ts[self.width-2, 1] = self.gfxwindow.sprite2tile(GameObject.FLYINGDIAMOND)
+            ts[2, 0] = ts[self.width-3, 0] = ts[2, 1] = ts[self.width-3, 1] = self.gfxwindow.sprite2tile(GameObject.DIAMOND)
+            ts[3, 0] = ts[3, 1] = self.gfxwindow.sprite2tile(GameObject.ROCKFORD.pushleft)
+            ts[self.width-4, 0] = ts[self.width-4, 1] = self.gfxwindow.sprite2tile(GameObject.ROCKFORD.pushright)
+            return
         text = ("\x08{lives:2d}   {normal:d}\x0e{extra:d}  {diamonds:<10s}  {time:s}  $ {score:06d}".format(
             lives=self.lives,
             time=str(self.timeremaining)[3:7],
@@ -786,7 +839,8 @@ class GameState:
         )).ljust(self.width)
         self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.gfxwindow.text2tiles(text))
         if self.lives > 0:
-            tiles = self.gfxwindow.text2tiles("Level: {:d}. {:s} (ENTER=skip)".format(self.level, self.level_name).ljust(self.width))
+            tiles = self.gfxwindow.text2tiles("Level {:d}: {:s}".format(self.level, self.level_name).center(self.width))
         else:
             tiles = self.gfxwindow.text2tiles("\x0b  G A M E   O V E R  \x0b".center(self.width))
+            self.gfxwindow.popup("Game Over.\n\nYour final score: {:d}\n\npress Escape to return to the title screen".format(self.score))
         self.gfxwindow.tilesheet_score.set_tiles(0, 1, tiles[:40])

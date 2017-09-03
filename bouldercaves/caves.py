@@ -220,6 +220,7 @@ class Cave:
 
     @classmethod
     def decode_from_lvl(cls, levelnumber):
+        assert 0 < levelnumber <= len(CAVES)
         name, description, data = CAVES[levelnumber - 1]
         cave = cls(data[0], name, description, 40, 22)   # size hardcoded
         cave.intermission = name.lower().startswith("intermission")
@@ -238,8 +239,9 @@ class Cave:
         cave.build_map(data[0x20:])
         return cave
 
-    def bdrandom(self, seeds):
-        # the pseudo random generator that Boulderdash uses
+    @staticmethod
+    def bdrandom(seeds):
+        # the pseudo random generator that Boulder Dash uses
         assert len(seeds) == 2, "expected 2 seed numbers"
         assert 0 <= seeds[0] <= 0xFF, "expected seed 0 to be between 0 and 0xFF"
         assert 0 <= seeds[1] <= 0xFF, "expected seed 1 to be between 0 and 0xFF"
