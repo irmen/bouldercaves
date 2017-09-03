@@ -235,6 +235,13 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.movement.stop_right()
         elif event.keysym == "F7":
             self.gamestate.cheat_skip_level()
+        elif event.keysym == "F8":
+            c1 = random.randint(1, 15)
+            c2 = random.randint(1, 15)
+            c3 = random.randint(1, 15)
+            print(c1, c2, c3)
+            self.create_colored_tiles(colorpalette[c1], colorpalette[c2], colorpalette[c3])
+            self.tilesheet.all_dirty()
 
     def repaint(self):
         self.graphics_frame += 1
@@ -328,7 +335,7 @@ class BoulderWindow(tkinter.Tk):
 
     def create_tile_images(self):
         self.tile_images = [None] * 432    # the number of tiles in the tile image(s)
-        self.create_colored_tiles(colorpalette[8], colorpalette[11], colorpalette[9])
+        self.create_colored_tiles(colorpalette[2], colorpalette[14], colorpalette[13])
         # create the images on the canvas for all tiles (fixed position):
         for y in range(self.playfield_rows):
             for x in range(self.playfield_columns):

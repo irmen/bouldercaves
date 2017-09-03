@@ -387,9 +387,9 @@ class GameState:
 /**\           *\     *
 *  *   +        *   + *        +
 ****\ /**\ *  * *  /*** /**\ */*\
-*   * *  * *  * *  *  * *  * ** 
+*   * *  * *  * *  *  * *  * **
 *   * *  * *  * *  *  * ***$ *$   f
-* #+* *  * *+ * *  * #* *    *  
+* #+* *  * *+ * *  * #* *    *
 @***$ @**$ @**$ @* @*** @**\ *#
 
      /*\
@@ -414,7 +414,7 @@ class GameState:
                     '#': GameObject.BOULDER,
                     'f': GameObject.ALTFIREFLY
                 }[c]
-                self.draw_single(obj, 2+x, 1+y)
+                self.draw_single(obj, 2 + x, 1 + y)
 
         self.draw_line(GameObject.LAVA, 4, self.height - 3, self.width - 8, "r")
         self.draw_line(GameObject.DIRT, 3, self.height - 2, self.width - 6, "r")
@@ -900,11 +900,11 @@ class GameState:
             ts = self.gfxwindow.tilesheet_score
             ts.set_tiles(0, 0, self.gfxwindow.text2tiles("Boulder Caves".center(self.width)))
             ts.set_tiles(0, 1, self.gfxwindow.text2tiles("F1  to start new game!".center(self.width)))
-            ts[0, 0] = ts[self.width-1, 0] = ts[0, 1] = ts[self.width-1, 1] = self.gfxwindow.sprite2tile(GameObject.MEGABOULDER)
-            ts[1, 0] = ts[self.width-2, 0] = ts[1, 1] = ts[self.width-2, 1] = self.gfxwindow.sprite2tile(GameObject.FLYINGDIAMOND)
-            ts[2, 0] = ts[self.width-3, 0] = ts[2, 1] = ts[self.width-3, 1] = self.gfxwindow.sprite2tile(GameObject.DIAMOND)
+            ts[0, 0] = ts[self.width - 1, 0] = ts[0, 1] = ts[self.width - 1, 1] = self.gfxwindow.sprite2tile(GameObject.MEGABOULDER)
+            ts[1, 0] = ts[self.width - 2, 0] = ts[1, 1] = ts[self.width - 2, 1] = self.gfxwindow.sprite2tile(GameObject.FLYINGDIAMOND)
+            ts[2, 0] = ts[self.width - 3, 0] = ts[2, 1] = ts[self.width - 3, 1] = self.gfxwindow.sprite2tile(GameObject.DIAMOND)
             ts[3, 0] = ts[3, 1] = self.gfxwindow.sprite2tile(GameObject.ROCKFORD.pushleft)
-            ts[self.width-4, 0] = ts[self.width-4, 1] = self.gfxwindow.sprite2tile(GameObject.ROCKFORD.pushright)
+            ts[self.width - 4, 0] = ts[self.width - 4, 1] = self.gfxwindow.sprite2tile(GameObject.ROCKFORD.pushright)
             return
         text = ("\x08{lives:2d}   {normal:d}\x0e{extra:d}  {diamonds:<10s}  {time:s}  $ {score:06d}".format(
             lives=self.lives,

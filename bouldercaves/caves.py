@@ -158,7 +158,7 @@ CAVES = [
      )
 ]
 
-colorpalette_morecontrast = (  # this is a Commodore-64 palette with more contrast
+colorpalette_contrast = (  # this is a Commodore-64 palette with more contrast
     0x000000,  # 0 = black
     0xFFFFFF,  # 1 = white
     0x68372B,  # 2 = red

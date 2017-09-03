@@ -35,3 +35,4 @@ The game is controlled via the keyboard.
 - F5: cheat and add an extra life.
 - F6: cheat and add 10 seconds extra time.
 - F7: cheat and skip to the next level.
+- F8: randomize colors (only when using Commodore-64 colors)
