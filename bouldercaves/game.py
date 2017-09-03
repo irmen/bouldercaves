@@ -455,7 +455,7 @@ class GameState:
         if level_intro_popup:
             self.gfxwindow.popup("Level {:d}: {:s}\n\n{:s}".format(self.level, self.level_name, self.level_description))
 
-    def cycle_level(self):
+    def cheat_skip_level(self):
         self.load_c64level(self.level % len(caves.CAVES) + 1)
 
     def draw_rectangle(self, obj, x1, y1, width, height, fillobject=None):

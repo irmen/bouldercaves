@@ -231,8 +231,8 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.movement.stop_left()
         elif event.keysym == "Right":
             self.gamestate.movement.stop_right()
-        if event.keysym == "Return":
-            self.gamestate.cycle_level()
+        if event.keysym == "F7":
+            self.gamestate.cheat_skip_level()
 
     def repaint(self):
         self.graphics_frame += 1
@@ -486,7 +486,7 @@ def start(args=None):
     else:
         print("Using multicolor replacement graphics.")
         print("You can use the '-c' or '--c64colors' argument to get the original C-64 colors.")
-    window = BoulderWindow("Boulder Caves", args.fps, args.scale, args.c64colors)
+    window = BoulderWindow("Boulder Caves - created by Irmen de Jong", args.fps, args.scale, args.c64colors)
     window.start()
     window.mainloop()
 

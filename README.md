@@ -6,6 +6,13 @@ Graphics are used from the MIT-licensed GDash https://bitbucket.org/czirkoszolta
 
 Inspired by the javascript version from Jake Gordon http://codeincomplete.com/posts/javascript-boulderdash/
 
+There are a few command line options to control the graphics of the game, the zoom level,
+and the graphics update speed (fps).
+On Linux the game runs very well, on Windows and Mac OS it can have some troubles. 
+If you experience graphics slowdown issues or the game prints that it cannot refresh
+the screen fast enough, try adjusting the parameters on the command line.
+
+
 ## Objective and rules of the game
 
 Collect enough diamonds to open the exit to go to the next level!
@@ -27,4 +34,4 @@ The game is controlled via the keyboard.
 - F1: start a new game. Also skips waiting for popup screens.
 - F5: cheat and add an extra life.
 - F6: cheat and add 10 seconds extra time.
-- ENTER: cheat and skip to the next level.
+- F7: cheat and skip to the next level.
