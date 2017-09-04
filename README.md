@@ -12,6 +12,10 @@ On Linux the game runs very well, on Windows and Mac OS it can have some trouble
 If you experience graphics slowdown issues or the game prints that it cannot refresh
 the screen fast enough, try adjusting the parameters on the command line.
 
+## Screenshot
+
+![Boulder Caves title screen](screenshot.png?raw=true "Screenshot of the title screen")
+
 
 ## Objective and rules of the game
 
