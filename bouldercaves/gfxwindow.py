@@ -18,6 +18,7 @@ import time
 from PIL import Image
 from .game import GameState, GameObject
 from .caves import colorpalette
+from . import audio
 
 
 class Tilesheet:
@@ -265,6 +266,8 @@ class BoulderWindow(tkinter.Tk):
 
         if self.uncover_tiles:
             # perform random uncover animation before the level starts
+            if len(self.uncover_tiles) == self.playfield_rows * self.playfield_columns:
+                audio.output.play_sample("cover")
             for _ in range(int(30 * 30 / self.update_fps)):
                 reveal = random.randrange(1 + self.playfield_columns, self.playfield_columns * (self.playfield_rows - 1))
                 revealy, revealx = divmod(reveal, self.playfield_columns)
@@ -491,6 +494,7 @@ def start(args=None):
     ap.add_argument("-f", "--fps", type=int, help="frames per second (default=%(default)d)", default=30)
     ap.add_argument("-s", "--size", type=int, help="graphics size (default=%(default)d)", default=3, choices=(1, 2, 3, 4, 5))
     ap.add_argument("-c", "--c64colors", help="use Commodore-64 colors", action="store_true")
+    ap.add_argument("-n", "--nosound", help="don't use sound", action="store_true")
     args = ap.parse_args(args)
     if args.c64colors:
         print("Using the original Commodore-64 colors.")
@@ -498,6 +502,14 @@ def start(args=None):
     else:
         print("Using multicolor replacement graphics.")
         print("You can use the '-c' or '--c64colors' argument to get the original C-64 colors.")
+    if args.nosound:
+        print("No sound output selected.")
+        audio.init_audio(dummy=True)
+    else:
+        audio.norm_samplerate = 22100
+        audio.norm_samplewidth = 2
+        audio.norm_channels = 2
+        audio.init_audio()
     window = BoulderWindow("Boulder Caves - created by Irmen de Jong", args.fps, args.size + 1, args.c64colors)
     window.start()
     window.mainloop()

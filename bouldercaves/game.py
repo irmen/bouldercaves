@@ -9,7 +9,7 @@ License: MIT open-source.
 
 import datetime
 import random
-from . import caves
+from . import caves, audio
 
 
 class GameObject:
@@ -338,10 +338,11 @@ class GameState:
         GameObject.ROCKFORDBIRTH.anim_end_callback = self.end_rockfordbirth
         GameObject.EXPLOSION.anim_end_callback = self.end_explosion
         GameObject.DIAMONDBIRTH.anim_end_callback = self.end_diamondbirth
-        # and load the first level
+        # and start the game on the title screen.
         self.restart()
 
     def restart(self):
+        audio.output.play_sample("music")
         self.frame = 0
         self.bonusbg_frame = 0    # till what frame should the bg be the bonus sparkly things instead of spaces
         self.level = -1
@@ -356,7 +357,7 @@ class GameState:
         self.idle = {
             "blink": False,
             "tap": False,
-            "uncover": True
+            "uncover": False
         }
         self.keys = {
             "diamond": 0,
@@ -707,6 +708,11 @@ class GameState:
             self.move(cell, 'r')
         else:
             cell.falling = False  # falling is blocked by something
+        if cell.isboulder():
+            audio.output.play_sample("boulder")
+        elif cell.isdiamond():
+            samplenr = random.randint(1, 6)
+            audio.output.play_sample("diamond"+str(samplenr))
 
     def update_firefly(self, cell):
         # if it hits Rockford or Amoeba it explodes
@@ -746,6 +752,7 @@ class GameState:
         # after 4 blinks (=2 seconds), Rockford spawns in the inbox.
         if self.update_timestep * self.frame > 2.0:
             self.draw_single_cell(cell, GameObject.ROCKFORDBIRTH)
+            audio.output.play_sample("crack")
 
     def update_outboxclosed(self, cell):
         if self.diamonds >= self.diamonds_needed:
@@ -778,13 +785,18 @@ class GameState:
             targetcell = self.get(cell, self.movement.direction)
             if self.movement.grab:
                 if targetcell.isdirt():
+                    audio.output.play_sample("walk_dirt")
                     self.clear_cell(targetcell)
                 elif targetcell.isdiamond():
                     self.collect_diamond()
                     self.clear_cell(targetcell)
                 elif self.movement.direction in ("l", "r") and targetcell.isboulder():
                     self.push(cell, self.movement.direction)
-            elif targetcell.isempty() or targetcell.isdirt():
+            elif targetcell.isempty():
+                audio.output.play_sample("walk_empty")
+                cell = self.move(cell, self.movement.direction)
+            elif targetcell.isdirt():
+                audio.output.play_sample("walk_dirt")
                 cell = self.move(cell, self.movement.direction)
             elif targetcell.isboulder() and self.movement.direction in ("l", "r"):
                 cell = self.push(cell, self.movement.direction)
@@ -794,10 +806,12 @@ class GameState:
             elif targetcell.isoutbox():
                 cell = self.move(cell, self.movement.direction)
                 self.level_won = True   # exit found!
+                audio.output.play_sample("finished")
                 self.movement.stop_all()
         self.rockford_cell = cell
 
     def collect_diamond(self):
+        audio.output.play_sample("collect_diamond")
         self.diamonds += 1
         points = self.diamondvalue_extra if self.diamonds > self.diamonds_needed else self.diamondvalue_initial
         self.score += points
@@ -814,6 +828,7 @@ class GameState:
 
     def add_extra_life(self):
         self.lives += 1
+        audio.output.play_sample("extra_life")
         for cell in self.cave:
             if cell.obj is GameObject.EMPTY:
                 self.draw_single_cell(cell, GameObject.BONUSBG)
@@ -837,6 +852,7 @@ class GameState:
         self.draw_single_cell(cell, GameObject.DIAMOND)
 
     def explode(self, cell, direction=None):
+        audio.output.play_sample("explosion")
         explosioncell = self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
         if explosioncell.isbutterfly():
             obj = GameObject.DIAMONDBIRTH
