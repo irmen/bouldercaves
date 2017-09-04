@@ -130,10 +130,10 @@ class Sample:
 
 
 class DummySample(Sample):
-    def __init__(self, name):
+    def __init__(self, name, filename=None, duration=0):
         self.name = name
-        self.filename = None
-        self.duration = 0
+        self.filename = filename
+        self.duration = duration
         self.sampledata = b""
 
 
@@ -417,19 +417,16 @@ class Winsound(AudioApi):
         self.threads = []
 
     def play(self, sample):
-        # plays the sample in a background thread so that we can continue while the sound plays.
-        # we don't use SND_ASYNC because that complicates cleaning up the temp files a lot.
-        t = threading.Thread(target=self._play, args=(sample,), daemon=True)
-        self.threads.append(t)
-        t.start()
-        time.sleep(0.0005)
+        winsound.PlaySound(sample.filename, winsound.SND_ASYNC)
 
-    def _play(self, sample):
-        with tempfile.NamedTemporaryFile(delete=False) as sample_file:
-            sample.write_wav(sample_file)
-            sample_file.flush()
-            winsound.PlaySound(sample_file.name, winsound.SND_FILENAME)
-        os.unlink(sample_file.name)
+    def stop_currently_playing(self):
+        pass
+
+    def store_sample_file(self, filename, data):
+        os.makedirs(os.path.expanduser("~/.bouldercaves"), exist_ok=True)
+        with open(os.path.expanduser("~/.bouldercaves/"+filename), "wb") as out:
+            out.write(data)
+        return out.name
 
 
 class DummyAudio(AudioApi):
@@ -534,8 +531,14 @@ def init_audio(dummy=False):
         except FileNotFoundError:
             print("Sound file not found:", filename)
             raise SystemExit("Use the 'convert_gdash_sounds.sh' shell script to create the sounds files first.")
-        samples[name] = Sample(name, data=data)
+        if isinstance(output.audio_api, Winsound):
+            filename = output.audio_api.store_sample_file(filename, data)
+            samples[name] = DummySample(name, filename)
+        else:
+            samples[name] = Sample(name, data=data)
     print("Sound API used:", output.audio_api)
+    if isinstance(output.audio_api, Winsound):
+        print("Winsound is used as fallback. For better audio, it is recommended to install the 'sounddevice' or 'pyaudio' library instead.")
 
 
 def shutdown_audio():
