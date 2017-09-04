@@ -484,7 +484,7 @@ output = None
 
 def init_audio(dummy=False):
     sounds = {
-        "music": "bdmusic.wav2",
+        "music": "bdmusic.wav",
         "cover": "cover.wav",
         "crack": "crack.wav",
         "boulder": "boulder.wav",
