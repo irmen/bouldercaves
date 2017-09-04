@@ -93,7 +93,11 @@ class Sample:
         if not conversion_required:
             return stream
         # use oggdec to convert the audio file on the fly to a WAV
-        uncompress_command = ["oggdec", "--quiet", "--output", "-", "-"]
+        if os.name == "nt":
+            oggdecexe = Winsound.ensure_oggdegexe()
+            uncompress_command = [oggdecexe, "--quiet", "--output", "-", "-"]
+        else:
+            uncompress_command = ["oggdec", "--quiet", "--output", "-", "-"]
         with tempfile.NamedTemporaryFile() as tmpfile:
             tmpfile.write(stream.read())
             tmpfile.seek(0, 0)
@@ -387,10 +391,18 @@ class Winsound(AudioApi):
         global winsound
         winsound = _winsound
         self.threads = []
+        self.oggdecexe = self.ensure_oggdegexe()
+
+    @staticmethod
+    def ensure_oggdegexe():
+        filename = os.path.expanduser("~/.bouldercaves/oggdec.exe")
+        if os.path.isfile(filename):
+            return filename
         os.makedirs(os.path.expanduser("~/.bouldercaves"), exist_ok=True)
         oggdecexe = pkgutil.get_data(__name__, "sounds/oggdec.exe")
-        with open(os.path.expanduser("~/.bouldercaves/oggdec.exe"), "wb") as exefile:
+        with open(filename, "wb") as exefile:
             exefile.write(oggdecexe)
+        return filename
 
     def play(self, sample):
         winsound.PlaySound(sample.filename, winsound.SND_ASYNC)
@@ -404,7 +416,7 @@ class Winsound(AudioApi):
         with open(oggfilename, "wb") as oggfile:
             oggfile.write(data)
         wavfilename = os.path.splitext(oggfilename)[0] + ".wav"
-        oggdeccmd = [os.path.expanduser("~/.bouldercaves/oggdec.exe"), "--quiet", oggfilename, "-o", wavfilename]
+        oggdeccmd = [self.oggdecexe, "--quiet", oggfilename, "-o", wavfilename]
         subprocess.call(oggdeccmd)
         os.remove(oggfilename)
         return wavfilename
