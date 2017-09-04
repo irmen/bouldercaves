@@ -315,7 +315,7 @@ class GameState:
     def __init__(self, gfxwindow):
         self.gfxwindow = gfxwindow
         self.graphics_frame_counter = 0    # will be set via the update() method
-        self.fps = 10      # game logic updates every 0.1 seconds
+        self.fps = 8      # game logic updates every 1/8 seconds
         self.update_timestep = 1 / self.fps
         self.width = gfxwindow.tilesheet.width
         self.height = gfxwindow.tilesheet.height
@@ -561,6 +561,7 @@ class GameState:
         if targetcell.isempty():
             if random.randint(1, 8) == 1:
                 self.move(pushedcell, direction)
+                self.fall_sound(targetcell, pushing=True)
                 if not self.movement.grab:
                     cell = self.move(cell, direction)
         return cell
@@ -622,10 +623,6 @@ class GameState:
                 self.idle["tap"] = not self.idle["tap"]
         else:
             self.idle["blink"] = self.idle["tap"] = False
-        if self.timelimit and not self.level_won and self.rockford_cell:
-            self.timeremaining = self.timelimit - datetime.datetime.now()
-            if self.timeremaining.seconds <= 0:
-                self.timeremaining = datetime.timedelta(0)
         self.amoeba["size"] = 0
         self.amoeba["enclosed"] = True
         self.rockford_cell = None
@@ -641,6 +638,14 @@ class GameState:
         if self.magicwall["active"]:
             self.magicwall["time"] -= 1
             self.magicwall["active"] = self.magicwall["time"] > 0
+        if self.timelimit and not self.level_won and self.rockford_cell:
+            secs_before = self.timeremaining.seconds
+            self.timeremaining = self.timelimit - datetime.datetime.now()
+            secs_after = self.timeremaining.seconds
+            if secs_after <= 0:
+                self.timeremaining = datetime.timedelta(0)
+            if secs_after != secs_before and 1 <= secs_after <= 9:
+                audio.output.play_sample("timeout"+str(10-secs_after))
         if self.level_won:
             if self.timeremaining.seconds > 0:
                 add_score = min(self.timeremaining.seconds, 5)
@@ -670,9 +675,11 @@ class GameState:
             self.clear_cell(self.rockford_cell)
         self.rockford_found_frame = 0
         if status == "lost":
+            audio.output.play_sample("game_over")
             self.gfxwindow.popup("Game Over.\n\nYour final score: {:d}\n\npress Escape to return to the title screen".format(self.score))
         elif status == "won":
             self.lives = 0
+            audio.output.play_sample("extra_life")
             self.gfxwindow.popup("Congratulations, you finished the game!\n\nYour final score: {:d}\n\n"
                                  "press Escape to return to the title screen".format(self.score))
 
@@ -687,6 +694,7 @@ class GameState:
         # if the cell below this one is empty, the object starts to fall
         if self.get(cell, 'd').isempty():
             cell.falling = True
+            self.fall_sound(cell)
         elif self.get(cell, 'd').isrounded():
             if self.get(cell, 'l').isempty() and self.get(cell, 'ld').isempty():
                 self.move(cell, 'l').falling = True
@@ -708,8 +716,14 @@ class GameState:
             self.move(cell, 'r')
         else:
             cell.falling = False  # falling is blocked by something
+        self.fall_sound(cell)
+
+    def fall_sound(self, cell, pushing=False):
         if cell.isboulder():
-            audio.output.play_sample("boulder")
+            if pushing:
+                audio.output.play_sample("box_push")
+            else:
+                audio.output.play_sample("boulder")
         elif cell.isdiamond():
             samplenr = random.randint(1, 6)
             audio.output.play_sample("diamond"+str(samplenr))
@@ -756,6 +770,8 @@ class GameState:
 
     def update_outboxclosed(self, cell):
         if self.diamonds >= self.diamonds_needed:
+            if cell.obj is not GameObject.OUTBOXBLINKING:
+                audio.output.play_sample("crack")
             self.draw_single_cell(cell, GameObject.OUTBOXBLINKING)
 
     def update_amoeba(self, cell):

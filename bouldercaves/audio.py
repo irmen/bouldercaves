@@ -484,7 +484,7 @@ output = None
 
 def init_audio(dummy=False):
     sounds = {
-        "music": "bdmusic.wav",
+        "music": "bdmusic.wav2",
         "cover": "cover.wav",
         "crack": "crack.wav",
         "boulder": "boulder.wav",
@@ -494,12 +494,25 @@ def init_audio(dummy=False):
         "walk_empty": "walk_empty.wav",
         "walk_dirt": "walk_dirt.wav",
         "collect_diamond": "collectdiamond.wav",
+        "box_push": "box_push.wav",
+        # "amoeba": "amoeba.wav",   # @todo not yet used, can't play continous sound + other sounds...
+        # "magic_wall": "magic_wall.wav",  # @todo not yet used, can't play continous sound + other sounds...
         "diamond1": "diamond1.wav",
         "diamond2": "diamond2.wav",
         "diamond3": "diamond3.wav",
         "diamond4": "diamond4.wav",
         "diamond5": "diamond5.wav",
         "diamond6": "diamond6.wav",
+        "game_over": "game_over.wav",
+        "timeout1": "timeout1.wav",
+        "timeout2": "timeout2.wav",
+        "timeout3": "timeout3.wav",
+        "timeout4": "timeout4.wav",
+        "timeout5": "timeout5.wav",
+        "timeout6": "timeout6.wav",
+        "timeout7": "timeout7.wav",
+        "timeout8": "timeout8.wav",
+        "timeout9": "timeout9.wav",
     }
 
     global output, samples
@@ -516,7 +529,11 @@ def init_audio(dummy=False):
 
     print("Loading sound data...")
     for name, filename in sounds.items():
-        data = pkgutil.get_data(__name__, "sounds/" + filename)
+        try:
+            data = pkgutil.get_data(__name__, "sounds/" + filename)
+        except FileNotFoundError:
+            print("Sound file not found:", filename)
+            raise SystemExit("Use the 'convert_gdash_sounds.sh' shell script to create the sounds files first.")
         samples[name] = Sample(name, data=data)
     print("Sound API used:", output.audio_api)
 
