@@ -2,8 +2,9 @@
 A Boulder Dash (tm) clone in pure python.
 Requires Python 3.5 + and the ``pillow`` library.
 If you want to hear sound, you need the ``sounddevice`` or ``pyaudio`` library as well.
-To read compressed audio files, the ``ffmpeg`` tool has to be installed on your system,
-and the executable must be on your PATH. 
+To read compressed audio files, the ``oggdec`` tool has to be installed on your system,
+and the executable must be on your PATH. For Windows, a version is provided, but for
+other systems (Mac OS, Linux) you should install the ``vorbis-tools`` package on your system.
 
 Graphics and sounds are used from the MIT-licensed GDash https://bitbucket.org/czirkoszoltan/gdash
 

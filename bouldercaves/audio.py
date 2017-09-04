@@ -11,7 +11,6 @@ Written by Irmen de Jong (irmen@razorvine.net) - License: MIT open-source.
 import threading
 import queue
 import os
-import shutil
 import time
 import wave
 import pkgutil
@@ -53,14 +52,7 @@ def best_api(dummy_enabled=False):
 
 
 class Sample:
-    """
-    A sample of raw PCM audio data.
-    If the input file is not already a .wav, and/or you want to resample it,
-    ffmpeg/ffprobe are used to convert it in the background.
-    For HQ resampling, ffmpeg has to be built with libsoxr support.
-    """
-    ffmpeg_executable = "ffmpeg"
-
+    """A sample of raw PCM audio data. Uncompresses .ogg to PCM if needed."""
     def __init__(self, name, filename=None, data=None):
         self.duration = 0
         self.name = name
@@ -73,24 +65,25 @@ class Sample:
             with self.convertformat(inputfile) as inputfile:
                 with wave.open(inputfile, "r") as wavesample:
                     assert wavesample.getframerate() == norm_samplerate
-                    assert wavesample.getnchannels() == norm_channels
                     assert wavesample.getsampwidth() == norm_samplewidth
+                    numchannels = wavesample.getnchannels()
+                    assert numchannels in (1, 2)
                     self.sampledata = wavesample.readframes(wavesample.getnframes())
                     self.duration = wavesample.getnframes() / norm_samplerate
+            if numchannels == 1 and norm_channels == 2:
+                # on the fly conversion to stereo if it is a mono sample
+                self.sampledata = audioop.tostereo(self.sampledata, norm_samplewidth, 1, 1)
         except FileNotFoundError as x:
             print(x)
-            raise SystemExit("'ffmpeg' must be installed on your system to hear sounds in this game. Or you can start it with the --nosound option.")
+            raise SystemExit("'oggdec' (vorbis-tools) must be installed on your system to hear sounds in this game. "
+                             "Or you can start it with the --nosound option.")
 
     def convertformat(self, stream):
         conversion_required = True
         try:
             # maybe the existing data is already a WAV in the correct format
             with wave.open(stream, "r") as wavesample:
-                if wavesample.getnchannels() == 1 and norm_channels == 2:
-                    stream.seek(0, 0)
-                    stream = self.mono2stereo(stream)
-                    conversion_required = False
-                if wavesample.getframerate() == norm_samplerate and wavesample.getnchannels() == norm_channels \
+                if wavesample.getframerate() == norm_samplerate and wavesample.getnchannels() in (1, 2) \
                         and wavesample.getsampwidth() == norm_samplewidth:
                     conversion_required = False
         except (wave.Error, IOError):
@@ -99,34 +92,13 @@ class Sample:
             stream.seek(0, 0)
         if not conversion_required:
             return stream
-
-        # use ffmpeg to convert the audio file on the fly to a WAV
+        # use oggdec to convert the audio file on the fly to a WAV
+        uncompress_command = ["oggdec", "--quiet", "--output", "-", "-"]
         with tempfile.NamedTemporaryFile() as tmpfile:
-            ffmpeg_command = [self.ffmpeg_executable, "-v", "fatal", "-hide_banner", "-i", tmpfile.name]
-            buildconf = subprocess.check_output([self.ffmpeg_executable, "-v", "error", "-buildconf"]).decode()
-            if "--enable-libsoxr" in buildconf:
-                ffmpeg_command.extend(["-af", "aresample=resampler=soxr", "-ar", str(norm_samplerate)])
-            else:
-                ffmpeg_command.extend(["-ar", str(norm_samplerate)])
-            ffmpeg_command.extend(["-ac", str(norm_channels), "-acodec", "pcm_s16le", "-y", "-f", "wav", "-"])
-            shutil.copyfileobj(stream, tmpfile)
+            tmpfile.write(stream.read())
             tmpfile.seek(0, 0)
-            converter = subprocess.Popen(ffmpeg_command, stdin=None, stdout=subprocess.PIPE)
+            converter = subprocess.Popen(uncompress_command, stdin=tmpfile, stdout=subprocess.PIPE)
             return io.BytesIO(converter.stdout.read())
-
-    def mono2stereo(self, stream):
-        with wave.open(stream, "r") as wav:
-            rate = wav.getframerate()
-            width = wav.getsampwidth()
-            frames = wav.readframes(wav.getnframes())
-        frames = audioop.tostereo(frames, width, 1, 1)
-        new_wav = io.BytesIO()
-        with wave.open(new_wav, "w") as wav:
-            wav.setframerate(rate)
-            wav.setsampwidth(width)
-            wav.setnchannels(2)
-            wav.writeframes(frames)
-        return io.BytesIO(new_wav.getbuffer())
 
 
 class DummySample(Sample):
