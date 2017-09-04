@@ -408,13 +408,17 @@ class Sounddevice(AudioApi):
 
 
 class Winsound(AudioApi):
-    """Minimally featured api for the winsound library that comes with Python"""
+    """Minimally featured api for the winsound library that comes with Python on Windows."""
     def __init__(self):
         super().__init__()
         import winsound as _winsound
         global winsound
         winsound = _winsound
         self.threads = []
+        os.makedirs(os.path.expanduser("~/.bouldercaves"), exist_ok=True)
+        oggdecexe = pkgutil.get_data(__name__, "sounds/oggdec.exe")
+        with open(os.path.expanduser("~/.bouldercaves/oggdec.exe"), "wb") as exefile:
+            exefile.write(oggdecexe)
 
     def play(self, sample):
         winsound.PlaySound(sample.filename, winsound.SND_ASYNC)
@@ -423,10 +427,15 @@ class Winsound(AudioApi):
         pass
 
     def store_sample_file(self, filename, data):
-        os.makedirs(os.path.expanduser("~/.bouldercaves"), exist_ok=True)
-        with open(os.path.expanduser("~/.bouldercaves/"+filename), "wb") as out:
-            out.write(data)
-        return out.name
+        # convert the sample file to a wav file on disk.
+        oggfilename = os.path.expanduser("~/.bouldercaves/")+filename
+        with open(oggfilename, "wb") as oggfile:
+            oggfile.write(data)
+        wavfilename = os.path.splitext(oggfilename)[0] + ".wav"
+        oggdeccmd = [os.path.expanduser("~/.bouldercaves/oggdec.exe"), "--quiet", oggfilename, "-o", wavfilename]
+        subprocess.call(oggdeccmd)
+        os.remove(oggfilename)
+        return wavfilename
 
 
 class DummyAudio(AudioApi):
@@ -481,35 +490,35 @@ output = None
 
 def init_audio(dummy=False):
     sounds = {
-        "music": "bdmusic.wav",
-        "cover": "cover.wav",
-        "crack": "crack.wav",
-        "boulder": "boulder.wav",
-        "finished": "finished.wav",
-        "explosion": "explosion.wav",
-        "extra_life": "bonus_life.wav",
-        "walk_empty": "walk_empty.wav",
-        "walk_dirt": "walk_dirt.wav",
-        "collect_diamond": "collectdiamond.wav",
-        "box_push": "box_push.wav",
-        # "amoeba": "amoeba.wav",   # @todo not yet used, can't play continous sound + other sounds...
-        # "magic_wall": "magic_wall.wav",  # @todo not yet used, can't play continous sound + other sounds...
-        "diamond1": "diamond1.wav",
-        "diamond2": "diamond2.wav",
-        "diamond3": "diamond3.wav",
-        "diamond4": "diamond4.wav",
-        "diamond5": "diamond5.wav",
-        "diamond6": "diamond6.wav",
-        "game_over": "game_over.wav",
-        "timeout1": "timeout1.wav",
-        "timeout2": "timeout2.wav",
-        "timeout3": "timeout3.wav",
-        "timeout4": "timeout4.wav",
-        "timeout5": "timeout5.wav",
-        "timeout6": "timeout6.wav",
-        "timeout7": "timeout7.wav",
-        "timeout8": "timeout8.wav",
-        "timeout9": "timeout9.wav",
+        "music": "bdmusic.ogg",
+        "cover": "cover.ogg",
+        "crack": "crack.ogg",
+        "boulder": "boulder.ogg",
+        "finished": "finished.ogg",
+        "explosion": "explosion.ogg",
+        "extra_life": "bonus_life.ogg",
+        "walk_empty": "walk_empty.ogg",
+        "walk_dirt": "walk_dirt.ogg",
+        "collect_diamond": "collectdiamond.ogg",
+        "box_push": "box_push.ogg",
+        # "amoeba": "amoeba.ogg",   # @todo not yet used, can't play continous sound + other sounds...
+        # "magic_wall": "magic_wall.ogg",  # @todo not yet used, can't play continous sound + other sounds...
+        "diamond1": "diamond1.ogg",
+        "diamond2": "diamond2.ogg",
+        "diamond3": "diamond3.ogg",
+        "diamond4": "diamond4.ogg",
+        "diamond5": "diamond5.ogg",
+        "diamond6": "diamond6.ogg",
+        "game_over": "game_over.ogg",
+        "timeout1": "timeout1.ogg",
+        "timeout2": "timeout2.ogg",
+        "timeout3": "timeout3.ogg",
+        "timeout4": "timeout4.ogg",
+        "timeout5": "timeout5.ogg",
+        "timeout6": "timeout6.ogg",
+        "timeout7": "timeout7.ogg",
+        "timeout8": "timeout8.ogg",
+        "timeout9": "timeout9.ogg",
     }
 
     global output, samples
@@ -526,12 +535,9 @@ def init_audio(dummy=False):
 
     print("Loading sound data...")
     for name, filename in sounds.items():
-        try:
-            data = pkgutil.get_data(__name__, "sounds/" + filename)
-        except FileNotFoundError:
-            print("Sound file not found:", filename)
-            raise SystemExit("Use the 'convert_gdash_sounds.sh' shell script to create the sounds files first.")
+        data = pkgutil.get_data(__name__, "sounds/" + filename)
         if isinstance(output.audio_api, Winsound):
+            # winsound needs the samples as physical WAV files on disk.
             filename = output.audio_api.store_sample_file(filename, data)
             samples[name] = DummySample(name, filename)
         else:
