@@ -44,3 +44,8 @@ The game is controlled via the keyboard.
 - F6: cheat and add 10 seconds extra time.
 - F7: cheat and skip to the next level.
 - F8: randomize colors (only when using Commodore-64 colors)
+
+
+## Screenshot of a level
+
+![a level](screenshot2.png?raw=true "Screenshot of a level in progress")
