@@ -32,6 +32,7 @@ winsound = None
 norm_samplerate = 44100
 norm_samplewidth = 2
 norm_channels = 2
+norm_chunksize = norm_samplerate * norm_samplewidth * norm_channels // 50
 
 
 def best_api(dummy_enabled=False):
@@ -114,7 +115,62 @@ class DummySample(Sample):
         self.sampledata = b""
 
 
+
+class SampleMixer:
+    """Real-time audio sample mixer. Simply adds a number of samples, clipping if values become too large."""
+    def __init__(self, chunksize):
+        self.active_samples = []
+        self.chunksize = chunksize
+        self.mixed_chunks = self.chunks()
+
+    def add_sample(self, sounddata, repeat=False):
+        self.active_samples.append(self._chunked(memoryview(sounddata), chunksize=self.chunksize, repeat=repeat))
+
+    @staticmethod
+    def _chunked(data, chunksize=norm_chunksize, repeat=False, stopcondition=lambda: False):
+        if repeat:
+            # continuously repeated
+            data = bytes(data)
+            if len(data) < chunksize:
+                data = data * math.ceil(chunksize / len(data))
+            length = len(data)
+            data += data[:chunksize]
+            data = memoryview(data)
+            i = 0
+            while not stopcondition():
+                yield data[i: i + chunksize]
+                i = (i + chunksize) % length
+        else:
+            # one-shot
+            i = 0
+            while i < len(data) and not stopcondition():
+                yield data[i: i + chunksize]
+                i += chunksize
+
+    def chunks(self):
+        silence = b"\0" * self.chunksize
+        while True:
+            chunks_to_mix = []
+            for s in list(self.active_samples):
+                try:
+                    chunk = next(s)
+                    if len(chunk) < self.chunksize:
+                        chunk = chunk.tobytes() + silence[:self.chunksize-len(chunk)]
+                    chunks_to_mix.append(chunk)
+                except StopIteration:
+                    self.active_samples.remove(s)
+            assert all(len(c) == self.chunksize for c in chunks_to_mix)
+            if chunks_to_mix:
+                mixed = chunks_to_mix[0]
+                for to_mix in chunks_to_mix[1:]:
+                    mixed = audioop.add(mixed, to_mix, norm_channels)
+                yield mixed
+            else:
+                yield silence
+
+
 class AudioApi:
+    """Base class for the various audio APIs."""
     def __init__(self):
         self.samplerate = norm_samplerate
         self.samplewidth = norm_samplewidth
@@ -143,26 +199,6 @@ class AudioApi:
     def wipe_queue(self):
         pass
 
-    def chunked(self, data, chunksize=44100 * 2 * 2 // 60, repeat=False, stopcondition=lambda: False):
-        if repeat:
-            # continuously repeated
-            data = bytes(data)
-            if len(data) < chunksize:
-                data = data * math.ceil(chunksize / len(data))
-            length = len(data)
-            data += data[:chunksize]
-            data = memoryview(data)
-            i = 0
-            while not stopcondition():
-                yield data[i: i+chunksize]
-                i = (i + chunksize) % length
-        else:
-            # one-shot
-            i = 0
-            while i < len(data) and not stopcondition():
-                yield data[i: i+chunksize]
-                i += chunksize
-
 
 class PyAudio(AudioApi):
     """Api to the somewhat older pyaudio library (that uses portaudio)"""
@@ -173,6 +209,7 @@ class PyAudio(AudioApi):
         self.stream = None
         self.stop_sample = False
         self.samp_queue = queue.Queue(maxsize=self.queue_size)
+        self.mixer = SampleMixer(chunksize=norm_chunksize)
 
         def audio_thread():
             audio = pyaudio.PyAudio()
@@ -185,10 +222,13 @@ class PyAudio(AudioApi):
                         self.stop_sample = False
                         if not job:
                             break
-                        chunks = self.chunked(memoryview(job["sample"].sampledata), repeat=job["repeat"])
+                        self.mixer.add_sample(job["sample"].sampledata, job["repeat"])
                         try:
                             while not self.stop_sample:
-                                self.stream.write(next(chunks).tobytes())
+                                data = next(self.mixer.mixed_chunks)
+                                if isinstance(data, memoryview):
+                                    data = data.tobytes()   # PyAudio stream can't deal with memoryview
+                                self.stream.write(data)
                         except StopIteration:
                             pass
                 finally:
@@ -258,7 +298,7 @@ class SounddeviceThread(AudioApi):
                         self.stop_sample = False
                         if not job:
                             break
-                        chunks = self.chunked(memoryview(job["sample"].sampledata), repeat=job["repeat"])
+                        chunks = chunked(memoryview(job["sample"].sampledata), repeat=job["repeat"])
                         try:
                             while not self.stop_sample:
                                 self.stream.write(next(chunks))
@@ -344,7 +384,7 @@ class Sounddevice(AudioApi):
             if not job:
                 yield empty_sound_data
             else:
-                yield from self.chunked(job["sample"].sampledata, chunksize, job["repeat"], stopcondition=lambda: self.stop_sample)
+                yield from SampleMixer._chunked(job["sample"].sampledata, chunksize, job["repeat"], stopcondition=lambda: self.stop_sample)
 
     def close(self):
         if self.stream:
@@ -492,8 +532,8 @@ def init_audio(dummy=False):
         "walk_dirt": "walk_dirt.ogg",
         "collect_diamond": "collectdiamond.ogg",
         "box_push": "box_push.ogg",
-        # "amoeba": "amoeba.ogg",   # @todo not yet used, can't play continous sound + other sounds...
-        # "magic_wall": "magic_wall.ogg",  # @todo not yet used, can't play continous sound + other sounds...
+        "amoeba": "amoeba.ogg",
+        "magic_wall": "magic_wall.ogg",
         "diamond1": "diamond1.ogg",
         "diamond2": "diamond2.ogg",
         "diamond3": "diamond3.ogg",
@@ -555,20 +595,23 @@ def shutdown_audio():
 
 if __name__ == "__main__":
     # data = b"0123456789"
-    # a = AudioApi()
-    # chunks = a.chunked(data, chunksize=91, repeat=True)
+    # chunks = chunked(data, chunksize=91, repeat=True)
     # for _ in range(200):
     #     print(next(chunks).tobytes())
     # raise SystemExit
     norm_samplerate = 22100
     init_audio()
-    with Output(SounddeviceThread()) as output:
+    with Output(PyAudio()) as output:
         print("PLAY MUSIC...")
-        output.play_sample("music", repeat=True)
+        print("CHUNK", norm_chunksize)
+        output.play_sample("amoeba", repeat=True)
         time.sleep(3)
         print("PLAY ANOTHER SOUND!")
+        output.play_sample("game_over", repeat=False)
+        time.sleep(1)
+        print("PLAY ANOTHER SOUND!")
         output.play_sample("explosion", repeat=False)
-        time.sleep(2)
+        time.sleep(4)
         output.stop()
         time.sleep(0.5)
         print("SHUTDOWN!")
