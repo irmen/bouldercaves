@@ -342,7 +342,7 @@ class GameState:
         self.restart()
 
     def restart(self):
-        audio.output.play_sample("music")
+        audio.play_sample("music")
         self.frame = 0
         self.bonusbg_frame = 0    # till what frame should the bg be the bonus sparkly things instead of spaces
         self.level = -1
@@ -645,7 +645,7 @@ class GameState:
             if secs_after <= 0:
                 self.timeremaining = datetime.timedelta(0)
             if secs_after != secs_before and 1 <= secs_after <= 9:
-                audio.output.play_sample("timeout"+str(10-secs_after))
+                audio.play_sample("timeout"+str(10-secs_after))
         if self.level_won:
             if self.timeremaining.seconds > 0:
                 add_score = min(self.timeremaining.seconds, 5)
@@ -675,11 +675,11 @@ class GameState:
             self.clear_cell(self.rockford_cell)
         self.rockford_found_frame = 0
         if status == "lost":
-            audio.output.play_sample("game_over")
+            audio.play_sample("game_over")
             self.gfxwindow.popup("Game Over.\n\nYour final score: {:d}\n\npress Escape to return to the title screen".format(self.score))
         elif status == "won":
             self.lives = 0
-            audio.output.play_sample("extra_life")
+            audio.play_sample("extra_life")
             self.gfxwindow.popup("Congratulations, you finished the game!\n\nYour final score: {:d}\n\n"
                                  "press Escape to return to the title screen".format(self.score))
 
@@ -721,12 +721,12 @@ class GameState:
     def fall_sound(self, cell, pushing=False):
         if cell.isboulder():
             if pushing:
-                audio.output.play_sample("box_push")
+                audio.play_sample("box_push")
             else:
-                audio.output.play_sample("boulder")
+                audio.play_sample("boulder")
         elif cell.isdiamond():
             samplenr = random.randint(1, 6)
-            audio.output.play_sample("diamond"+str(samplenr))
+            audio.play_sample("diamond"+str(samplenr))
 
     def update_firefly(self, cell):
         # if it hits Rockford or Amoeba it explodes
@@ -766,12 +766,12 @@ class GameState:
         # after 4 blinks (=2 seconds), Rockford spawns in the inbox.
         if self.update_timestep * self.frame > 2.0:
             self.draw_single_cell(cell, GameObject.ROCKFORDBIRTH)
-            audio.output.play_sample("crack")
+            audio.play_sample("crack")
 
     def update_outboxclosed(self, cell):
         if self.diamonds >= self.diamonds_needed:
             if cell.obj is not GameObject.OUTBOXBLINKING:
-                audio.output.play_sample("crack")
+                audio.play_sample("crack")
             self.draw_single_cell(cell, GameObject.OUTBOXBLINKING)
 
     def update_amoeba(self, cell):
@@ -801,7 +801,7 @@ class GameState:
             targetcell = self.get(cell, self.movement.direction)
             if self.movement.grab:
                 if targetcell.isdirt():
-                    audio.output.play_sample("walk_dirt")
+                    audio.play_sample("walk_dirt")
                     self.clear_cell(targetcell)
                 elif targetcell.isdiamond():
                     self.collect_diamond()
@@ -809,10 +809,10 @@ class GameState:
                 elif self.movement.direction in ("l", "r") and targetcell.isboulder():
                     self.push(cell, self.movement.direction)
             elif targetcell.isempty():
-                audio.output.play_sample("walk_empty")
+                audio.play_sample("walk_empty")
                 cell = self.move(cell, self.movement.direction)
             elif targetcell.isdirt():
-                audio.output.play_sample("walk_dirt")
+                audio.play_sample("walk_dirt")
                 cell = self.move(cell, self.movement.direction)
             elif targetcell.isboulder() and self.movement.direction in ("l", "r"):
                 cell = self.push(cell, self.movement.direction)
@@ -822,12 +822,12 @@ class GameState:
             elif targetcell.isoutbox():
                 cell = self.move(cell, self.movement.direction)
                 self.level_won = True   # exit found!
-                audio.output.play_sample("finished")
+                audio.play_sample("finished")
                 self.movement.stop_all()
         self.rockford_cell = cell
 
     def collect_diamond(self):
-        audio.output.play_sample("collect_diamond")
+        audio.play_sample("collect_diamond")
         self.diamonds += 1
         points = self.diamondvalue_extra if self.diamonds > self.diamonds_needed else self.diamondvalue_initial
         self.score += points
@@ -844,7 +844,7 @@ class GameState:
 
     def add_extra_life(self):
         self.lives += 1
-        audio.output.play_sample("extra_life")
+        audio.play_sample("extra_life")
         for cell in self.cave:
             if cell.obj is GameObject.EMPTY:
                 self.draw_single_cell(cell, GameObject.BONUSBG)
@@ -868,7 +868,7 @@ class GameState:
         self.draw_single_cell(cell, GameObject.DIAMOND)
 
     def explode(self, cell, direction=None):
-        audio.output.play_sample("explosion")
+        audio.play_sample("explosion")
         explosioncell = self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
         if explosioncell.isbutterfly():
             obj = GameObject.DIAMONDBIRTH

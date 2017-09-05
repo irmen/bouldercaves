@@ -153,6 +153,7 @@ class BoulderWindow(tkinter.Tk):
         self.font_tiles_startindex = self.create_font_tiles()
         self.bind("<KeyPress>", self.keypress)
         self.bind("<KeyRelease>", self.keyrelease)
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.scorecanvas.pack(pady=(0, 10))
         self.canvas.pack()
         self.gfxupdate_starttime = None
@@ -161,6 +162,10 @@ class BoulderWindow(tkinter.Tk):
         self.graphics_frame = 0
         self.popup_frame = 0
         self.gamestate = GameState(self)
+
+    def destroy(self):
+        audio.shutdown_audio()
+        super().destroy()
 
     def start(self):
         self.gfxupdate_starttime = time.perf_counter()
@@ -267,7 +272,7 @@ class BoulderWindow(tkinter.Tk):
         if self.uncover_tiles:
             # perform random uncover animation before the level starts
             if len(self.uncover_tiles) == self.playfield_rows * self.playfield_columns:
-                audio.output.play_sample("cover")
+                audio.play_sample("cover")
             for _ in range(int(30 * 30 / self.update_fps)):
                 reveal = random.randrange(1 + self.playfield_columns, self.playfield_columns * (self.playfield_rows - 1))
                 revealy, revealx = divmod(reveal, self.playfield_columns)

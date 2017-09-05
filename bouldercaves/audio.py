@@ -18,6 +18,7 @@ import io
 import subprocess
 import tempfile
 import audioop
+import math
 
 
 __all__ = ["PyAudio", "Sounddevice", "SounddeviceThread", "Winsound", "best_api", "Output"]
@@ -133,7 +134,7 @@ class AudioApi:
     def query_api_version(self):
         return "unknown"
 
-    def play(self, sample):
+    def play(self, sample, repeat=False):
         raise NotImplementedError
 
     def stop_currently_playing(self):
@@ -141,6 +142,26 @@ class AudioApi:
 
     def wipe_queue(self):
         pass
+
+    def chunked(self, data, chunksize=44100 * 2 * 2 // 60, repeat=False, stopcondition=lambda: False):
+        if repeat:
+            # continuously repeated
+            data = bytes(data)
+            if len(data) < chunksize:
+                data = data * math.ceil(chunksize / len(data))
+            length = len(data)
+            data += data[:chunksize]
+            data = memoryview(data)
+            i = 0
+            while not stopcondition():
+                yield data[i: i+chunksize]
+                i = (i + chunksize) % length
+        else:
+            # one-shot
+            i = 0
+            while i < len(data) and not stopcondition():
+                yield data[i: i+chunksize]
+                i += chunksize
 
 
 class PyAudio(AudioApi):
@@ -160,14 +181,16 @@ class PyAudio(AudioApi):
                 self.stream = audio.open(format=audio_format, channels=self.nchannels, rate=self.samplerate, output=True)
                 try:
                     while True:
-                        sample = self.samp_queue.get()
+                        job = self.samp_queue.get()
                         self.stop_sample = False
-                        if not sample:
+                        if not job:
                             break
-                        i = 0
-                        while i < len(sample.sampledata) and not self.stop_sample:
-                            self.stream.write(sample.sampledata[i:i+1024])
-                            i += 1024
+                        chunks = self.chunked(memoryview(job["sample"].sampledata), repeat=job["repeat"])
+                        try:
+                            while not self.stop_sample:
+                                self.stream.write(next(chunks).tobytes())
+                        except StopIteration:
+                            pass
                 finally:
                     self.stream.close()
             finally:
@@ -184,8 +207,11 @@ class PyAudio(AudioApi):
     def query_api_version(self):
         return pyaudio.get_portaudio_version_text()
 
-    def play(self, sample):
-        self.samp_queue.put(sample)
+    def play(self, sample, repeat=False):
+        if sample:
+            self.samp_queue.put({"sample": sample, "repeat": repeat})
+        else:
+            self.samp_queue.put(None)
 
     def stop_currently_playing(self):
         self.stop_sample = True
@@ -228,16 +254,18 @@ class SounddeviceThread(AudioApi):
                 q = self.samp_queue
                 try:
                     while True:
-                        sample = q.get()
-                        if not sample:
-                            break
+                        job = q.get()
                         self.stop_sample = False
-                        i = 0
-                        while i < len(sample.sampledata) and not self.stop_sample:
-                            self.stream.write(sample.sampledata[i:i+1024])
-                            i += 1024
+                        if not job:
+                            break
+                        chunks = self.chunked(memoryview(job["sample"].sampledata), repeat=job["repeat"])
+                        try:
+                            while not self.stop_sample:
+                                self.stream.write(next(chunks))
+                        except StopIteration:
+                            pass
                 finally:
-                    # self.stream.stop()  causes pop
+                    # self.stream.sto44100p()  causes pop
                     self.stream.close()
             finally:
                 pass
@@ -257,8 +285,11 @@ class SounddeviceThread(AudioApi):
     def query_api_version(self):
         return sounddevice.get_portaudio_version()[1]
 
-    def play(self, sample):
-        self.samp_queue.put(sample)
+    def play(self, sample, repeat=False):
+        if sample:
+            self.samp_queue.put({"sample": sample, "repeat": repeat})
+        else:
+            self.samp_queue.put(None)
 
     def stop_currently_playing(self):
         self.stop_sample = True
@@ -274,59 +305,12 @@ class SounddeviceThread(AudioApi):
 class Sounddevice(AudioApi):
     """Api to the more featureful sounddevice library (that uses portaudio) -
     using callback stream, without a separate audio output thread"""
-    class BufferQueueReader:
-        def __init__(self, bufferqueue):
-            self.queue_items = self.iter_queue(bufferqueue)
-            self.current_item = None
-            self.i = 0
-            self.queue_empty_event = threading.Event()
-            self.stop_sample = False
-
-        def iter_queue(self, bufferqueue):
-            while True:
-                try:
-                    yield bufferqueue.get_nowait()
-                except queue.Empty:
-                    self.queue_empty_event.set()
-                    yield None
-
-        def next_chunk(self, size):
-            if self.stop_sample:
-                self.stop_sample = False
-                self.current_item = None
-            if not self.current_item:
-                data = next(self.queue_items)
-                if not data:
-                    return None
-                self.current_item = memoryview(data)
-                self.i = 0
-            rest_current = len(self.current_item) - self.i
-            if size <= rest_current:
-                # current item still contains enough data
-                result = self.current_item[self.i:self.i+size]
-                self.i += size
-                return result
-            # current item is too small, get more data from the queue
-            # we assume the size of the chunks in the queue is >= required block size
-            data = next(self.queue_items)
-            if data:
-                result = self.current_item[self.i:].tobytes()
-                self.i = size - len(result)
-                result += data[0:self.i]
-                self.current_item = memoryview(data)
-                assert len(result) == size, "queue blocks need to be >= buffersize"
-                return result
-            else:
-                # no new data available, just return the last remaining data from current block
-                result = self.current_item[self.i:]
-                self.current_item = None
-                return result or None
-
     def __init__(self):
         super().__init__()
         global sounddevice
         import sounddevice
-        self.buffer_queue = queue.Queue(maxsize=self.queue_size)
+        self.samp_queue = queue.Queue(maxsize=self.queue_size)
+        self.stop_sample = False
         if self.samplewidth == 1:
             dtype = "int8"
         elif self.samplewidth == 2:
@@ -338,43 +322,66 @@ class Sounddevice(AudioApi):
         else:
             raise ValueError("invalid sample width")
         frames_per_chunk = self.samplerate // 20
-        self.buffer_queue_reader = Sounddevice.BufferQueueReader(self.buffer_queue)
+        self._empty_sound_data = b"\0" * frames_per_chunk * self.nchannels * self.samplewidth
         self.stream = sounddevice.RawOutputStream(self.samplerate, channels=self.nchannels, dtype=dtype,
             blocksize=frames_per_chunk, callback=self.streamcallback)
+        self.sounddata_chunks = self.chunks(frames_per_chunk * self.nchannels * self.samplewidth)
         self.stream.start()
+
+    def iter_queue(self):
+        while True:
+            try:
+                yield self.samp_queue.get_nowait()
+            except queue.Empty:
+                yield None
+
+    def chunks(self, chunksize):
+        empty_sound_data = b"\0" * chunksize
+        queue_items = self.iter_queue()
+        while True:
+            self.stop_sample = False
+            job = next(queue_items)
+            if not job:
+                yield empty_sound_data
+            else:
+                yield from self.chunked(job["sample"].sampledata, chunksize, job["repeat"], stopcondition=lambda: self.stop_sample)
 
     def close(self):
         if self.stream:
-            self.buffer_queue_reader.stop_sample = True
+            self.stop_sample = True
             # self.stream.stop()   causes pop
             self.stream.close()
             self.stream = None
-        self.buffer_queue = None
+        self.samp_queue = None
         sounddevice.stop()
 
     def query_api_version(self):
         return sounddevice.get_portaudio_version()[1]
 
-    def play(self, sample):
-        self.buffer_queue.put(sample.sampledata)
+    def play(self, sample, repeat=False):
+        if sample:
+            self.samp_queue.put({"sample": sample, "repeat": repeat})
+        else:
+            self.samp_queue.put(None)
 
     def stop_currently_playing(self):
-        self.buffer_queue_reader.stop_sample = True
+        self.stop_sample = True
 
     def wipe_queue(self):
         try:
             while True:
-                self.buffer_queue.get(block=False)
+                self.samp_queue.get(block=False)
         except queue.Empty:
             pass
 
     def streamcallback(self, outdata, frames, time, status):
-        data = self.buffer_queue_reader.next_chunk(len(outdata))
+        data = next(self.sounddata_chunks)
         if not data:
             # no frames available, use silence
-            data = b"\0" * len(outdata)
             # raise sounddevice.CallbackAbort   this will abort the stream
-        if len(data) < len(outdata):
+            assert len(outdata) == len(self._empty_sound_data)
+            outdata[:] = self._empty_sound_data
+        elif len(data) < len(outdata):
             # underflow, pad with silence
             outdata[:len(data)] = data
             outdata[len(data):] = b"\0"*(len(outdata)-len(data))
@@ -430,7 +437,7 @@ class DummyAudio(AudioApi):
     def query_api_version(self):
         return "dummy"
 
-    def play(self, sample):
+    def play(self, sample, repeat=False):
         pass
 
     def stop_currently_playing(self):
@@ -456,12 +463,12 @@ class Output:
     def close(self):
         self.audio_api.close()
 
-    def play_sample(self, samplename):
+    def play_sample(self, samplename, repeat=False):
         """Play a single sample (asynchronously)."""
         global samples
         self.audio_api.wipe_queue()   # sounds in queue but not yet played are discarded...
         self.stop()   # and the currently playing sample is stopped so we can play new sounds.
-        self.audio_api.play(samples[samplename])
+        self.audio_api.play(samples[samplename], repeat=repeat)
 
     def wipe_queue(self):
         """Remove all pending samples to be played from the queue"""
@@ -531,6 +538,15 @@ def init_audio(dummy=False):
         print("Winsound is used as fallback. For better audio, it is recommended to install the 'sounddevice' or 'pyaudio' library instead.")
 
 
+def play_sample(samplename):
+    output.play_sample(samplename)
+
+
+def stop_all_sound():
+    output.wipe_queue()
+    output.stop()
+
+
 def shutdown_audio():
     if output:
         output.wipe_queue()
@@ -538,13 +554,22 @@ def shutdown_audio():
 
 
 if __name__ == "__main__":
+    # data = b"0123456789"
+    # a = AudioApi()
+    # chunks = a.chunked(data, chunksize=91, repeat=True)
+    # for _ in range(200):
+    #     print(next(chunks).tobytes())
+    # raise SystemExit
+    norm_samplerate = 22100
     init_audio()
-    for i in range(10):
-        print("playing #", i)
-        output.play_sample("music")
+    with Output(SounddeviceThread()) as output:
+        print("PLAY MUSIC...")
+        output.play_sample("music", repeat=True)
+        time.sleep(3)
+        print("PLAY ANOTHER SOUND!")
+        output.play_sample("explosion", repeat=False)
         time.sleep(2)
-    print("STOP CURRENT!")
-    output.stop()
-    time.sleep(1)
-    shutdown_audio()
-
+        output.stop()
+        time.sleep(0.5)
+        print("SHUTDOWN!")
+    time.sleep(0.5)
