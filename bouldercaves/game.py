@@ -342,6 +342,7 @@ class GameState:
         self.restart()
 
     def restart(self):
+        audio.silence_audio()
         audio.play_sample("music", repeat=True)
         self.frame = 0
         self.bonusbg_frame = 0    # till what frame should the bg be the bonus sparkly things instead of spaces
@@ -374,7 +375,8 @@ class GameState:
             "max": 0,
             "slow": 0,
             "enclosed": False,
-            "dead": None
+            "dead": None,
+            "sound_active": False
         }
         self.timeremaining = None
         self.timelimit = None
@@ -425,6 +427,7 @@ class GameState:
         self.draw_single(GameObject.DIRTSLOPEDUPRIGHT, self.width - 3, self.height - 2)
 
     def load_c64level(self, levelnumber):
+        audio.silence_audio()
         c64cave = caves.Cave.decode_from_lvl(levelnumber)
         assert c64cave.width == self.width and c64cave.height == self.height
         self.level_name = c64cave.name
@@ -455,7 +458,8 @@ class GameState:
             "max": c64cave.amoebamaxsize,
             "slow": c64cave.amoeba_slowgrowthtime / self.update_timestep,
             "enclosed": False,
-            "dead": None
+            "dead": None,
+            "sound_active": False
         }
         # convert the c64 cave map
         conversion = {
@@ -572,8 +576,6 @@ class GameState:
         if self.magicwall["time"] > 0:
             if not self.magicwall["active"]:
                 # magic wall activates! play sound. Will be silenced once the milling timer runs out.
-                self.draw_single(GameObject.DIAMOND, 14, 10)
-                self.draw_single(GameObject.DIAMOND, 15, 10)
                 audio.play_sample("magic_wall", repeat=True)
             self.magicwall["active"] = True
             obj = cell.obj
@@ -645,9 +647,16 @@ class GameState:
         if self.amoeba["dead"] is None:
             if self.amoeba["enclosed"]:
                 self.amoeba["dead"] = GameObject.DIAMOND
+                audio.silence_audio()  # stop amoeba sound
+                audio.play_sample("diamond1")
             elif self.amoeba["size"] > self.amoeba["max"]:
                 self.amoeba["dead"] = GameObject.BOULDER
+                audio.silence_audio()  # stop amoeba sound
+                audio.play_sample("boulder")
             elif self.amoeba["slow"] > 0:
+                if not self.amoeba["sound_active"]:
+                    self.amoeba["sound_active"] = True
+                    audio.play_sample("amoeba", repeat=True)    # start playing amoeba sound
                 self.amoeba["slow"] -= 1
         if self.magicwall["active"]:
             self.magicwall["time"] -= 1
@@ -786,7 +795,6 @@ class GameState:
             self.draw_single_cell(cell, GameObject.OUTBOXBLINKING)
 
     def update_amoeba(self, cell):
-        # @todo amoeba sound
         if self.amoeba["dead"] is not None:
             self.draw_single_cell(cell, self.amoeba["dead"])
         else:
