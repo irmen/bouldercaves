@@ -222,7 +222,8 @@ class BoulderWindow(tkinter.Tk):
             if not self.uncover_tiles and self.gamestate.lives < 0:
                 self.gamestate.restart()
             if self.gamestate.level < 1:
-                self.gamestate.load_c64level(1)
+                self.gamestate.level = 0
+                self.gamestate.load_next_level()
         elif event.keysym == "F5":
             self.gamestate.add_extra_life()
         elif event.keysym == "F6":

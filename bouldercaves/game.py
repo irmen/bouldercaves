@@ -342,7 +342,7 @@ class GameState:
         self.restart()
 
     def restart(self):
-        audio.play_sample("music")
+        audio.play_sample("music", repeat=True)
         self.frame = 0
         self.bonusbg_frame = 0    # till what frame should the bg be the bonus sparkly things instead of spaces
         self.level = -1
@@ -489,6 +489,7 @@ class GameState:
         self.gfxwindow.create_colored_tiles(c64cave.bgcolor1, c64cave.bgcolor2, c64cave.fgcolor)
         self.gfxwindow.tilesheet.all_dirty()
         if level_intro_popup:
+            audio.play_sample("diamond2")
             self.gfxwindow.popup("Level {:d}: {:s}\n\n{:s}".format(self.level, self.level_name, self.level_description))
 
     def cheat_skip_level(self):
@@ -568,7 +569,12 @@ class GameState:
 
     def domagic(self, cell):
         # something (diamond, boulder) is falling on a magic wall
+        # @todo fix bug: inactive magic wall should eat stuff that falls on it
+        # @todo fix bug: boulder falling through active magic wall (becoming diamond) should play diamond sound
         if self.magicwall["time"] > 0:
+            if not self.magicwall["active"]:
+                # magic wall activates! play sound. Will be silenced once the milling timer runs out.
+                audio.play_sample("magic_wall", repeat=True)
             self.magicwall["active"] = True
             obj = cell.obj
             self.clear_cell(cell)
@@ -641,7 +647,11 @@ class GameState:
                 self.amoeba["slow"] -= 1
         if self.magicwall["active"]:
             self.magicwall["time"] -= 1
-            self.magicwall["active"] = self.magicwall["time"] > 0
+            still_magic = self.magicwall["time"] > 0
+            if self.magicwall["active"] and not still_magic:
+                # magic wall has stopped! stop playing the milling sound
+                audio.silence_audio()
+            self.magicwall["active"] = still_magic
         if self.timelimit and not self.level_won and self.rockford_cell:
             secs_before = self.timeremaining.seconds
             self.timeremaining = self.timelimit - datetime.datetime.now()
@@ -692,6 +702,7 @@ class GameState:
         if level > len(caves.CAVES):
             self.stop_game("won")
         else:
+            audio.silence_audio()
             self.load_c64level(level)
 
     def update_canfall(self, cell):

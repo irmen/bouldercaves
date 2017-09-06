@@ -129,6 +129,9 @@ class SampleMixer:
     def add_sample(self, sounddata, repeat=False):
         self.active_samples.append(self._chunked(memoryview(sounddata), chunksize=self.chunksize, repeat=repeat))
 
+    def clear_sources(self):
+        self.active_samples.clear()
+
     @staticmethod
     def _chunked(data, chunksize=norm_chunksize, repeat=False, stopcondition=lambda: False):
         if repeat:
@@ -188,13 +191,13 @@ class AudioApi:
             return self.__class__.__name__
 
     def play(self, sample, repeat=False):
-        if sample:
-            self.samp_queue.put({"sample": sample, "repeat": repeat})
-        else:
-            self.samp_queue.put(None)
+        self.samp_queue.put({"sample": sample, "repeat": repeat})
+
+    def silence(self):
+        self.samp_queue.put("silence")
 
     def close(self):
-        self.samp_queue.put(None)
+        self.samp_queue.put("stop")
 
     def query_api_version(self):
         return "unknown"
@@ -217,8 +220,11 @@ class PyAudio(AudioApi):
                     while True:
                         try:
                             job = self.samp_queue.get_nowait()
-                            if job is None:
+                            if job == "stop":
                                 break
+                            elif job == "silence":
+                                mixer.clear_sources()
+                                continue
                         except queue.Empty:
                             pass
                         else:
@@ -266,8 +272,11 @@ class SounddeviceThread(AudioApi):
                     while True:
                         try:
                             job = self.samp_queue.get_nowait()
-                            if job is None:
+                            if job == "stop":
                                 break
+                            elif job == "silence":
+                                mixer.clear_sources()
+                                continue
                         except queue.Empty:
                             pass
                         else:
@@ -291,6 +300,7 @@ class Sounddevice(AudioApi):
     using callback stream, without a separate audio output thread"""
     def __init__(self):
         super().__init__()
+        del self.samp_queue
         global sounddevice
         import sounddevice
         if self.samplewidth == 1:
@@ -313,12 +323,13 @@ class Sounddevice(AudioApi):
         return sounddevice.get_portaudio_version()[1]
 
     def play(self, sample, repeat=False):
-        if sample is None:
-            self.stream.stop()
-        else:
-            self.mixer.add_sample(sample.sampledata, repeat)
+        self.mixer.add_sample(sample.sampledata, repeat)
+
+    def silence(self):
+        self.mixer.clear_sources()
 
     def close(self):
+        self.silence()
         self.stream.stop()
 
     def streamcallback(self, outdata, frames, time, status):
@@ -402,6 +413,9 @@ class Output:
     def close(self):
         self.audio_api.close()
 
+    def silence(self):
+        self.audio_api.silence()
+
     def play_sample(self, samplename, repeat=False):
         """Play a single sample (asynchronously)."""
         global samples
@@ -471,13 +485,16 @@ def init_audio(dummy=False):
         print("Winsound is used as fallback. For better audio, it is recommended to install the 'sounddevice' or 'pyaudio' library instead.")
 
 
-def play_sample(samplename):
-    output.play_sample(samplename)
+def play_sample(samplename, repeat=False):
+    output.play_sample(samplename, repeat)
+
+
+def silence_audio():
+    output.silence()
 
 
 def shutdown_audio():
-    if output:
-        output.close()
+    output.close()
 
 
 if __name__ == "__main__":
@@ -500,7 +517,7 @@ if __name__ == "__main__":
         output.play_sample("explosion", repeat=False)
         time.sleep(4)
         print("STOP SOUND!")
-        output.stop()
+        output.silence()
         time.sleep(2)
         print("SHUTDOWN!")
     time.sleep(0.5)
