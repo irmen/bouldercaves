@@ -569,22 +569,26 @@ class GameState:
 
     def domagic(self, cell):
         # something (diamond, boulder) is falling on a magic wall
-        # @todo fix bug: inactive magic wall should eat stuff that falls on it
-        # @todo fix bug: boulder falling through active magic wall (becoming diamond) should play diamond sound
         if self.magicwall["time"] > 0:
             if not self.magicwall["active"]:
                 # magic wall activates! play sound. Will be silenced once the milling timer runs out.
+                self.draw_single(GameObject.DIAMOND, 14, 10)
+                self.draw_single(GameObject.DIAMOND, 15, 10)
                 audio.play_sample("magic_wall", repeat=True)
             self.magicwall["active"] = True
             obj = cell.obj
             self.clear_cell(cell)
             cell_under_wall = self.get(self.get(cell, 'd'), 'd')
             if cell_under_wall.isempty():
-                obj = {
-                    GameObject.DIAMOND: GameObject.BOULDER,
-                    GameObject.BOULDER: GameObject.DIAMOND
-                }[obj]
-                self.draw_single_cell(cell_under_wall, obj)
+                if obj is GameObject.DIAMOND:
+                    self.draw_single_cell(cell_under_wall, GameObject.BOULDER)
+                    audio.play_sample("boulder")
+                elif obj is GameObject.BOULDER:
+                    self.draw_single_cell(cell_under_wall, GameObject.DIAMOND)
+                    audio.play_sample("diamond" + str(random.randint(1, 6)))
+        else:
+            # magic wall is disabled, stuff falling on it just disappears (a sound is already played)
+            self.clear_cell(cell)
 
     def cells_with_animations(self):
         return [cell for cell in self.cave if cell.obj.sframes]
@@ -782,6 +786,7 @@ class GameState:
             self.draw_single_cell(cell, GameObject.OUTBOXBLINKING)
 
     def update_amoeba(self, cell):
+        # @todo amoeba sound
         if self.amoeba["dead"] is not None:
             self.draw_single_cell(cell, self.amoeba["dead"])
         else:
@@ -840,8 +845,7 @@ class GameState:
             else:
                 self.fall_sound_to_play = "boulder"
         elif cell.isdiamond():
-            samplenr = random.randint(1, 6)
-            self.fall_sound_to_play = "diamond"+str(samplenr)
+            self.fall_sound_to_play = "diamond" + str(random.randint(1, 6))
 
     def collect_diamond(self):
         audio.play_sample("collect_diamond")
