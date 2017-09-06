@@ -626,8 +626,12 @@ class GameState:
         self.amoeba["size"] = 0
         self.amoeba["enclosed"] = True
         self.rockford_cell = None
+        self.fall_sound_to_play = None
 
     def frame_end(self):
+        if self.fall_sound_to_play:
+            audio.play_sample(self.fall_sound_to_play)
+            self.fall_sound_to_play = None
         if self.amoeba["dead"] is None:
             if self.amoeba["enclosed"]:
                 self.amoeba["dead"] = GameObject.DIAMOND
@@ -693,8 +697,9 @@ class GameState:
     def update_canfall(self, cell):
         # if the cell below this one is empty, the object starts to fall
         if self.get(cell, 'd').isempty():
-            cell.falling = True
-            self.fall_sound(cell)
+            if not cell.falling:
+                self.fall_sound(cell)
+                cell.falling = True
         elif self.get(cell, 'd').isrounded():
             if self.get(cell, 'l').isempty() and self.get(cell, 'ld').isempty():
                 self.move(cell, 'l').falling = True
@@ -705,7 +710,9 @@ class GameState:
         # let the object fall down, explode stuff if explodable!
         cellbelow = self.get(cell, 'd')
         if cellbelow.isempty():
-            self.move(cell, 'd')
+            cell = self.move(cell, 'd')
+            if not self.get(cell, 'd').isempty():
+                self.fall_sound(cell)  # play a sound as soon as we hit something.
         elif cellbelow.isexplodable():
             self.explode(cell, 'd')
         elif cellbelow.ismagic():
@@ -715,18 +722,7 @@ class GameState:
         elif cellbelow.isrounded() and self.get(cell, 'r').isempty() and self.get(cell, 'rd').isempty():
             self.move(cell, 'r')
         else:
-            cell.falling = False  # falling is blocked by something
-        self.fall_sound(cell)
-
-    def fall_sound(self, cell, pushing=False):
-        if cell.isboulder():
-            if pushing:
-                audio.play_sample("box_push")
-            else:
-                audio.play_sample("boulder")
-        elif cell.isdiamond():
-            samplenr = random.randint(1, 6)
-            audio.play_sample("diamond"+str(samplenr))
+            cell.falling = False  # falling was blocked by something
 
     def update_firefly(self, cell):
         # if it hits Rockford or Amoeba it explodes
@@ -825,6 +821,16 @@ class GameState:
                 audio.play_sample("finished")
                 self.movement.stop_all()
         self.rockford_cell = cell
+
+    def fall_sound(self, cell, pushing=False):
+        if cell.isboulder():
+            if pushing:
+                self.fall_sound_to_play = "box_push"
+            else:
+                self.fall_sound_to_play = "boulder"
+        elif cell.isdiamond():
+            samplenr = random.randint(1, 6)
+            self.fall_sound_to_play = "diamond"+str(samplenr)
 
     def collect_diamond(self):
         audio.play_sample("collect_diamond")

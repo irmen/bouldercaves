@@ -514,6 +514,7 @@ def start(args=None):
         audio.norm_samplerate = 22100
         audio.norm_samplewidth = 2
         audio.norm_channels = 2
+        audio.norm_chunksize = audio.norm_samplerate * audio.norm_samplewidth * audio.norm_channels // 50
         audio.init_audio()
     window = BoulderWindow("Boulder Caves - created by Irmen de Jong", args.fps, args.size + 1, args.c64colors)
     window.start()
