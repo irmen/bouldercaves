@@ -353,6 +353,7 @@ class Winsound(AudioApi):
     """Minimally featured api for the winsound library that comes with Python on Windows."""
     def __init__(self):
         super().__init__()
+        del self.samp_queue
         import winsound as _winsound
         global winsound
         winsound = _winsound
@@ -370,8 +371,18 @@ class Winsound(AudioApi):
             exefile.write(oggdecexe)
         return filename
 
-    def play(self, sample):
-        winsound.PlaySound(sample.filename, winsound.SND_ASYNC)
+    def play(self, sample, repeat=False):
+        # winsound.SND_NOSTOP doesn't seem to work.
+        option = winsound.SND_ASYNC
+        if repeat:
+            option |= winsound.SND_LOOP
+        winsound.PlaySound(sample.filename, option)
+
+    def silence(self):
+        winsound.PlaySound(None, winsound.SND_PURGE)
+
+    def close(self):
+        self.silence()
 
     def store_sample_file(self, filename, data):
         # convert the sample file to a wav file on disk.
@@ -505,7 +516,7 @@ if __name__ == "__main__":
     # raise SystemExit
     norm_samplerate = 22100
     init_audio()
-    with Output(Sounddevice()) as output:
+    with Output(Winsound()) as output:
         print("PLAY MUSIC...", output.audio_api)
         print("CHUNK", norm_chunksize)
         output.play_sample("amoeba", repeat=True)
@@ -514,7 +525,7 @@ if __name__ == "__main__":
         output.play_sample("game_over", repeat=False)
         time.sleep(1)
         print("PLAY ANOTHER SOUND!")
-        output.play_sample("explosion", repeat=False)
+        output.play_sample("explosion", repeat=True)
         time.sleep(4)
         print("STOP SOUND!")
         output.silence()

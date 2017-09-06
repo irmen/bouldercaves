@@ -1,10 +1,12 @@
 # Boulder Caves
 A Boulder Dash (tm) clone in pure python.
 Requires Python 3.5 + and the ``pillow`` library.
-If you want to hear sound, you need the ``sounddevice`` or ``pyaudio`` library as well.
-To read compressed audio files, the ``oggdec`` tool has to be installed on your system,
-and the executable must be on your PATH. For Windows, a version is provided, but for
-other systems (Mac OS, Linux) you should install the ``vorbis-tools`` package on your system.
+Want to hear sound? Install the ``sounddevice`` or ``pyaudio`` library as well, and
+the ``oggdec`` tool has to be installed on your system.  Usually that is part of
+the ``vorbis-tools`` package (Linux, Mac OS).  On Windows a version of the tool 
+is provided for you, and the game *can* optionally use the built-in ``winsound`` module -
+but the sound quality will suffer (no mixing possible) 
+  
 
 Graphics and sounds are used from the MIT-licensed GDash https://bitbucket.org/czirkoszoltan/gdash
 
@@ -23,23 +25,23 @@ the screen fast enough, try adjusting the parameters on the command line.
 
 ## Objective and rules of the game
 
-Collect enough diamonds to open the exit to go to the next level!
-Extra diamonds grant bonus points, and time left is added to your score as well.
-Avoid monsters or use them to your advantage.
-Some brick walls are not simply what they seem. 
-
-'Intermission' levels are bonus stages where you have one chance to complete them.
+- Collect enough diamonds to open the exit to go to the next level!
+- Extra diamonds grant bonus points, and time left is added to your score as well.
+- Avoid monsters or use them to your advantage.
+- Some brick walls are not simply what they seem. 
+- Amoeba grows and grows but it is often worthwhile to contain it. 
+- *Intermission* levels are bonus stages where you have one chance to complete them.
 You won't lose a life here if you die.
 
 
 ## Controls
 
-The game is controlled via the keyboard.
+You control the game via the keyboard:
 
-- Cursorkeys UP, DOWN, LEFT, RIGHT: move the hero.
+- Cursorkeys UP, DOWN, LEFT, RIGHT: move your hero.
 - with SHIFT: grab or push something in adjacent place without moving yourself.
 - ESC: lose a life and restart the level. When game over, returns to title screen.
-- F1: start a new game. Also skips waiting for popup screens.
+- F1: start a new game. Also skips the popup screen wait.
 - F5: cheat and add an extra life.
 - F6: cheat and add 10 seconds extra time.
 - F7: cheat and skip to the next level.
