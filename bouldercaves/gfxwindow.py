@@ -262,6 +262,7 @@ class BoulderWindow(tkinter.Tk):
 
     def repaint(self):
         self.graphics_frame += 1
+        self.scroll_focuscell_into_view()
         if self.smallwindow and self.gamestate.game_status == "waiting" and self.popup_frame < self.graphics_frame:
             # move the waiting screen (title screen) around so you can see it all :)
             wavew, waveh = self.tile2screencor(self.playfield_columns - self.visible_columns, self.playfield_rows - self.visible_rows)
@@ -446,25 +447,38 @@ class BoulderWindow(tkinter.Tk):
         return "#{:06x}".format(self.colorpalette[color & len(self.colorpalette) - 1])
 
     def scrollxypixels(self, x, y):
+        self.view_x, self.view_y = self.clamp_scroll_xy(x, y)
+
+    def clamp_scroll_xy(self, x, y):
         xlimit, ylimit = self.tile2screencor(self.playfield_columns - self.visible_columns, self.playfield_rows - self.visible_rows)
-        self.view_x = min(max(0, int(x)), xlimit)
-        self.view_y = min(max(0, int(y)), ylimit)
+        return min(max(0, round(x)), xlimit), min(max(0, round(y)), ylimit)
 
     def update_game(self):
         if not self.uncover_tiles and self.popup_frame < self.graphics_frame:
             self.gamestate.update(self.graphics_frame)
-        self.scroll_focuscell_into_view()
         self.gamestate.update_scorebar()
 
     def scroll_focuscell_into_view(self, immediate=False):
-        # @todo smooth scroll interpolation option
-        # @todo don't always keep it exactly in the center, add some movement slack
+        # @todo don't always keep it exactly in the center at all times, add some movement slack area
         focus_cell = self.gamestate.focus_cell()
         if focus_cell:
             x, y = focus_cell.x, focus_cell.y
             # scroll the view to the focus cell
             viewx, viewy = self.tile2screencor(x - self.visible_columns / 2, y - self.visible_rows / 2)
-            self.scrollxypixels(viewx, viewy)
+            viewx, viewy = self.clamp_scroll_xy(viewx, viewy)
+            if viewx != self.view_x or viewy != self.view_y:
+                if immediate:
+                    # jump to new scroll position without interpolation
+                    self.scrollxypixels(viewx, viewy)
+                else:
+                    # interpolate towards the new view position
+                    dx = (viewx - self.view_x) / self.update_fps
+                    dy = (viewy - self.view_y) / self.update_fps
+                    if dx:
+                        viewx = self.view_x + math.copysign(max(1, abs(dx)), dx)
+                    if dy:
+                        viewy = self.view_y + math.copysign(max(1, abs(dy)), dy)
+                    self.scrollxypixels(viewx, viewy)
 
     def text2tiles(self, text):
         return [self.font_tiles_startindex + ord(c) for c in text]
