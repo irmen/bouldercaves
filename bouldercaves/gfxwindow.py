@@ -12,6 +12,7 @@ import random
 import array
 import io
 import sys
+import math
 import tkinter
 import pkgutil
 import time
@@ -108,8 +109,12 @@ class BoulderWindow(tkinter.Tk):
     playfield_rows = 22
     scalexy = 2
 
-    def __init__(self, title, fps=30, scale=2, c64colors=False):
+    def __init__(self, title, fps=30, scale=2, c64colors=False, smallwindow=False):
         scale = scale / 2
+        self.smallwindow = smallwindow
+        if smallwindow:
+            self.visible_columns = 20
+            self.visible_rows = 12
         super().__init__()
         self.update_fps = fps
         self.update_timestep = 1 / fps
@@ -132,10 +137,15 @@ class BoulderWindow(tkinter.Tk):
             myappid = 'net.Razorvine.Tale.story'  # arbitrary string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         self.tilesheet = Tilesheet(self.playfield_columns, self.playfield_rows, self.visible_columns, self.visible_rows)
-        self.tilesheet_score = Tilesheet(self.visible_columns, 2, self.visible_columns, 2)
+        if smallwindow:
+            self.tilesheet_score = Tilesheet(self.visible_columns * 2, 2, self.visible_columns * 2, 2)
+            score_canvas_height = 16 * self.scalexy
+        else:
+            self.tilesheet_score = Tilesheet(self.visible_columns, 2, self.visible_columns, 2)
+            score_canvas_height = 32 * self.scalexy
         self.popup_tiles_save = None
         self.scorecanvas = tkinter.Canvas(self, width=self.visible_columns * 16 * self.scalexy,
-                                          height=2 * 16 * self.scalexy, borderwidth=0, highlightthickness=0, background="black")
+                                          height=score_canvas_height, borderwidth=0, highlightthickness=0, background="black")
         self.canvas = tkinter.Canvas(self, width=self.visible_columns * 16 * self.scalexy,
                                      height=self.visible_rows * 16 * self.scalexy,
                                      borderwidth=0, highlightthickness=0, background="black",
@@ -252,15 +262,24 @@ class BoulderWindow(tkinter.Tk):
 
     def repaint(self):
         self.graphics_frame += 1
+        if self.smallwindow and self.gamestate.game_status == "waiting" and self.popup_frame < self.graphics_frame:
+            # move the waiting screen (title screen) around so you can see it all :)
+            wavew = (self.playfield_columns - self.visible_columns) * 16 / 2
+            waveh = (self.playfield_rows - self.visible_rows) * 16 / 2
+            x = (1 + math.sin(self.graphics_frame / 25)) * wavew
+            y = (1 + math.cos(self.graphics_frame / 30)) * waveh
+            self.scrollxypixels(x, y)
         for index, tile in self.tilesheet_score.dirty():
             self.scorecanvas.itemconfigure(self.cscore_tiles[index], image=self.tile_images[tile])
         # smooth scroll
         if self.canvas.view_x != self.view_x:
             self.canvas.xview_moveto(0)
             self.canvas.xview_scroll(self.view_x, tkinter.UNITS)
+            self.canvas.view_x = self.view_x
         if self.canvas.view_y != self.view_y:
             self.canvas.yview_moveto(0)
             self.canvas.yview_scroll(self.view_y, tkinter.UNITS)
+            self.canvas.view_y = self.view_y
         self.tilesheet.set_view(self.view_x // 16, self.view_y // 16)
 
         if self.popup_frame > self.graphics_frame:
@@ -352,11 +371,15 @@ class BoulderWindow(tkinter.Tk):
                 tile = self.canvas.create_image(sx, sy, image=self.tile_images[0], anchor=tkinter.NW, tags="tile")
                 self.c_tiles.append(tile)
         # create the images on the score canvas for all tiles (fixed position):
+        vcols = self.visible_columns if not self.smallwindow else 2 * self.visible_columns
         for y in range(2):
-            for x in range(self.visible_columns):
+            for x in range(vcols):
                 sx, sy = self.physcoor(*self.tile2screencor(x, y))
+                if self.smallwindow:
+                    sx /= 2
+                    sy /= 2
                 self.tilesheet_score[x, y] = 0
-                tile = self.scorecanvas.create_image(sx, sy, image=self.tile_images[0], anchor=tkinter.NW, tags="tile")
+                tile = self.scorecanvas.create_image(sx, sy, image=None, anchor=tkinter.NW, tags="tile")
                 self.cscore_tiles.append(tile)
 
     def create_colored_tiles(self, color1=0, color2=0, color3=0):
@@ -399,13 +422,14 @@ class BoulderWindow(tkinter.Tk):
 
     def create_font_tiles(self):
         font_tiles_startindex = len(self.tile_images)
+        fontsize = 8 if self.smallwindow else 16
         with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/font.png"))) as image:
             for c in range(0, 128):
                 row, col = divmod(c, image.width // 8)       # the font image contains 8x8 pixel tiles
                 if row * 8 > image.height:
                     break
                 ci = image.crop((col * 8, row * 8, col * 8 + 8, row * 8 + 8))
-                ci = ci.resize((int(16 * self.scalexy), int(16 * self.scalexy)), Image.NONE)
+                ci = ci.resize((int(fontsize * self.scalexy), int(fontsize * self.scalexy)), Image.NONE)
                 out = io.BytesIO()
                 ci.save(out, "png")
                 img = tkinter.PhotoImage(data=out.getvalue())
@@ -422,11 +446,9 @@ class BoulderWindow(tkinter.Tk):
     def tkcolor(self, color):
         return "#{:06x}".format(self.colorpalette[color & len(self.colorpalette) - 1])
 
-    def scrollxypixels(self, dx, dy):
-        self.view_x += dx
-        self.view_y += dy
-        self.view_x = min(max(0, self.view_x), (self.playfield_columns - self.visible_columns) * 16)
-        self.view_y = min(max(0, self.view_y), (self.playfield_rows - self.visible_rows) * 16)
+    def scrollxypixels(self, x, y):
+        self.view_x = min(max(0, int(x)), (self.playfield_columns - self.visible_columns) * 16)
+        self.view_y = min(max(0, int(y)), (self.playfield_rows - self.visible_rows) * 16)
 
     def update_game(self):
         if not self.uncover_tiles and self.popup_frame < self.graphics_frame:
@@ -437,8 +459,9 @@ class BoulderWindow(tkinter.Tk):
         return [self.font_tiles_startindex + ord(c) for c in text]
 
     def popup(self, text):
+        self.scrollxypixels(0, 0)   # reset viewscroll to top left so we can actually see the popup
         lines = []
-        width = int(self.visible_columns * 0.6)
+        width = self.visible_columns - 4 if self.smallwindow else int(self.visible_columns * 0.6)
         for line in text.splitlines():
             output = ""
             for word in line.split():
@@ -451,21 +474,28 @@ class BoulderWindow(tkinter.Tk):
                 lines.append(output.rstrip())
             else:
                 lines.append(None)
-        bchar = "\x0e"
-        x, y = (self.visible_columns - width - 6) // 2, self.visible_rows // 4
-        popupwidth = width + 6
+        if self.smallwindow:
+            bchar = ""
+            x = y = 0
+            popupwidth = width + 4
+        else:
+            bchar = "\x0e"
+            x, y = (self.visible_columns - width - 6) // 2, self.visible_rows // 4
+            popupwidth = width + 6
         popupheight = len(lines) + 6
         self.popup_tiles_save = (
             x, y, popupwidth, popupheight,
             self.tilesheet.get_tiles(x, y, popupwidth, popupheight)
         )
         self.tilesheet.set_tiles(x, y, [self.sprite2tile(GameObject.STEELSLOPEDUPLEFT)] +
-                                 [self.sprite2tile(GameObject.STEEL)] * (width + 4) +
+                                 [self.sprite2tile(GameObject.STEEL)] * (popupwidth - 2) +
                                  [self.sprite2tile(GameObject.STEELSLOPEDUPRIGHT)])
-        self.tilesheet.set_tiles(x + 1, y + 1, self.text2tiles(bchar * (width + 4)))
-        self.tilesheet[x, y + 1] = self.sprite2tile(GameObject.STEEL)
-        self.tilesheet[x + width + 5, y + 1] = self.sprite2tile(GameObject.STEEL)
-        y += 2
+        y += 1
+        if not self.smallwindow:
+            self.tilesheet.set_tiles(x + 1, y, self.text2tiles(bchar * (popupwidth - 2)))
+            self.tilesheet[x, y] = self.sprite2tile(GameObject.STEEL)
+            self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(GameObject.STEEL)
+            y += 1
         lines.insert(0, "")
         lines.append("")
         for line in lines:
@@ -473,14 +503,16 @@ class BoulderWindow(tkinter.Tk):
                 line = " "
             tiles = self.text2tiles(bchar + " " + line.ljust(width) + " " + bchar)
             self.tilesheet[x, y] = self.sprite2tile(GameObject.STEEL)
-            self.tilesheet[x + width + 5, y] = self.sprite2tile(GameObject.STEEL)
+            self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(GameObject.STEEL)
             self.tilesheet.set_tiles(x + 1, y, tiles)
             y += 1
-        self.tilesheet[x, y] = self.sprite2tile(GameObject.STEEL)
-        self.tilesheet[x + width + 5, y] = self.sprite2tile(GameObject.STEEL)
-        self.tilesheet.set_tiles(x + 1, y, self.text2tiles(bchar * (width + 4)))
-        self.tilesheet.set_tiles(x, y + 1, [self.sprite2tile(GameObject.STEELSLOPEDDOWNLEFT)] +
-                                 [self.sprite2tile(GameObject.STEEL)] * (width + 4) +
+        if not self.smallwindow:
+            self.tilesheet[x, y] = self.sprite2tile(GameObject.STEEL)
+            self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(GameObject.STEEL)
+            self.tilesheet.set_tiles(x + 1, y, self.text2tiles(bchar * (popupwidth - 2)))
+            y += 1
+        self.tilesheet.set_tiles(x, y, [self.sprite2tile(GameObject.STEELSLOPEDDOWNLEFT)] +
+                                 [self.sprite2tile(GameObject.STEEL)] * (popupwidth - 2) +
                                  [self.sprite2tile(GameObject.STEELSLOPEDDOWNRIGHT)])
         self.popup_frame = self.graphics_frame + self.update_fps * 5   # popup remains for 5 seconds
 
@@ -500,6 +532,7 @@ def start(args=None):
     ap.add_argument("-f", "--fps", type=int, help="frames per second (default=%(default)d)", default=30)
     ap.add_argument("-s", "--size", type=int, help="graphics size (default=%(default)d)", default=3, choices=(1, 2, 3, 4, 5))
     ap.add_argument("-c", "--c64colors", help="use Commodore-64 colors", action="store_true")
+    ap.add_argument("-a", "--authentic", help="use C-64 colors AND limited window size", action="store_true")
     ap.add_argument("-n", "--nosound", help="don't use sound", action="store_true")
     args = ap.parse_args(args)
     if args.c64colors:
@@ -517,7 +550,8 @@ def start(args=None):
         audio.norm_channels = 2
         audio.norm_chunksize = audio.norm_samplerate * audio.norm_samplewidth * audio.norm_channels // 50
         audio.init_audio()
-    window = BoulderWindow("Boulder Caves v1.2 - created by Irmen de Jong", args.fps, args.size + 1, args.c64colors)
+    window = BoulderWindow("Boulder Caves v1.3 - created by Irmen de Jong",
+                           args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
     window.start()
     window.mainloop()
 

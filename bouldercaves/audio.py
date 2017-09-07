@@ -5,6 +5,9 @@ Supported audio output libraries:
 - sounddevice (both thread+blocking stream, and nonblocking callback stream variants)
 - winsound
 
+It can play multiple samples at the same time via real-time mixing, and you can
+loop samples as well without noticable overhead (great for continous effects or music)
+
 Written by Irmen de Jong (irmen@razorvine.net) - License: MIT open-source.
 """
 
@@ -437,7 +440,7 @@ samples = {}
 output = None
 
 
-def init_audio(dummy=False):
+def init_audio(dummy=False):   # @todo move sound list to caller
     sounds = {
         "music": "bdmusic.ogg",
         "cover": "cover.ogg",
