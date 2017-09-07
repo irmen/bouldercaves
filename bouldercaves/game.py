@@ -975,7 +975,10 @@ class GameState:
         if self.level < 1:
             # level has not been loaded yet (we're still at the title screen)
             ts = self.gfxwindow.tilesheet_score
-            ts.set_tiles(0, 0, self.gfxwindow.text2tiles("Welcome to Boulder Caves".center(self.width)))
+            if self.gfxwindow.smallwindow and self.gfxwindow.c64colors:
+                ts.set_tiles(0, 0, self.gfxwindow.text2tiles("Welcome to Boulder Caves 'authentic'".center(self.width)))
+            else:
+                ts.set_tiles(0, 0, self.gfxwindow.text2tiles("Welcome to Boulder Caves".center(self.width)))
             ts.set_tiles(0, 1, self.gfxwindow.text2tiles("F1  to start new game!".center(self.width)))
             if not self.gfxwindow.smallwindow:
                 ts[0, 0] = ts[self.width - 1, 0] = ts[0, 1] = ts[self.width - 1, 1] = self.gfxwindow.sprite2tile(GameObject.MEGABOULDER)

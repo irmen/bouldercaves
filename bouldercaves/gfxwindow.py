@@ -71,10 +71,10 @@ class Tilesheet:
                 self.dirty_tiles[i] = 1
 
     def get_tiles(self, x, y, width, height):
-        if x < 0 or x >= self.width or y < 0 or y >= self.height:
+        if x < 0 or x >= self.width or y < 0 or y > self.height:
             raise ValueError("tile xy out of bounds")
-        if width <= 0 or x + width > self.width or height <= 0 or y + height >= self.height:
-            raise ValueError("width or heigth out of bounds")
+        if width <= 0 or x + width > self.width or height <= 0 or y + height > self.height:
+            raise ValueError("width or height out of bounds")
         offset = x + self.width * y
         result = []
         for dy in range(height):
@@ -256,7 +256,7 @@ class BoulderWindow(tkinter.Tk):
             c1 = random.randint(1, 15)
             c2 = random.randint(1, 15)
             c3 = random.randint(1, 15)
-            print(c1, c2, c3)
+            print("random colors:", c1, c2, c3)
             self.create_colored_tiles(colorpalette[c1], colorpalette[c2], colorpalette[c3])
             self.tilesheet.all_dirty()
 
@@ -264,10 +264,9 @@ class BoulderWindow(tkinter.Tk):
         self.graphics_frame += 1
         if self.smallwindow and self.gamestate.game_status == "waiting" and self.popup_frame < self.graphics_frame:
             # move the waiting screen (title screen) around so you can see it all :)
-            wavew = (self.playfield_columns - self.visible_columns) * 16 / 2
-            waveh = (self.playfield_rows - self.visible_rows) * 16 / 2
-            x = (1 + math.sin(self.graphics_frame / 25)) * wavew
-            y = (1 + math.cos(self.graphics_frame / 30)) * waveh
+            wavew, waveh = self.tile2screencor(self.playfield_columns - self.visible_columns, self.playfield_rows - self.visible_rows)
+            x = (1 + math.sin(self.graphics_frame / 25)) * wavew / 2
+            y = (1 + math.cos(self.graphics_frame / 30)) * waveh / 2
             self.scrollxypixels(x, y)
         for index, tile in self.tilesheet_score.dirty():
             self.scorecanvas.itemconfigure(self.cscore_tiles[index], image=self.tile_images[tile])
@@ -447,26 +446,31 @@ class BoulderWindow(tkinter.Tk):
         return "#{:06x}".format(self.colorpalette[color & len(self.colorpalette) - 1])
 
     def scrollxypixels(self, x, y):
-        self.view_x = min(max(0, int(x)), (self.playfield_columns - self.visible_columns) * 16)
-        self.view_y = min(max(0, int(y)), (self.playfield_rows - self.visible_rows) * 16)
+        xlimit, ylimit = self.tile2screencor(self.playfield_columns - self.visible_columns, self.playfield_rows - self.visible_rows)
+        self.view_x = min(max(0, int(x)), xlimit)
+        self.view_y = min(max(0, int(y)), ylimit)
 
     def update_game(self):
         if not self.uncover_tiles and self.popup_frame < self.graphics_frame:
             self.gamestate.update(self.graphics_frame)
+        self.scroll_focuscell_into_view()
+        self.gamestate.update_scorebar()
+
+    def scroll_focuscell_into_view(self, immediate=False):
+        # @todo smooth scroll interpolation option
+        # @todo don't always keep it exactly in the center, add some movement slack
         focus_cell = self.gamestate.focus_cell()
         if focus_cell:
             x, y = focus_cell.x, focus_cell.y
             # scroll the view to the focus cell
-            # @todo smooth scroll interpolation
-            # @todo don't always keep it exactly in the center, add some movement slack
-            self.scrollxypixels((x - self.visible_columns // 2) * 16, (y - self.visible_rows // 2) * 16)
-        self.gamestate.update_scorebar()
+            viewx, viewy = self.tile2screencor(x - self.visible_columns / 2, y - self.visible_rows / 2)
+            self.scrollxypixels(viewx, viewy)
 
     def text2tiles(self, text):
         return [self.font_tiles_startindex + ord(c) for c in text]
 
     def popup(self, text):
-        # @todo fix popup position to take current view xy into account (reset view to whole tile multiple)
+        self.scroll_focuscell_into_view(immediate=True)   # snap the view to the focus cell
         lines = []
         width = self.visible_columns - 4 if self.smallwindow else int(self.visible_columns * 0.6)
         for line in text.splitlines():
@@ -485,11 +489,17 @@ class BoulderWindow(tkinter.Tk):
             bchar = ""
             x = y = 0
             popupwidth = width + 4
+            popupheight = len(lines) + 4
         else:
             bchar = "\x0e"
             x, y = (self.visible_columns - width - 6) // 2, self.visible_rows // 4
             popupwidth = width + 6
-        popupheight = len(lines) + 6
+            popupheight = len(lines) + 6
+
+        # move the popup inside the currently viewable portion of the playfield
+        x += self.view_x // 16
+        y += self.view_y // 16
+
         self.popup_tiles_save = (
             x, y, popupwidth, popupheight,
             self.tilesheet.get_tiles(x, y, popupwidth, popupheight)
