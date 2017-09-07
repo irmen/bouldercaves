@@ -380,7 +380,7 @@ class GameState:
         }
         self.timeremaining = None
         self.timelimit = None
-        self.rockford_cell = None
+        self.rockford_cell = self.inbox_cell = self.last_focus_cell = None
         self.rockford_found_frame = -1
         self.movement = self.MovementInfo()
         self.flash = 0
@@ -451,6 +451,7 @@ class GameState:
         self.magicwall["active"] = False
         self.magicwall["time"] = c64cave.magicwall_millingtime / self.update_timestep
         self.rockford_cell = None     # the cell where Rockford currently is
+        self.inbox_cell = self.last_focus_cell = None
         self.rockford_found_frame = 0
         self.movement = self.MovementInfo()
         self.amoeba = {
@@ -686,6 +687,19 @@ class GameState:
             # after 5 seconds with dead rockford we reload the current level
             self.life_lost()
 
+    def focus_cell(self):
+        focus_cell = self.rockford_cell or self.inbox_cell or self.last_focus_cell
+        if focus_cell:
+            self.last_focus_cell = focus_cell
+            return focus_cell
+        # search for the inbox when the game isn't running yet
+        if self.level > 0:
+            for cell in self.cave:
+                if cell.obj is GameObject.INBOXBLINKING:
+                    self.last_focus_cell = cell
+                    break
+        return self.last_focus_cell
+
     def life_lost(self):
         if self.intermission:
             self.load_next_level()  # don't lose a life, instead skip out of the intermission.
@@ -784,6 +798,7 @@ class GameState:
 
     def update_inbox(self, cell):
         # after 4 blinks (=2 seconds), Rockford spawns in the inbox.
+        self.inbox_cell = cell
         if self.update_timestep * self.frame > 2.0:
             self.draw_single_cell(cell, GameObject.ROCKFORDBIRTH)
             audio.play_sample("crack")
@@ -887,6 +902,7 @@ class GameState:
         if self.game_status == "playing":
             self.draw_single_cell(cell, GameObject.ROCKFORD)
             self.timelimit = datetime.datetime.now() + self.timeremaining
+            self.inbox_cell = None
 
     def end_explosion(self, cell):
         # a normal explosion ends with an empty cell

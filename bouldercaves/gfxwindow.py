@@ -453,13 +453,20 @@ class BoulderWindow(tkinter.Tk):
     def update_game(self):
         if not self.uncover_tiles and self.popup_frame < self.graphics_frame:
             self.gamestate.update(self.graphics_frame)
+        focus_cell = self.gamestate.focus_cell()
+        if focus_cell:
+            x, y = focus_cell.x, focus_cell.y
+            # scroll the view to the focus cell
+            # @todo smooth scroll interpolation
+            # @todo don't always keep it exactly in the center, add some movement slack
+            self.scrollxypixels((x - self.visible_columns // 2) * 16, (y - self.visible_rows // 2) * 16)
         self.gamestate.update_scorebar()
 
     def text2tiles(self, text):
         return [self.font_tiles_startindex + ord(c) for c in text]
 
     def popup(self, text):
-        self.scrollxypixels(0, 0)   # reset viewscroll to top left so we can actually see the popup
+        # @todo fix popup position to take current view xy into account (reset view to whole tile multiple)
         lines = []
         width = self.visible_columns - 4 if self.smallwindow else int(self.visible_columns * 0.6)
         for line in text.splitlines():
@@ -535,9 +542,10 @@ def start(args=None):
     ap.add_argument("-a", "--authentic", help="use C-64 colors AND limited window size", action="store_true")
     ap.add_argument("-n", "--nosound", help="don't use sound", action="store_true")
     args = ap.parse_args(args)
+    args.c64colors |= args.authentic
     if args.c64colors:
         print("Using the original Commodore-64 colors.")
-        print("Start without the '-c' or '--c64colors' argument to use the multicolor replacement graphics.")
+        print("Start without the '--c64colors' or '--authentic' arguments to use the multicolor replacement graphics.")
     else:
         print("Using multicolor replacement graphics.")
         print("You can use the '-c' or '--c64colors' argument to get the original C-64 colors.")
