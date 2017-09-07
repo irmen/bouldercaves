@@ -672,7 +672,7 @@ class GameState:
             if secs_after <= 0:
                 self.timeremaining = datetime.timedelta(0)
             if secs_after != secs_before and 1 <= secs_after <= 9:
-                audio.play_sample("timeout"+str(10-secs_after))
+                audio.play_sample("timeout" + str(10 - secs_after))
         if self.level_won:
             if self.timeremaining.seconds > 0:
                 add_score = min(self.timeremaining.seconds, 5)

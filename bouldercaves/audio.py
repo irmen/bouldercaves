@@ -7,24 +7,33 @@ Supported audio output libraries:
 
 It can play multiple samples at the same time via real-time mixing, and you can
 loop samples as well without noticable overhead (great for continous effects or music)
+Wav (PCM) files and .ogg files can be loaded (requires oggdec from the
+vorbis-tools package to decode those)
+
+High level api functions:
+  init_audio
+  play_sample
+  silence_audio
+  shutdown_audio
 
 Written by Irmen de Jong (irmen@razorvine.net) - License: MIT open-source.
 """
 
-import threading
-import queue
-import os
-import time
-import wave
-import pkgutil
+import audioop   # type: ignore
 import io
+import math
+import os
+import pkgutil
+import queue
 import subprocess
 import tempfile
-import audioop
-import math
+import threading
+import time
+import wave
+from typing import BinaryIO, ByteString, Callable, Generator, List, Union
 
 
-__all__ = ["PyAudio", "Sounddevice", "SounddeviceThread", "Winsound", "best_api", "Output"]
+__all__ = ["init_audio", "play_sample", "silence_audio", "shutdown_audio"]
 
 
 # stubs for optional audio library modules:
@@ -35,10 +44,10 @@ winsound = None
 norm_samplerate = 44100
 norm_samplewidth = 2
 norm_channels = 2
-norm_chunksize = norm_samplerate * norm_samplewidth * norm_channels // 50
+norm_chunk_duration = 1 / 50     # seconds
 
 
-def best_api(dummy_enabled=False):
+def best_api(dummy_enabled: bool=False):
     try:
         return Sounddevice()
     except ImportError:
@@ -58,8 +67,8 @@ def best_api(dummy_enabled=False):
 
 class Sample:
     """A sample of raw PCM audio data. Uncompresses .ogg to PCM if needed."""
-    def __init__(self, name, filename=None, data=None):
-        self.duration = 0
+    def __init__(self, name: str, filename: str=None, data: bytes=None) -> None:
+        self.duration = 0.0
         self.name = name
         self.filename = filename
         if filename:
@@ -83,7 +92,7 @@ class Sample:
             raise SystemExit("'oggdec' (vorbis-tools) must be installed on your system to hear sounds in this game. "
                              "Or you can start it with the --nosound option.")
 
-    def convertformat(self, stream):
+    def convertformat(self, stream: BinaryIO) -> BinaryIO:
         conversion_required = True
         try:
             # maybe the existing data is already a WAV in the correct format
@@ -111,12 +120,11 @@ class Sample:
 
 
 class DummySample(Sample):
-    def __init__(self, name, filename=None, duration=0):
+    def __init__(self, name: str, filename: str=None, duration: float=0.0) -> None:
         self.name = name
         self.filename = filename
         self.duration = duration
         self.sampledata = b""
-
 
 
 class SampleMixer:
@@ -124,30 +132,31 @@ class SampleMixer:
     Real-time audio sample mixer. Simply adds a number of samples, clipping if values become too large.
     Produces (via a generator method) chunks of audio stream data to be fed to the sound output stream.
     """
-    def __init__(self, chunksize):
-        self.active_samples = []
+    def __init__(self, chunksize: int) -> None:
+        self.active_samples = []   # type: List[Generator[memoryview, None, None]]
         self.chunksize = chunksize
         self.mixed_chunks = self.chunks()
 
-    def add_sample(self, sounddata, repeat=False):
+    def add_sample(self, sounddata: bytes, repeat: bool=False) -> None:
         self.active_samples.append(self._chunked(memoryview(sounddata), chunksize=self.chunksize, repeat=repeat))
 
-    def clear_sources(self):
+    def clear_sources(self) -> None:
         self.active_samples.clear()
 
     @staticmethod
-    def _chunked(data, chunksize=norm_chunksize, repeat=False, stopcondition=lambda: False):
+    def _chunked(data: memoryview, chunksize: int, repeat: bool=False,
+                 stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
         if repeat:
             # continuously repeated
-            data = bytes(data)
-            if len(data) < chunksize:
-                data = data * math.ceil(chunksize / len(data))
-            length = len(data)
-            data += data[:chunksize]
-            data = memoryview(data)
+            bdata = data.tobytes()
+            if len(bdata) < chunksize:
+                bdata = bdata * math.ceil(chunksize / len(bdata))
+            length = len(bdata)
+            bdata += bdata[:chunksize]
+            mdata = memoryview(bdata)
             i = 0
             while not stopcondition():
-                yield data[i: i + chunksize]
+                yield mdata[i: i + chunksize]
                 i = (i + chunksize) % length
         else:
             # one-shot
@@ -156,7 +165,7 @@ class SampleMixer:
                 yield data[i: i + chunksize]
                 i += chunksize
 
-    def chunks(self):
+    def chunks(self) -> Generator[memoryview, None, None]:
         silence = b"\0" * self.chunksize
         while True:
             chunks_to_mix = []
@@ -164,7 +173,7 @@ class SampleMixer:
                 try:
                     chunk = next(s)
                     if len(chunk) < self.chunksize:
-                        chunk = chunk.tobytes() + silence[:self.chunksize-len(chunk)]
+                        chunk = memoryview(chunk.tobytes() + silence[:self.chunksize - len(chunk)])
                     chunks_to_mix.append(chunk)
                 except StopIteration:
                     self.active_samples.remove(s)
@@ -175,34 +184,38 @@ class SampleMixer:
                     mixed = audioop.add(mixed, to_mix, norm_channels)
                 yield mixed
             else:
-                yield silence
+                yield memoryview(silence)
 
 
 class AudioApi:
     """Base class for the various audio APIs."""
-    def __init__(self):
+    def __init__(self) -> None:
         self.samplerate = norm_samplerate
         self.samplewidth = norm_samplewidth
         self.nchannels = norm_channels
-        self.samp_queue = queue.Queue(maxsize=100)
+        self.chunkduration = norm_chunk_duration
+        self.samp_queue = queue.Queue(maxsize=100)    # type: ignore
 
-    def __str__(self):
+    def __str__(self) -> str:
         api_ver = self.query_api_version()
         if api_ver and api_ver != "unknown":
             return self.__class__.__name__ + ", " + self.query_api_version()
         else:
             return self.__class__.__name__
 
-    def play(self, sample, repeat=False):
+    def chunksize(self) -> int:
+        return int(self.samplerate * self.samplewidth * self.nchannels * self.chunkduration)
+
+    def play(self, sample: Sample, repeat: bool=False) -> None:
         self.samp_queue.put({"sample": sample, "repeat": repeat})
 
-    def silence(self):
+    def silence(self) -> None:
         self.samp_queue.put("silence")
 
-    def close(self):
+    def close(self) -> None:
         self.samp_queue.put("stop")
 
-    def query_api_version(self):
+    def query_api_version(self) -> str:
         return "unknown"
 
 
@@ -215,7 +228,7 @@ class PyAudio(AudioApi):
 
         def audio_thread():
             audio = pyaudio.PyAudio()
-            mixer = SampleMixer(chunksize=norm_chunksize)
+            mixer = SampleMixer(chunksize=self.chunksize())
             try:
                 audio_format = audio.get_format_from_width(self.samplewidth) if self.samplewidth != 4 else pyaudio.paInt32
                 stream = audio.open(format=audio_format, channels=self.nchannels, rate=self.samplerate, output=True)
@@ -267,7 +280,7 @@ class SounddeviceThread(AudioApi):
             raise ValueError("invalid sample width")
 
         def audio_thread():
-            mixer = SampleMixer(chunksize=norm_chunksize)
+            mixer = SampleMixer(chunksize=self.chunksize())
             try:
                 stream = sounddevice.RawOutputStream(self.samplerate, channels=self.nchannels, dtype=dtype)
                 stream.start()
@@ -316,10 +329,10 @@ class Sounddevice(AudioApi):
             dtype = "int32"
         else:
             raise ValueError("invalid sample width")
-        self._empty_sound_data = b"\0" * norm_chunksize * self.nchannels * self.samplewidth
-        self.mixer = SampleMixer(chunksize=norm_chunksize)
+        self._empty_sound_data = b"\0" * self.chunksize() * self.nchannels * self.samplewidth
+        self.mixer = SampleMixer(chunksize=self.chunksize())
         self.stream = sounddevice.RawOutputStream(self.samplerate, channels=self.nchannels, dtype=dtype,
-            blocksize=norm_chunksize // self.nchannels // self.samplewidth, callback=self.streamcallback)
+                                                  blocksize=self.chunksize() // self.nchannels // self.samplewidth, callback=self.streamcallback)
         self.stream.start()
 
     def query_api_version(self):
@@ -346,7 +359,7 @@ class Sounddevice(AudioApi):
             # print("underflow", len(data), len(outdata))
             # underflow, pad with silence
             outdata[:len(data)] = data
-            outdata[len(data):] = b"\0"*(len(outdata)-len(data))
+            outdata[len(data):] = b"\0" * (len(outdata) - len(data))
             # raise sounddevice.CallbackStop    this will play the remaining samples and then stop the stream
         else:
             outdata[:] = data
@@ -389,7 +402,7 @@ class Winsound(AudioApi):
 
     def store_sample_file(self, filename, data):
         # convert the sample file to a wav file on disk.
-        oggfilename = os.path.expanduser("~/.bouldercaves/")+filename
+        oggfilename = os.path.expanduser("~/.bouldercaves/") + filename
         with open(oggfilename, "wb") as oggfile:
             oggfile.write(data)
         wavfilename = os.path.splitext(oggfilename)[0] + ".wav"
@@ -440,39 +453,7 @@ samples = {}
 output = None
 
 
-def init_audio(dummy=False):   # @todo move sound list to caller
-    sounds = {
-        "music": "bdmusic.ogg",
-        "cover": "cover.ogg",
-        "crack": "crack.ogg",
-        "boulder": "boulder.ogg",
-        "finished": "finished.ogg",
-        "explosion": "explosion.ogg",
-        "extra_life": "bonus_life.ogg",
-        "walk_empty": "walk_empty.ogg",
-        "walk_dirt": "walk_dirt.ogg",
-        "collect_diamond": "collectdiamond.ogg",
-        "box_push": "box_push.ogg",
-        "amoeba": "amoeba.ogg",
-        "magic_wall": "magic_wall.ogg",
-        "diamond1": "diamond1.ogg",
-        "diamond2": "diamond2.ogg",
-        "diamond3": "diamond3.ogg",
-        "diamond4": "diamond4.ogg",
-        "diamond5": "diamond5.ogg",
-        "diamond6": "diamond6.ogg",
-        "game_over": "game_over.ogg",
-        "timeout1": "timeout1.ogg",
-        "timeout2": "timeout2.ogg",
-        "timeout3": "timeout3.ogg",
-        "timeout4": "timeout4.ogg",
-        "timeout5": "timeout5.ogg",
-        "timeout6": "timeout6.ogg",
-        "timeout7": "timeout7.ogg",
-        "timeout8": "timeout8.ogg",
-        "timeout9": "timeout9.ogg",
-    }
-
+def init_audio(samples_to_load, dummy=False):
     global output, samples
     if dummy:
         output = Output(DummyAudio())
@@ -481,12 +462,12 @@ def init_audio(dummy=False):   # @todo move sound list to caller
     if isinstance(output.audio_api, DummyAudio):
         if not dummy:
             print("No audio output available. Install 'sounddevice' or 'pyaudio' library to hear things.")
-        for name, filename in sounds.items():
+        for name, filename in samples_to_load.items():
             samples[name] = DummySample(name)
         return
 
     print("Loading sound data...")
-    for name, filename in sounds.items():
+    for name, filename in samples_to_load.items():
         data = pkgutil.get_data(__name__, "sounds/" + filename)
         if isinstance(output.audio_api, Winsound):
             # winsound needs the samples as physical WAV files on disk.
@@ -518,10 +499,14 @@ if __name__ == "__main__":
     #     print(next(chunks).tobytes())
     # raise SystemExit
     norm_samplerate = 22100
-    init_audio()
-    with Output(Winsound()) as output:
+    init_audio({
+        "explosion": "explosion.ogg",
+        "amoeba": "amoeba.ogg",
+        "game_over": "game_over.ogg",
+    })
+    with Output(Sounddevice()) as output:
         print("PLAY MUSIC...", output.audio_api)
-        print("CHUNK", norm_chunksize)
+        print("CHUNK", output.audio_api.chunksize())
         output.play_sample("amoeba", repeat=True)
         time.sleep(3)
         print("PLAY ANOTHER SOUND!")

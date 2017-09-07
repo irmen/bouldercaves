@@ -548,8 +548,37 @@ def start(args=None):
         audio.norm_samplerate = 22100
         audio.norm_samplewidth = 2
         audio.norm_channels = 2
-        audio.norm_chunksize = audio.norm_samplerate * audio.norm_samplewidth * audio.norm_channels // 50
-        audio.init_audio()
+        audio.init_audio({
+            "music": "bdmusic.ogg",
+            "cover": "cover.ogg",
+            "crack": "crack.ogg",
+            "boulder": "boulder.ogg",
+            "finished": "finished.ogg",
+            "explosion": "explosion.ogg",
+            "extra_life": "bonus_life.ogg",
+            "walk_empty": "walk_empty.ogg",
+            "walk_dirt": "walk_dirt.ogg",
+            "collect_diamond": "collectdiamond.ogg",
+            "box_push": "box_push.ogg",
+            "amoeba": "amoeba.ogg",
+            "magic_wall": "magic_wall.ogg",
+            "diamond1": "diamond1.ogg",
+            "diamond2": "diamond2.ogg",
+            "diamond3": "diamond3.ogg",
+            "diamond4": "diamond4.ogg",
+            "diamond5": "diamond5.ogg",
+            "diamond6": "diamond6.ogg",
+            "game_over": "game_over.ogg",
+            "timeout1": "timeout1.ogg",
+            "timeout2": "timeout2.ogg",
+            "timeout3": "timeout3.ogg",
+            "timeout4": "timeout4.ogg",
+            "timeout5": "timeout5.ogg",
+            "timeout6": "timeout6.ogg",
+            "timeout7": "timeout7.ogg",
+            "timeout8": "timeout8.ogg",
+            "timeout9": "timeout9.ogg",
+        })
     window = BoulderWindow("Boulder Caves v1.3 - created by Irmen de Jong",
                            args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
     window.start()
