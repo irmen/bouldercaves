@@ -20,7 +20,7 @@ the screen fast enough, try adjusting the parameters on the command line.
 
 ## Screenshot
 
-![Boulder Caves title screen](screenshot.png?raw=true "Screenshot of the title screen")
+![Boulder Caves title screen](screenshots/screenshot.png?raw=true "Screenshot of the title screen")
 
 
 ## Objective and rules of the game
@@ -50,4 +50,10 @@ You control the game via the keyboard:
 
 ## Screenshot of a level
 
-![a level](screenshot2.png?raw=true "Screenshot of a level in progress")
+![a level](screenshots/screenshot2.png?raw=true "Screenshot of a level in progress")
+
+
+## Screenshot of 'authentic' C-64 mode
+
+![a level](screenshots/screenshot3.png?raw=true "Screenshot of the game runnig in 'authentic' C-64 mode")
+
