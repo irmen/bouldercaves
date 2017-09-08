@@ -9,11 +9,14 @@ License: MIT open-source.
 
 import datetime
 import random
+from typing import Callable, List, Optional
 from . import caves, audio
 
 
 class GameObject:
-    def __init__(self, name, rounded, explodable, consumable, spritex, spritey, sframes=0, sfps=0, anim_end_callback=None):
+    def __init__(self, name: str, rounded: bool, explodable: bool, consumable: bool,
+                 spritex: int, spritey: int, sframes: int=0, sfps: int=0,
+                 anim_end_callback: Callable[['GameState.Cell'], None]=None) -> None:
         self.name = name
         self.rounded = rounded
         self.explodable = explodable
@@ -188,121 +191,122 @@ class GameState:
     class Cell:
         __slots__ = ("obj", "x", "y", "frame", "falling", "direction", "anim_start_gfx_frame")
 
-        def __init__(self, obj, x, y):
+        def __init__(self, obj: GameObject, x: int, y: int) -> None:
             self.obj = obj  # what object is in the cell
             self.x = x
             self.y = y
             self.frame = 0
             self.falling = False
-            self.direction = None
+            self.direction = ""
             self.anim_start_gfx_frame = 0
 
         def __repr__(self):
             return "<Cell {:s} @{:d},{:d}>".format(self.obj.name, self.x, self.y)
 
-        def isempty(self):
+        def isempty(self) -> bool:
             return self.obj in {GameObject.EMPTY, GameObject.BONUSBG, None}
 
-        def isdirt(self):
+        def isdirt(self) -> bool:
             return self.obj in {GameObject.DIRTBALL, GameObject.DIRT, GameObject.DIRT2, GameObject.DIRTLOOSE,
                                 GameObject.DIRTSLOPEDDOWNLEFT, GameObject.DIRTSLOPEDDOWNRIGHT,
                                 GameObject.DIRTSLOPEDUPLEFT, GameObject.DIRTSLOPEDUPRIGHT}
 
-        def isrockford(self):
+        def isrockford(self) -> bool:
             return self.obj is GameObject.ROCKFORD
 
-        def isrounded(self):
+        def isrounded(self) -> bool:
             return self.obj.rounded
 
-        def isexplodable(self):
+        def isexplodable(self) -> bool:
             return self.obj.explodable
 
-        def isconsumable(self):
+        def isconsumable(self) -> bool:
             return self.obj.consumable
 
-        def ismagic(self):
+        def ismagic(self) -> bool:
             return self.obj is GameObject.MAGICWALL
 
-        def isbutterfly(self):
+        def isbutterfly(self) -> bool:
             # these explode to diamonds
             return self.obj is GameObject.BUTTERFLY or self.obj is GameObject.ALTBUTTERFLY
 
-        def isamoeba(self):
+        def isamoeba(self) -> bool:
             return self.obj is GameObject.AMOEBA or self.obj is GameObject.AMOEBARECTANGLE
 
-        def isfirefly(self):
+        def isfirefly(self) -> bool:
             return self.obj is GameObject.FIREFLY or self.obj is GameObject.ALTFIREFLY
 
-        def isdiamond(self):
+        def isdiamond(self) -> bool:
             return self.obj is GameObject.DIAMOND or self.obj is GameObject.FLYINGDIAMOND
 
-        def isboulder(self):
+        def isboulder(self) -> bool:
             return self.obj in {GameObject.BOULDER, GameObject.MEGABOULDER, GameObject.CHASINGBOULDER, GameObject.FLYINGBOULDER}
 
-        def isoutbox(self):
+        def isoutbox(self) -> bool:
             return self.obj is GameObject.OUTBOXBLINKING
 
-        def canfall(self):
+        def canfall(self) -> bool:
             return self.obj in {GameObject.BOULDER, GameObject.SWEET, GameObject.DIAMONDKEY, GameObject.BOMB,
                                 GameObject.IGNITEDBOMB, GameObject.KEY1, GameObject.KEY2, GameObject.KEY3,
                                 GameObject.DIAMOND, GameObject.MEGABOULDER, GameObject.SKELETON, GameObject.NITROFLASK,
                                 GameObject.DIRTBALL, GameObject.COCONUT, GameObject.ROCKETLAUNCHER}
 
     class MovementInfo:
-        def __init__(self):
-            self.direction = self.lastXdir = None
+        def __init__(self) -> None:
+            self.direction = ""
+            self.lastXdir = ""
             self.up = self.down = self.left = self.right = False
             self.grab = False
 
         @property
-        def moving(self):
-            return self.direction is not None
+        def moving(self) -> bool:
+            return bool(self.direction)
 
-        def start_up(self):
+        def start_up(self) -> None:
             self.direction = "u"
             self.up = True
 
-        def start_down(self):
+        def start_down(self) -> None:
             self.direction = "d"
             self.down = True
 
-        def start_left(self):
+        def start_left(self) -> None:
             self.direction = "l"
             self.left = True
             self.lastXdir = "l"
 
-        def start_right(self):
+        def start_right(self) -> None:
             self.direction = "r"
             self.right = True
             self.lastXdir = "r"
 
-        def start_grab(self):
+        def start_grab(self) -> None:
             self.grab = True
 
-        def stop_all(self):
+        def stop_all(self) -> None:
             self.grab = self.up = self.down = self.left = self.right = False
             self.direction = None
 
-        def stop_grab(self):
+        def stop_grab(self) -> None:
             self.grab = False
 
-        def stop_up(self):
+        def stop_up(self) -> None:
             self.up = False
             self.direction = self.where() if self.direction == "u" else self.direction
 
-        def stop_down(self):
+        def stop_down(self) -> None:
             self.down = False
             self.direction = self.where() if self.direction == "d" else self.direction
 
-        def stop_left(self):
+        def stop_left(self) -> None:
             self.left = False
             self.direction = self.where() if self.direction == "l" else self.direction
 
-        def stop_right(self):
+        def stop_right(self) -> None:
             self.right = False
             self.direction = self.where() if self.direction == "r" else self.direction
 
-        def where(self):
+        def where(self) -> str:
             if self.up:
                 return "u"
             elif self.down:
@@ -311,8 +315,10 @@ class GameState:
                 return "l"
             elif self.right:
                 return "r"
+            else:
+                return ""
 
-    def __init__(self, gfxwindow):
+    def __init__(self, gfxwindow) -> None:
         self.gfxwindow = gfxwindow
         self.graphics_frame_counter = 0    # will be set via the update() method
         self.fps = 8      # game logic updates every 1/8 seconds
@@ -330,7 +336,7 @@ class GameState:
             "ld": self.width - 1,
             "rd": self.width + 1
         }
-        self.cave = []
+        self.cave = []   # type: List[GameState.Cell]
         for y in range(self.height):
             for x in range(self.width):
                 self.cave.append(self.Cell(GameObject.EMPTY, x, y))
@@ -341,7 +347,7 @@ class GameState:
         # and start the game on the title screen.
         self.restart()
 
-    def restart(self):
+    def restart(self) -> None:
         audio.silence_audio()
         audio.play_sample("music", repeat=True)
         self.frame = 0
@@ -368,19 +374,19 @@ class GameState:
         }
         self.magicwall = {
             "active": False,
-            "time": 0
+            "time": 0.0
         }
         self.amoeba = {
             "size": 0,
             "max": 0,
-            "slow": 0,
+            "slow": 0.0,
             "enclosed": False,
             "dead": None,
             "sound_active": False
         }
-        self.timeremaining = None
-        self.timelimit = None
-        self.rockford_cell = self.inbox_cell = self.last_focus_cell = None
+        self.timeremaining = datetime.timedelta(0)
+        self.timelimit = None   # type: Optional[datetime.datetime]
+        self.rockford_cell = self.inbox_cell = self.last_focus_cell = None   # type: GameState.Cell
         self.rockford_found_frame = -1
         self.movement = self.MovementInfo()
         self.flash = 0
@@ -426,7 +432,7 @@ class GameState:
         self.draw_single(GameObject.DIRTSLOPEDUPRIGHT, self.width - 4, self.height - 3)
         self.draw_single(GameObject.DIRTSLOPEDUPRIGHT, self.width - 3, self.height - 2)
 
-    def load_c64level(self, levelnumber):
+    def load_c64level(self, levelnumber: int) -> None:
         audio.silence_audio()
         c64cave = caves.Cave.decode_from_lvl(levelnumber)
         assert c64cave.width == self.width and c64cave.height == self.height
@@ -489,18 +495,18 @@ class GameState:
         }
         for i, obj in enumerate(c64cave.map):
             y, x = divmod(i, self.width)
-            obj, direction = conversion[obj]
-            self.draw_single(obj, x, y, initial_direction=direction)
+            gobj, direction = conversion[obj]
+            self.draw_single(gobj, x, y, initial_direction=direction)
         self.gfxwindow.create_colored_tiles(c64cave.bgcolor1, c64cave.bgcolor2, c64cave.fgcolor)
         self.gfxwindow.tilesheet.all_dirty()
         if level_intro_popup:
             audio.play_sample("diamond2")
             self.gfxwindow.popup("Level {:d}: {:s}\n\n{:s}".format(self.level, self.level_name, self.level_description))
 
-    def cheat_skip_level(self):
+    def cheat_skip_level(self) -> None:
         self.load_c64level(self.level % len(caves.CAVES) + 1)
 
-    def draw_rectangle(self, obj, x1, y1, width, height, fillobject=None):
+    def draw_rectangle(self, obj: GameObject, x1: int, y1: int, width: int, height: int, fillobject: GameObject=None) -> None:
         self.draw_line(obj, x1, y1, width, 'r')
         self.draw_line(obj, x1, y1 + height - 1, width, 'r')
         self.draw_line(obj, x1, y1 + 1, height - 2, 'd')
@@ -509,7 +515,7 @@ class GameState:
             for y in range(y1 + 1, y1 + height - 1):
                 self.draw_line(fillobject, x1 + 1, y, width - 2, 'r')
 
-    def draw_line(self, obj, x, y, length, direction):
+    def draw_line(self, obj: GameObject, x: int, y: int, length: int, direction: str) -> None:
         dx, dy = {
             "l": (-1, 0),
             "r": (1, 0),
@@ -525,10 +531,10 @@ class GameState:
             x += dx
             y += dy
 
-    def draw_single(self, obj, x, y, initial_direction=None):
+    def draw_single(self, obj: GameObject, x: int, y: int, initial_direction: str=None) -> None:
         self.draw_single_cell(self.cave[x + y * self.width], obj, initial_direction)
 
-    def draw_single_cell(self, cell, obj, initial_direction=None):
+    def draw_single_cell(self, cell: Cell, obj: GameObject, initial_direction: str=None) -> None:
         cell.obj = obj
         cell.direction = initial_direction
         cell.frame = self.frame
@@ -540,27 +546,27 @@ class GameState:
         self.gfxwindow.tilesheet[cell.x, cell.y] = obj.spritex + self.gfxwindow.tile_image_numcolumns * obj.spritey
         # animation is handled by the graphics refresh
 
-    def clear_cell(self, cell):
+    def clear_cell(self, cell: Cell) -> None:
         self.draw_single_cell(cell, GameObject.BONUSBG if self.bonusbg_frame > self.frame else GameObject.EMPTY)
 
-    def get(self, cell, direction=None):
+    def get(self, cell: Cell, direction: str=None) -> Cell:
         # retrieve the cell relative to the given cell
         return self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
 
-    def move(self, cell, direction):
+    def move(self, cell: Cell, direction: str=None) -> Cell:
         # move the object in the cell to the given relative direction
         if not direction:
-            return  # no movement...
+            return None  # no movement...
         newcell = self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
         self.draw_single_cell(newcell, cell.obj)
         newcell.falling = cell.falling
         newcell.direction = cell.direction
         self.clear_cell(cell)
         cell.falling = False
-        cell.direction = None
+        cell.direction = ""
         return newcell
 
-    def push(self, cell, direction):
+    def push(self, cell: Cell, direction: str=None) -> Cell:
         # try to push the thing in the given direction
         pushedcell = self.get(cell, direction)
         targetcell = self.get(pushedcell, direction)
@@ -572,7 +578,7 @@ class GameState:
                     cell = self.move(cell, direction)
         return cell
 
-    def domagic(self, cell):
+    def domagic(self, cell: Cell) -> None:
         # something (diamond, boulder) is falling on a magic wall
         if self.magicwall["time"] > 0:
             if not self.magicwall["active"]:
@@ -593,10 +599,10 @@ class GameState:
             # magic wall is disabled, stuff falling on it just disappears (a sound is already played)
             self.clear_cell(cell)
 
-    def cells_with_animations(self):
+    def cells_with_animations(self) -> List[Cell]:
         return [cell for cell in self.cave if cell.obj.sframes]
 
-    def update(self, graphics_frame_counter):
+    def update(self, graphics_frame_counter: int) -> None:
         self.graphics_frame_counter = graphics_frame_counter    # we store this to properly sync up animation frames
         if self.game_status != "playing":
             return
@@ -626,9 +632,9 @@ class GameState:
                             self.draw_single_cell(cell, GameObject.EMPTY)
         self.frame_end()
 
-    def frame_start(self):
+    def frame_start(self) -> None:
+        # called at beginning of every game logic update
         self.frame += 1
-        # idle animation (when not moving)
         if not self.movement.moving:
             if random.randint(1, 4) == 1:
                 self.idle["blink"] = not self.idle["blink"]
@@ -639,12 +645,13 @@ class GameState:
         self.amoeba["size"] = 0
         self.amoeba["enclosed"] = True
         self.rockford_cell = None
-        self.fall_sound_to_play = None
+        self.fall_sound_to_play = ""
 
-    def frame_end(self):
+    def frame_end(self) -> None:
+        # called at end of every game logic update
         if self.fall_sound_to_play:
             audio.play_sample(self.fall_sound_to_play)
-            self.fall_sound_to_play = None
+            self.fall_sound_to_play = ""
         if self.amoeba["dead"] is None:
             if self.amoeba["enclosed"]:
                 self.amoeba["dead"] = GameObject.DIAMOND
@@ -687,7 +694,7 @@ class GameState:
             # after 5 seconds with dead rockford we reload the current level
             self.life_lost()
 
-    def focus_cell(self):
+    def focus_cell(self) -> Cell:
         focus_cell = self.rockford_cell or self.inbox_cell or self.last_focus_cell
         if focus_cell:
             self.last_focus_cell = focus_cell
@@ -700,7 +707,7 @@ class GameState:
                     break
         return self.last_focus_cell
 
-    def life_lost(self):
+    def life_lost(self) -> None:
         if self.intermission:
             self.load_next_level()  # don't lose a life, instead skip out of the intermission.
             return
@@ -710,7 +717,7 @@ class GameState:
         else:
             self.stop_game("lost")
 
-    def stop_game(self, status):
+    def stop_game(self, status: str) -> None:
         self.game_status = status
         if self.rockford_cell:
             self.clear_cell(self.rockford_cell)
@@ -724,7 +731,7 @@ class GameState:
             self.gfxwindow.popup("Congratulations, you finished the game!\n\nYour final score: {:d}\n\n"
                                  "press Escape to return to the title screen".format(self.score))
 
-    def load_next_level(self):
+    def load_next_level(self) -> None:
         level = self.level + 1
         if level > len(caves.CAVES):
             self.stop_game("won")
@@ -732,7 +739,7 @@ class GameState:
             audio.silence_audio()
             self.load_c64level(level)
 
-    def update_canfall(self, cell):
+    def update_canfall(self, cell: Cell) -> None:
         # if the cell below this one is empty, the object starts to fall
         if self.get(cell, 'd').isempty():
             if not cell.falling:
@@ -744,7 +751,7 @@ class GameState:
             elif self.get(cell, 'r').isempty() and self.get(cell, 'rd').isempty():
                 self.move(cell, 'r').falling = True
 
-    def update_falling(self, cell):
+    def update_falling(self, cell: Cell) -> None:
         # let the object fall down, explode stuff if explodable!
         cellbelow = self.get(cell, 'd')
         if cellbelow.isempty():
@@ -762,7 +769,7 @@ class GameState:
         else:
             cell.falling = False  # falling was blocked by something
 
-    def update_firefly(self, cell):
+    def update_firefly(self, cell: Cell) -> None:
         # if it hits Rockford or Amoeba it explodes
         # tries to rotate 90 degrees left and move to empty cell in new or original direction
         # if not possible rotate 90 right and wait for next update
@@ -780,7 +787,7 @@ class GameState:
         else:
             cell.direction = self.rotate90right(cell.direction)
 
-    def update_butterfly(self, cell):
+    def update_butterfly(self, cell: Cell) -> None:
         # same as firefly except butterflies rotate in the opposite direction
         newdir = self.rotate90right(cell.direction)
         if self.get(cell, 'u').isrockford() or self.get(cell, 'd').isrockford() \
@@ -796,20 +803,20 @@ class GameState:
         else:
             cell.direction = self.rotate90left(cell.direction)
 
-    def update_inbox(self, cell):
+    def update_inbox(self, cell: Cell) -> None:
         # after 4 blinks (=2 seconds), Rockford spawns in the inbox.
         self.inbox_cell = cell
         if self.update_timestep * self.frame > 2.0:
             self.draw_single_cell(cell, GameObject.ROCKFORDBIRTH)
             audio.play_sample("crack")
 
-    def update_outboxclosed(self, cell):
+    def update_outboxclosed(self, cell: Cell) -> None:
         if self.diamonds >= self.diamonds_needed:
             if cell.obj is not GameObject.OUTBOXBLINKING:
                 audio.play_sample("crack")
             self.draw_single_cell(cell, GameObject.OUTBOXBLINKING)
 
-    def update_amoeba(self, cell):
+    def update_amoeba(self, cell: Cell) -> None:
         if self.amoeba["dead"] is not None:
             self.draw_single_cell(cell, self.amoeba["dead"])
         else:
@@ -825,7 +832,7 @@ class GameState:
                 if grow and (self.get(cell, direction).isdirt() or self.get(cell, direction).isempty()):
                     self.draw_single_cell(self.get(cell, direction), cell.obj)
 
-    def update_rockford(self, cell):
+    def update_rockford(self, cell: Cell) -> None:
         self.rockford_cell = cell
         self.rockford_found_frame = self.frame
         if self.level_won:
@@ -861,7 +868,7 @@ class GameState:
                 self.movement.stop_all()
         self.rockford_cell = cell
 
-    def fall_sound(self, cell, pushing=False):
+    def fall_sound(self, cell: Cell, pushing: bool=False) -> None:
         if cell.isboulder():
             if pushing:
                 self.fall_sound_to_play = "box_push"
@@ -870,7 +877,7 @@ class GameState:
         elif cell.isdiamond():
             self.fall_sound_to_play = "diamond" + str(random.randint(1, 6))
 
-    def collect_diamond(self):
+    def collect_diamond(self) -> None:
         audio.play_sample("collect_diamond")
         self.diamonds += 1
         points = self.diamondvalue_extra if self.diamonds > self.diamonds_needed else self.diamondvalue_initial
@@ -880,13 +887,13 @@ class GameState:
             self.flash = self.frame + self.fps // 2
         self.check_extralife_score()
 
-    def check_extralife_score(self):
+    def check_extralife_score(self) -> None:
         # extra life every 500 points
         if self.extralife_score >= 500:
             self.extralife_score -= 500
             self.add_extra_life()
 
-    def add_extra_life(self):
+    def add_extra_life(self) -> None:
         self.lives += 1
         audio.play_sample("extra_life")
         for cell in self.cave:
@@ -894,25 +901,25 @@ class GameState:
                 self.draw_single_cell(cell, GameObject.BONUSBG)
                 self.bonusbg_frame = self.frame + self.fps * 6   # sparkle for 6 seconds
 
-    def add_extra_time(self, seconds):
+    def add_extra_time(self, seconds: float) -> None:
         self.timelimit += datetime.timedelta(seconds=seconds)
 
-    def end_rockfordbirth(self, cell):
+    def end_rockfordbirth(self, cell: Cell) -> None:
         # rockfordbirth eventually creates the real Rockford and starts the level timer.
         if self.game_status == "playing":
             self.draw_single_cell(cell, GameObject.ROCKFORD)
             self.timelimit = datetime.datetime.now() + self.timeremaining
             self.inbox_cell = None
 
-    def end_explosion(self, cell):
+    def end_explosion(self, cell: Cell) -> None:
         # a normal explosion ends with an empty cell
         self.clear_cell(cell)
 
-    def end_diamondbirth(self, cell):
+    def end_diamondbirth(self, cell: Cell) -> None:
         # diamondbirth ends with a diamond
         self.draw_single_cell(cell, GameObject.DIAMOND)
 
-    def explode(self, cell, direction=None):
+    def explode(self, cell: Cell, direction: str=None) -> None:
         audio.play_sample("explosion")
         explosioncell = self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
         if explosioncell.isbutterfly():
@@ -928,9 +935,10 @@ class GameState:
                 self.draw_single_cell(cell, obj)
 
     @staticmethod
-    def rotate90left(direction):
+    def rotate90left(direction: str) -> str:
         return {
-            None: None,
+            None: "",
+            "": "",
             "u": "l",
             "d": "r",
             "l": "d",
@@ -942,9 +950,10 @@ class GameState:
         }[direction]
 
     @staticmethod
-    def rotate90right(direction):
+    def rotate90right(direction: str) -> str:
         return {
-            None: None,
+            None: "",
+            "": "",
             "u": "r",
             "d": "l",
             "l": "u",
@@ -955,7 +964,7 @@ class GameState:
             "rd": "ld"
         }[direction]
 
-    def update_scorebar(self):
+    def update_scorebar(self) -> None:
         # draw the score bar.
         # note: the following is a complex score bar including keys, but those are not used in the C64 boulderdash:
         # text = ("\x08{lives:2d}  \x0c {keys:02d}\x7f\x7f\x7f  {diamonds:<10s}  {time:s}  $ {score:06d}".format(

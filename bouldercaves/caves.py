@@ -7,6 +7,9 @@ Written by Irmen de Jong (irmen@razorvine.net)
 License: MIT open-source.
 """
 
+from typing import Sequence, List
+
+
 CAVES = [
     ("Intro",
      "Pick up jewels and exit before time is up.",
@@ -198,7 +201,7 @@ colorpalette = (  # this is a lighter Commodore-64 palette
 
 
 class Cave:
-    def __init__(self, index, name, description, width, height):
+    def __init__(self, index: int, name: str, description: str, width: int, height: int) -> None:
         self.index = index
         self.name = name
         self.description = description
@@ -206,20 +209,21 @@ class Cave:
         self.width = width
         self.height = height
         self.map = bytearray(self.width * self.height)
-        self.magicwall_millingtime = 0
+        self.magicwall_millingtime = self.amoeba_slowgrowthtime = 0
         self.diamondvalue_initial = 0
         self.diamondvalue_extra = 0
         self.randomseed = 0
         self.diamonds_needed = 0
+        self.amoebamaxsize = 0
         self.time = 0
         self.bgcolor1 = 0
         self.bgcolor2 = 0
         self.fgcolor = 0
-        self.random_objects = [0, 0, 0, 0]
-        self.random_probabilities = [0, 0, 0, 0]
+        self.random_objects = (0, 0, 0, 0)
+        self.random_probabilities = (0, 0, 0, 0)
 
     @classmethod
-    def decode_from_lvl(cls, levelnumber):
+    def decode_from_lvl(cls, levelnumber: int) -> 'Cave':
         assert 0 < levelnumber <= len(CAVES)
         name, description, data = CAVES[levelnumber - 1]
         cave = cls(data[0], name, description, 40, 22)   # size hardcoded
@@ -240,7 +244,7 @@ class Cave:
         return cave
 
     @staticmethod
-    def bdrandom(seeds):
+    def bdrandom(seeds: List[int]) -> None:
         # the pseudo random generator that Boulder Dash uses
         assert len(seeds) == 2, "expected 2 seed numbers"
         assert 0 <= seeds[0] <= 0xFF, "expected seed 0 to be between 0 and 0xFF"
@@ -261,7 +265,7 @@ class Cave:
         assert 0 <= seeds[0] <= 0xFF, "expected seed 0 to STILL be between 0 and 0xFF"
         assert 0 <= seeds[1] <= 0xFF, "expected seed 0 to STILL be between 0 and 0xFF"
 
-    def build_map(self, data):
+    def build_map(self, data: Sequence[int]) -> None:
         seeds = [0, self.randomseed]
         for y in range(1, self.height - 1):
             for x in range(0, self.width):
@@ -301,7 +305,7 @@ class Cave:
             else:
                 raise ValueError("invalid cave instruction encountered")
 
-    def draw_rectangle(self, obj, x1, y1, width, height, fillobject=None):
+    def draw_rectangle(self, obj: int, x1: int, y1: int, width: int, height: int, fillobject: int=None) -> None:
         self.draw_line(obj, x1, y1, width, 2)
         self.draw_line(obj, x1, y1 + height - 1, width, 2)
         self.draw_line(obj, x1, y1 + 1, height - 2, 4)
@@ -310,7 +314,7 @@ class Cave:
             for y in range(y1 + 1, y1 + height - 1):
                 self.draw_line(fillobject, x1 + 1, y, width - 2, 2)
 
-    def draw_line(self, obj, x, y, length, direction):
+    def draw_line(self, obj: int, x: int, y: int, length: int, direction: int) -> None:
         dx, dy = [
             (0, -1),
             (1, -1),
@@ -325,5 +329,5 @@ class Cave:
             x += dx
             y += dy
 
-    def draw_single(self, obj, x, y):
+    def draw_single(self, obj: int, x: int, y: int) -> None:
         self.map[x + y * self.width] = obj
