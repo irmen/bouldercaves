@@ -9,8 +9,54 @@ License: MIT open-source.
 
 import datetime
 import random
+from enum import Enum
 from typing import Callable, List, Optional
 from . import caves, audio
+
+
+class Direction(Enum):
+    NOWHERE = ""
+    LEFT = "l"
+    RIGHT = "r"
+    UP = "u"
+    DOWN = "d"
+    LEFTUP = "lu"
+    RIGHTUP = "ru"
+    LEFTDOWN = "ld"
+    RIGHTDOWN = "rd"
+
+    def rotate90left(self: 'Direction') -> 'Direction':
+        return {
+            Direction.NOWHERE: Direction.NOWHERE,
+            Direction.UP: Direction.LEFT,
+            Direction.LEFT: Direction.DOWN,
+            Direction.DOWN: Direction.RIGHT,
+            Direction.RIGHT: Direction.UP,
+            Direction.LEFTUP: Direction.LEFTDOWN,
+            Direction.LEFTDOWN: Direction.RIGHTDOWN,
+            Direction.RIGHTDOWN: Direction.RIGHTUP,
+            Direction.RIGHTUP: Direction.LEFTUP
+        }[self]
+
+    def rotate90right(self: 'Direction') -> 'Direction':
+        return {
+            Direction.NOWHERE: Direction.NOWHERE,
+            Direction.UP: Direction.RIGHT,
+            Direction.RIGHT: Direction.DOWN,
+            Direction.DOWN: Direction.LEFT,
+            Direction.LEFT: Direction.UP,
+            Direction.LEFTUP: Direction.RIGHTUP,
+            Direction.RIGHTUP: Direction.RIGHTDOWN,
+            Direction.RIGHTDOWN: Direction.LEFTDOWN,
+            Direction.LEFTDOWN: Direction.LEFTUP
+        }[self]
+
+
+class GameStatus(Enum):
+    WAITING = "waiting"
+    PLAYING = "playing"
+    LOST = "lost"
+    WON = "won"
 
 
 class GameObject:
@@ -197,7 +243,7 @@ class GameState:
             self.y = y
             self.frame = 0
             self.falling = False
-            self.direction = ""
+            self.direction = Direction.NOWHERE
             self.anim_start_gfx_frame = 0
 
         def __repr__(self):
@@ -253,8 +299,8 @@ class GameState:
 
     class MovementInfo:
         def __init__(self) -> None:
-            self.direction = ""
-            self.lastXdir = ""
+            self.direction = Direction.NOWHERE
+            self.lastXdir = Direction.NOWHERE
             self.up = self.down = self.left = self.right = False
             self.grab = False
 
@@ -263,22 +309,22 @@ class GameState:
             return bool(self.direction)
 
         def start_up(self) -> None:
-            self.direction = "u"
+            self.direction = Direction.UP
             self.up = True
 
         def start_down(self) -> None:
-            self.direction = "d"
+            self.direction = Direction.DOWN
             self.down = True
 
         def start_left(self) -> None:
-            self.direction = "l"
+            self.direction = Direction.LEFT
             self.left = True
-            self.lastXdir = "l"
+            self.lastXdir = Direction.LEFT
 
         def start_right(self) -> None:
-            self.direction = "r"
+            self.direction = Direction.RIGHT
             self.right = True
-            self.lastXdir = "r"
+            self.lastXdir = Direction.RIGHT
 
         def start_grab(self) -> None:
             self.grab = True
@@ -292,31 +338,31 @@ class GameState:
 
         def stop_up(self) -> None:
             self.up = False
-            self.direction = self.where() if self.direction == "u" else self.direction
+            self.direction = self.where() if self.direction == Direction.UP else self.direction
 
         def stop_down(self) -> None:
             self.down = False
-            self.direction = self.where() if self.direction == "d" else self.direction
+            self.direction = self.where() if self.direction == Direction.DOWN else self.direction
 
         def stop_left(self) -> None:
             self.left = False
-            self.direction = self.where() if self.direction == "l" else self.direction
+            self.direction = self.where() if self.direction == Direction.LEFT else self.direction
 
         def stop_right(self) -> None:
             self.right = False
-            self.direction = self.where() if self.direction == "r" else self.direction
+            self.direction = self.where() if self.direction == Direction.RIGHT else self.direction
 
-        def where(self) -> str:
+        def where(self) -> Direction:
             if self.up:
-                return "u"
+                return Direction.UP
             elif self.down:
-                return "d"
+                return Direction.DOWN
             elif self.left:
-                return "l"
+                return Direction.LEFT
             elif self.right:
-                return "r"
+                return Direction.RIGHT
             else:
-                return ""
+                return Direction.NOWHERE
 
     def __init__(self, gfxwindow) -> None:
         self.gfxwindow = gfxwindow
@@ -326,15 +372,15 @@ class GameState:
         self.width = gfxwindow.tilesheet.width
         self.height = gfxwindow.tilesheet.height
         self._dirxy = {
-            None: 0,
-            "u": -self.width,
-            "d": self.width,
-            "l": -1,
-            "r": 1,
-            "lu": -self.width - 1,
-            "ru": -self.width + 1,
-            "ld": self.width - 1,
-            "rd": self.width + 1
+            Direction.NOWHERE: 0,
+            Direction.UP: -self.width,
+            Direction.DOWN: self.width,
+            Direction.LEFT: -1,
+            Direction.RIGHT: 1,
+            Direction.LEFTUP: -self.width - 1,
+            Direction.RIGHTUP: -self.width + 1,
+            Direction.LEFTDOWN: self.width - 1,
+            Direction.RIGHTDOWN: self.width + 1
         }
         self.cave = []   # type: List[GameState.Cell]
         for y in range(self.height):
@@ -355,7 +401,7 @@ class GameState:
         self.level = -1
         self.level_name = self.level_description = "???"
         self.level_won = False
-        self.game_status = "waiting"    # waiting / playing / lost / won
+        self.game_status = GameStatus.WAITING    # waiting / playing / lost / won
         self.intermission = False
         self.score = self.extralife_score = 0
         self.diamondvalue_initial = self.diamondvalue_extra = 0
@@ -425,8 +471,8 @@ class GameState:
                 }[c]
                 self.draw_single(obj, 2 + x, 1 + y)
 
-        self.draw_line(GameObject.LAVA, 4, self.height - 3, self.width - 8, "r")
-        self.draw_line(GameObject.DIRT, 3, self.height - 2, self.width - 6, "r")
+        self.draw_line(GameObject.LAVA, 4, self.height - 3, self.width - 8, Direction.RIGHT)
+        self.draw_line(GameObject.DIRT, 3, self.height - 2, self.width - 6, Direction.RIGHT)
         self.draw_single(GameObject.DIRTSLOPEDUPLEFT, 3, self.height - 3)
         self.draw_single(GameObject.DIRTSLOPEDUPLEFT, 2, self.height - 2)
         self.draw_single(GameObject.DIRTSLOPEDUPRIGHT, self.width - 4, self.height - 3)
@@ -442,7 +488,7 @@ class GameState:
         level_intro_popup = levelnumber != self.level
         self.level = levelnumber
         self.level_won = False
-        self.game_status = "playing"
+        self.game_status = GameStatus.PLAYING
         self.flash = 0
         self.diamonds = 0
         self.diamonds_needed = c64cave.diamonds_needed
@@ -470,28 +516,28 @@ class GameState:
         }
         # convert the c64 cave map
         conversion = {
-            0x00: (GameObject.EMPTY, None),
-            0x01: (GameObject.DIRT, None),
-            0x02: (GameObject.BRICK, None),
-            0x03: (GameObject.MAGICWALL, None),
-            0x04: (GameObject.OUTBOXCLOSED, None),
-            0x05: (GameObject.OUTBOXBLINKING, None),
-            0x07: (GameObject.STEEL, None),
-            0x08: (GameObject.FIREFLY, 'l'),
-            0x09: (GameObject.FIREFLY, 'u'),
-            0x0a: (GameObject.FIREFLY, 'r'),
-            0x0b: (GameObject.FIREFLY, 'd'),
-            0x10: (GameObject.BOULDER, None),
-            0x12: (GameObject.BOULDER, None),
-            0x14: (GameObject.DIAMOND, None),
-            0x16: (GameObject.DIAMOND, None),
-            0x25: (GameObject.INBOXBLINKING, None),
-            0x30: (GameObject.BUTTERFLY, 'd'),
-            0x31: (GameObject.BUTTERFLY, 'l'),
-            0x32: (GameObject.BUTTERFLY, 'u'),
-            0x33: (GameObject.BUTTERFLY, 'r'),
-            0x38: (GameObject.ROCKFORD, None),
-            0x3a: (GameObject.AMOEBA, None)
+            0x00: (GameObject.EMPTY, Direction.NOWHERE),
+            0x01: (GameObject.DIRT, Direction.NOWHERE),
+            0x02: (GameObject.BRICK, Direction.NOWHERE),
+            0x03: (GameObject.MAGICWALL, Direction.NOWHERE),
+            0x04: (GameObject.OUTBOXCLOSED, Direction.NOWHERE),
+            0x05: (GameObject.OUTBOXBLINKING, Direction.NOWHERE),
+            0x07: (GameObject.STEEL, Direction.NOWHERE),
+            0x08: (GameObject.FIREFLY, Direction.LEFT),
+            0x09: (GameObject.FIREFLY, Direction.UP),
+            0x0a: (GameObject.FIREFLY, Direction.RIGHT),
+            0x0b: (GameObject.FIREFLY, Direction.DOWN),
+            0x10: (GameObject.BOULDER, Direction.NOWHERE),
+            0x12: (GameObject.BOULDER, Direction.NOWHERE),
+            0x14: (GameObject.DIAMOND, Direction.NOWHERE),
+            0x16: (GameObject.DIAMOND, Direction.NOWHERE),
+            0x25: (GameObject.INBOXBLINKING, Direction.NOWHERE),
+            0x30: (GameObject.BUTTERFLY, Direction.DOWN),
+            0x31: (GameObject.BUTTERFLY, Direction.LEFT),
+            0x32: (GameObject.BUTTERFLY, Direction.UP),
+            0x33: (GameObject.BUTTERFLY, Direction.RIGHT),
+            0x38: (GameObject.ROCKFORD, Direction.NOWHERE),
+            0x3a: (GameObject.AMOEBA, Direction.NOWHERE)
         }
         for i, obj in enumerate(c64cave.map):
             y, x = divmod(i, self.width)
@@ -507,34 +553,34 @@ class GameState:
         self.load_c64level(self.level % len(caves.CAVES) + 1)
 
     def draw_rectangle(self, obj: GameObject, x1: int, y1: int, width: int, height: int, fillobject: GameObject=None) -> None:
-        self.draw_line(obj, x1, y1, width, 'r')
-        self.draw_line(obj, x1, y1 + height - 1, width, 'r')
-        self.draw_line(obj, x1, y1 + 1, height - 2, 'd')
-        self.draw_line(obj, x1 + width - 1, y1 + 1, height - 2, 'd')
+        self.draw_line(obj, x1, y1, width, Direction.RIGHT)
+        self.draw_line(obj, x1, y1 + height - 1, width, Direction.RIGHT)
+        self.draw_line(obj, x1, y1 + 1, height - 2, Direction.DOWN)
+        self.draw_line(obj, x1 + width - 1, y1 + 1, height - 2, Direction.DOWN)
         if fillobject is not None:
             for y in range(y1 + 1, y1 + height - 1):
-                self.draw_line(fillobject, x1 + 1, y, width - 2, 'r')
+                self.draw_line(fillobject, x1 + 1, y, width - 2, Direction.RIGHT)
 
-    def draw_line(self, obj: GameObject, x: int, y: int, length: int, direction: str) -> None:
+    def draw_line(self, obj: GameObject, x: int, y: int, length: int, direction: Direction) -> None:
         dx, dy = {
-            "l": (-1, 0),
-            "r": (1, 0),
-            "u": (0, -1),
-            "d": (0, 1),
-            "lu": (-1, -1),
-            "ru": (1, -1),
-            "ld": (-1, 1),
-            "rd": (1, 1)
-        }[direction.lower()]
+            Direction.LEFT: (-1, 0),
+            Direction.RIGHT: (1, 0),
+            Direction.UP: (0, -1),
+            Direction.DOWN: (0, 1),
+            Direction.LEFTUP: (-1, -1),
+            Direction.RIGHTUP: (1, -1),
+            Direction.LEFTDOWN: (-1, 1),
+            Direction.RIGHTDOWN: (1, 1)
+        }[direction]
         for _ in range(length):
             self.draw_single(obj, x, y)
             x += dx
             y += dy
 
-    def draw_single(self, obj: GameObject, x: int, y: int, initial_direction: str=None) -> None:
+    def draw_single(self, obj: GameObject, x: int, y: int, initial_direction: Direction=Direction.NOWHERE) -> None:
         self.draw_single_cell(self.cave[x + y * self.width], obj, initial_direction)
 
-    def draw_single_cell(self, cell: Cell, obj: GameObject, initial_direction: str=None) -> None:
+    def draw_single_cell(self, cell: Cell, obj: GameObject, initial_direction: Direction=Direction.NOWHERE) -> None:
         cell.obj = obj
         cell.direction = initial_direction
         cell.frame = self.frame
@@ -549,11 +595,11 @@ class GameState:
     def clear_cell(self, cell: Cell) -> None:
         self.draw_single_cell(cell, GameObject.BONUSBG if self.bonusbg_frame > self.frame else GameObject.EMPTY)
 
-    def get(self, cell: Cell, direction: str=None) -> Cell:
+    def get(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> Cell:
         # retrieve the cell relative to the given cell
         return self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
 
-    def move(self, cell: Cell, direction: str=None) -> Cell:
+    def move(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> Cell:
         # move the object in the cell to the given relative direction
         if not direction:
             return None  # no movement...
@@ -563,10 +609,10 @@ class GameState:
         newcell.direction = cell.direction
         self.clear_cell(cell)
         cell.falling = False
-        cell.direction = ""
+        cell.direction = Direction.NOWHERE
         return newcell
 
-    def push(self, cell: Cell, direction: str=None) -> Cell:
+    def push(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> Cell:
         # try to push the thing in the given direction
         pushedcell = self.get(cell, direction)
         targetcell = self.get(pushedcell, direction)
@@ -587,7 +633,7 @@ class GameState:
             self.magicwall["active"] = True
             obj = cell.obj
             self.clear_cell(cell)
-            cell_under_wall = self.get(self.get(cell, 'd'), 'd')
+            cell_under_wall = self.get(self.get(cell, Direction.DOWN), Direction.DOWN)
             if cell_under_wall.isempty():
                 if obj is GameObject.DIAMOND:
                     self.draw_single_cell(cell_under_wall, GameObject.BOULDER)
@@ -604,7 +650,7 @@ class GameState:
 
     def update(self, graphics_frame_counter: int) -> None:
         self.graphics_frame_counter = graphics_frame_counter    # we store this to properly sync up animation frames
-        if self.game_status != "playing":
+        if self.game_status != GameStatus.PLAYING:
             return
         self.frame_start()
         if not self.level_won:
@@ -715,17 +761,17 @@ class GameState:
         if self.lives > 0:
             self.load_c64level(self.level)  # retry current level
         else:
-            self.stop_game("lost")
+            self.stop_game(GameStatus.LOST)
 
-    def stop_game(self, status: str) -> None:
+    def stop_game(self, status: GameStatus) -> None:
         self.game_status = status
         if self.rockford_cell:
             self.clear_cell(self.rockford_cell)
         self.rockford_found_frame = 0
-        if status == "lost":
+        if status == GameStatus.LOST:
             audio.play_sample("game_over")
             self.gfxwindow.popup("Game Over.\n\nYour final score: {:d}\n\npress Escape to return to the title screen".format(self.score))
-        elif status == "won":
+        elif status == GameStatus.WON:
             self.lives = 0
             audio.play_sample("extra_life")
             self.gfxwindow.popup("Congratulations, you finished the game!\n\nYour final score: {:d}\n\n"
@@ -734,38 +780,38 @@ class GameState:
     def load_next_level(self) -> None:
         level = self.level + 1
         if level > len(caves.CAVES):
-            self.stop_game("won")
+            self.stop_game(GameStatus.WON)
         else:
             audio.silence_audio()
             self.load_c64level(level)
 
     def update_canfall(self, cell: Cell) -> None:
         # if the cell below this one is empty, the object starts to fall
-        if self.get(cell, 'd').isempty():
+        if self.get(cell, Direction.DOWN).isempty():
             if not cell.falling:
                 self.fall_sound(cell)
                 cell.falling = True
-        elif self.get(cell, 'd').isrounded():
-            if self.get(cell, 'l').isempty() and self.get(cell, 'ld').isempty():
-                self.move(cell, 'l').falling = True
-            elif self.get(cell, 'r').isempty() and self.get(cell, 'rd').isempty():
-                self.move(cell, 'r').falling = True
+        elif self.get(cell, Direction.DOWN).isrounded():
+            if self.get(cell, Direction.LEFT).isempty() and self.get(cell, Direction.LEFTDOWN).isempty():
+                self.move(cell, Direction.LEFT).falling = True
+            elif self.get(cell, Direction.RIGHT).isempty() and self.get(cell, Direction.RIGHTDOWN).isempty():
+                self.move(cell, Direction.RIGHT).falling = True
 
     def update_falling(self, cell: Cell) -> None:
         # let the object fall down, explode stuff if explodable!
-        cellbelow = self.get(cell, 'd')
+        cellbelow = self.get(cell, Direction.DOWN)
         if cellbelow.isempty():
-            cell = self.move(cell, 'd')
-            if not self.get(cell, 'd').isempty():
+            cell = self.move(cell, Direction.DOWN)
+            if not self.get(cell, Direction.DOWN).isempty():
                 self.fall_sound(cell)  # play a sound as soon as we hit something.
         elif cellbelow.isexplodable():
-            self.explode(cell, 'd')
+            self.explode(cell, Direction.DOWN)
         elif cellbelow.ismagic():
             self.domagic(cell)
-        elif cellbelow.isrounded() and self.get(cell, 'l').isempty() and self.get(cell, 'ld').isempty():
-            self.move(cell, 'l')
-        elif cellbelow.isrounded() and self.get(cell, 'r').isempty() and self.get(cell, 'rd').isempty():
-            self.move(cell, 'r')
+        elif cellbelow.isrounded() and self.get(cell, Direction.LEFT).isempty() and self.get(cell, Direction.LEFTDOWN).isempty():
+            self.move(cell, Direction.LEFT)
+        elif cellbelow.isrounded() and self.get(cell, Direction.RIGHT).isempty() and self.get(cell, Direction.RIGHTDOWN).isempty():
+            self.move(cell, Direction.RIGHT)
         else:
             cell.falling = False  # falling was blocked by something
 
@@ -773,35 +819,35 @@ class GameState:
         # if it hits Rockford or Amoeba it explodes
         # tries to rotate 90 degrees left and move to empty cell in new or original direction
         # if not possible rotate 90 right and wait for next update
-        newdir = self.rotate90left(cell.direction)
-        if self.get(cell, 'u').isrockford() or self.get(cell, 'd').isrockford() \
-                or self.get(cell, 'l').isrockford() or self.get(cell, 'r').isrockford():
+        newdir = cell.direction.rotate90left()
+        if self.get(cell, Direction.UP).isrockford() or self.get(cell, Direction.DOWN).isrockford() \
+                or self.get(cell, Direction.LEFT).isrockford() or self.get(cell, Direction.RIGHT).isrockford():
             self.explode(cell)
-        elif self.get(cell, 'u').isamoeba() or self.get(cell, 'd').isamoeba() \
-                or self.get(cell, 'l').isamoeba() or self.get(cell, 'r').isamoeba():
+        elif self.get(cell, Direction.UP).isamoeba() or self.get(cell, Direction.DOWN).isamoeba() \
+                or self.get(cell, Direction.LEFT).isamoeba() or self.get(cell, Direction.RIGHT).isamoeba():
             self.explode(cell)
         elif self.get(cell, newdir).isempty():
             self.move(cell, newdir).direction = newdir
         elif self.get(cell, cell.direction).isempty():
             self.move(cell, cell.direction)
         else:
-            cell.direction = self.rotate90right(cell.direction)
+            cell.direction = cell.direction.rotate90right()
 
     def update_butterfly(self, cell: Cell) -> None:
         # same as firefly except butterflies rotate in the opposite direction
-        newdir = self.rotate90right(cell.direction)
-        if self.get(cell, 'u').isrockford() or self.get(cell, 'd').isrockford() \
-                or self.get(cell, 'l').isrockford() or self.get(cell, 'r').isrockford():
+        newdir = cell.direction.rotate90right()
+        if self.get(cell, Direction.UP).isrockford() or self.get(cell, Direction.DOWN).isrockford() \
+                or self.get(cell, Direction.LEFT).isrockford() or self.get(cell, Direction.RIGHT).isrockford():
             self.explode(cell)
-        elif self.get(cell, 'u').isamoeba() or self.get(cell, 'd').isamoeba() \
-                or self.get(cell, 'l').isamoeba() or self.get(cell, 'r').isamoeba():
+        elif self.get(cell, Direction.UP).isamoeba() or self.get(cell, Direction.DOWN).isamoeba() \
+                or self.get(cell, Direction.LEFT).isamoeba() or self.get(cell, Direction.RIGHT).isamoeba():
             self.explode(cell)
         elif self.get(cell, newdir).isempty():
             self.move(cell, newdir).direction = newdir
         elif self.get(cell, cell.direction).isempty():
             self.move(cell, cell.direction)
         else:
-            cell.direction = self.rotate90left(cell.direction)
+            cell.direction = cell.direction.rotate90left()
 
     def update_inbox(self, cell: Cell) -> None:
         # after 4 blinks (=2 seconds), Rockford spawns in the inbox.
@@ -821,14 +867,14 @@ class GameState:
             self.draw_single_cell(cell, self.amoeba["dead"])
         else:
             self.amoeba["size"] += 1
-            if self.get(cell, 'u').isempty() or self.get(cell, 'd').isempty() \
-                    or self.get(cell, 'r').isempty() or self.get(cell, 'l').isempty() \
-                    or self.get(cell, 'u').isdirt() or self.get(cell, 'd').isdirt() \
-                    or self.get(cell, 'r').isdirt() or self.get(cell, 'l').isdirt():
+            if self.get(cell, Direction.UP).isempty() or self.get(cell, Direction.DOWN).isempty() \
+                    or self.get(cell, Direction.RIGHT).isempty() or self.get(cell, Direction.LEFT).isempty() \
+                    or self.get(cell, Direction.UP).isdirt() or self.get(cell, Direction.DOWN).isdirt() \
+                    or self.get(cell, Direction.RIGHT).isdirt() or self.get(cell, Direction.LEFT).isdirt():
                 self.amoeba["enclosed"] = False
             if self.timelimit:
                 grow = random.randint(1, 128) < 4 if self.amoeba["slow"] else random.randint(1, 4) == 1
-                direction = random.choice("udlr")
+                direction = random.choice([Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT])
                 if grow and (self.get(cell, direction).isdirt() or self.get(cell, direction).isempty()):
                     self.draw_single_cell(self.get(cell, direction), cell.obj)
 
@@ -848,7 +894,7 @@ class GameState:
                 elif targetcell.isdiamond():
                     self.collect_diamond()
                     self.clear_cell(targetcell)
-                elif self.movement.direction in ("l", "r") and targetcell.isboulder():
+                elif self.movement.direction in (Direction.LEFT, Direction.RIGHT) and targetcell.isboulder():
                     self.push(cell, self.movement.direction)
             elif targetcell.isempty():
                 audio.play_sample("walk_empty")
@@ -856,7 +902,7 @@ class GameState:
             elif targetcell.isdirt():
                 audio.play_sample("walk_dirt")
                 cell = self.move(cell, self.movement.direction)
-            elif targetcell.isboulder() and self.movement.direction in ("l", "r"):
+            elif targetcell.isboulder() and self.movement.direction in (Direction.LEFT, Direction.RIGHT):
                 cell = self.push(cell, self.movement.direction)
             elif targetcell.isdiamond():
                 self.collect_diamond()
@@ -906,7 +952,7 @@ class GameState:
 
     def end_rockfordbirth(self, cell: Cell) -> None:
         # rockfordbirth eventually creates the real Rockford and starts the level timer.
-        if self.game_status == "playing":
+        if self.game_status == GameStatus.PLAYING:
             self.draw_single_cell(cell, GameObject.ROCKFORD)
             self.timelimit = datetime.datetime.now() + self.timeremaining
             self.inbox_cell = None
@@ -919,7 +965,7 @@ class GameState:
         # diamondbirth ends with a diamond
         self.draw_single_cell(cell, GameObject.DIAMOND)
 
-    def explode(self, cell: Cell, direction: str=None) -> None:
+    def explode(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> None:
         audio.play_sample("explosion")
         explosioncell = self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
         if explosioncell.isbutterfly():
@@ -927,42 +973,14 @@ class GameState:
         else:
             obj = GameObject.EXPLOSION
         self.draw_single_cell(explosioncell, obj)
-        for direction in ["u", "ru", "r", "rd", "d", "ld", "l", "lu"]:
+        for direction in Direction:
+            if direction is Direction.NOWHERE:
+                continue
             cell = self.cave[explosioncell.x + explosioncell.y * self.width + self._dirxy[direction]]
             if cell.isexplodable():
-                self.explode(cell, None)
+                self.explode(cell, Direction.NOWHERE)
             elif cell.isconsumable():
                 self.draw_single_cell(cell, obj)
-
-    @staticmethod
-    def rotate90left(direction: str) -> str:
-        return {
-            None: "",
-            "": "",
-            "u": "l",
-            "d": "r",
-            "l": "d",
-            "r": "u",
-            "lu": "ld",
-            "ru": "lu",
-            "ld": "rd",
-            "rd": "ru"
-        }[direction]
-
-    @staticmethod
-    def rotate90right(direction: str) -> str:
-        return {
-            None: "",
-            "": "",
-            "u": "r",
-            "d": "l",
-            "l": "u",
-            "r": "d",
-            "lu": "ru",
-            "ru": "rd",
-            "ld": "lu",
-            "rd": "ld"
-        }[direction]
 
     def update_scorebar(self) -> None:
         # draw the score bar.
@@ -1005,9 +1023,9 @@ class GameState:
             diamonds="{:02d}/{:02d}".format(self.diamonds, self.diamonds_needed),
         )).ljust(self.width)
         self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.gfxwindow.text2tiles(text))
-        if self.game_status == "won":
+        if self.game_status == GameStatus.WON:
             tiles = self.gfxwindow.text2tiles("\x0e  C O N G R A T U L A T I O N S  \x0e".center(self.width))
-        elif self.game_status == "lost":
+        elif self.game_status == GameStatus.LOST:
             tiles = self.gfxwindow.text2tiles("\x0b  G A M E   O V E R  \x0b".center(self.width))
         else:
             tiles = self.gfxwindow.text2tiles("Level {:d}: {:s}".format(self.level, self.level_name).center(self.width))

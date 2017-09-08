@@ -25,7 +25,7 @@ except ImportError:
     r.withdraw()
     tkinter.messagebox.showerror("missing Python library", "The 'pillow' or 'pil' python library is required.")
     raise SystemExit
-from .game import GameState, GameObject
+from .game import GameState, GameObject, Direction, GameStatus
 from .caves import colorpalette
 from . import audio
 
@@ -228,10 +228,10 @@ class BoulderWindow(tkinter.Tk):
         elif event.keysym == "Right":
             self.gamestate.movement.start_right()
         elif event.keysym == "Escape":
-            if self.gamestate.game_status in ("lost", "won"):
+            if self.gamestate.game_status in (GameStatus.LOST, GameStatus.WON):
                 self.popup_tiles_save = None
                 self.gamestate.restart()
-            elif not self.uncover_tiles and self.gamestate.game_status == "playing":
+            elif not self.uncover_tiles and self.gamestate.game_status == GameStatus.PLAYING:
                 self.popup_frame = 0
                 if self.gamestate.rockford_cell:
                     self.gamestate.explode(self.gamestate.rockford_cell)
@@ -276,7 +276,7 @@ class BoulderWindow(tkinter.Tk):
     def repaint(self) -> None:
         self.graphics_frame += 1
         self.scroll_focuscell_into_view()
-        if self.smallwindow and self.gamestate.game_status == "waiting" and self.popup_frame < self.graphics_frame:
+        if self.smallwindow and self.gamestate.game_status == GameStatus.WAITING and self.popup_frame < self.graphics_frame:
             # move the waiting screen (title screen) around so you can see it all :)
             wavew, waveh = self.tile2screencor(self.playfield_columns - self.visible_columns, self.playfield_rows - self.visible_rows)
             x = (1 + math.sin(self.graphics_frame / 25)) * wavew / 2
@@ -323,11 +323,13 @@ class BoulderWindow(tkinter.Tk):
         else:
             if self.gamestate.rockford_cell:
                 # moving left/right
-                if self.gamestate.movement.direction == "l" \
-                        or (self.gamestate.movement.direction in ("u", "d") and self.gamestate.movement.lastXdir == "l"):
+                if self.gamestate.movement.direction == Direction.LEFT or \
+                        (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
+                         self.gamestate.movement.lastXdir == Direction.LEFT):
                     spritex, spritey, sframes, sfps = GameObject.ROCKFORD.left
-                elif self.gamestate.movement.direction == "r" \
-                        or (self.gamestate.movement.direction in ("u", "d") and self.gamestate.movement.lastXdir == "r"):
+                elif self.gamestate.movement.direction == Direction.RIGHT or \
+                        (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
+                         self.gamestate.movement.lastXdir == Direction.RIGHT):
                     spritex, spritey, sframes, sfps = GameObject.ROCKFORD.right
                 # handle rockford idle state/animation
                 elif self.gamestate.idle["tap"] and self.gamestate.idle["blink"]:
@@ -476,7 +478,7 @@ class BoulderWindow(tkinter.Tk):
         if focus_cell:
             x, y = focus_cell.x, focus_cell.y
             curx, cury = self.view_x / 16 + self.visible_columns / 2, self.view_y / 16 + self.visible_rows / 2
-            if not self.scrolling_into_view and abs(curx-x) < 6 and abs(cury-y) < 3:
+            if not self.scrolling_into_view and abs(curx - x) < 6 and abs(cury - y) < 3:
                 return  # don't always keep it exactly in the center at all times, add some movement slack area
             # scroll the view to the focus cell
             viewx, viewy = self.tile2screencor(x - self.visible_columns // 2, y - self.visible_rows // 2)
