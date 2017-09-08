@@ -1,6 +1,6 @@
 # Boulder Caves
 A Boulder Dash (tm) clone in pure python.
-Requires Python 3.5 + and the ``pillow`` library.
+Requires Python 3.5 + and the ``pillow`` (or ``pil``) library.
 Want to hear sound? Install the ``sounddevice`` or ``pyaudio`` library as well, and
 the ``oggdec`` tool has to be installed on your system.  Usually that is part of
 the ``vorbis-tools`` package (Linux, Mac OS).  On Windows a version of the tool 

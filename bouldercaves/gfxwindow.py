@@ -14,10 +14,17 @@ import io
 import sys
 import math
 import tkinter
+import tkinter.messagebox
 import pkgutil
 import time
 from typing import Tuple, Union, Sequence, List, Set, Iterable
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    r = tkinter.Tk()
+    r.withdraw()
+    tkinter.messagebox.showerror("missing Python library", "The 'pillow' or 'pil' python library is required.")
+    raise SystemExit
 from .game import GameState, GameObject
 from .caves import colorpalette
 from . import audio
@@ -578,6 +585,24 @@ def start(sargs: Sequence[str]=None) -> None:
     ap.add_argument("-a", "--authentic", help="use C-64 colors AND limited window size", action="store_true")
     ap.add_argument("-n", "--nosound", help="don't use sound", action="store_true")
     args = ap.parse_args(sargs)
+
+    # validate required libraries
+    if not args.nosound:
+        audio_api = audio.best_api(dummy_enabled=True)
+        if isinstance(audio_api, audio.DummyAudio):
+            r = tkinter.Tk()
+            r.withdraw()
+            tkinter.messagebox.showerror("missing Python library",
+                                         "No suitable python audio library is available, try installing 'sounddevice'.")
+            raise SystemExit
+        if isinstance(audio_api, audio.Winsound):
+            r = tkinter.Tk()
+            r.withdraw()
+            tkinter.messagebox.showinfo("inferior Python audio library detected",
+                                        "Winsound is used as python audio library. This library cannot play all sounds correctly.\n\n"
+                                        "Try installing 'sounddevice' to hear properly mixed sounds.")
+            r.destroy()
+
     args.c64colors |= args.authentic
     if args.c64colors:
         print("Using the original Commodore-64 colors.")
