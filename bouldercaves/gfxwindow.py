@@ -27,7 +27,7 @@ except ImportError:
     raise SystemExit
 from .game import GameState, GameObject, Direction, GameStatus
 from .caves import colorpalette
-from . import audio
+from . import audio, synthsamples
 
 
 class Tilesheet:
@@ -625,6 +625,11 @@ def start(sargs: Sequence[str]=None) -> None:
     else:
         print("Using multicolor replacement graphics.")
         print("You can use the '-c' or '--c64colors' argument to get the original C-64 colors.")
+
+    # initialize the audio system
+    audio.norm_samplerate = 22050
+    audio.norm_samplewidth = 2
+    audio.norm_channels = 2
     samples = {
         "music": "bdmusic.ogg",
         "cover": "cover.ogg",
@@ -638,7 +643,7 @@ def start(sargs: Sequence[str]=None) -> None:
         "collect_diamond": "collectdiamond.ogg",
         "box_push": "box_push.ogg",
         "amoeba": "amoeba.ogg",
-        "magic_wall": "magic_wall.ogg",
+        "magic_wall": "magicwall.ogg",
         "diamond1": "diamond1.ogg",
         "diamond2": "diamond2.ogg",
         "diamond3": "diamond3.ogg",
@@ -656,13 +661,44 @@ def start(sargs: Sequence[str]=None) -> None:
         "timeout8": "timeout8.ogg",
         "timeout9": "timeout9.ogg",
     }
+
+    print("Synthesizing sounds...")
+    synthesized = {
+        "music": synthsamples.TitleMusic(),
+        "cover": synthsamples.Cover(),
+        "crack": synthsamples.Crack(),
+        "boulder": synthsamples.Boulder(),
+        "amoeba": synthsamples.Amoeba(),
+        "magic_wall": synthsamples.MagicWall(),
+        "finished": synthsamples.Finished(),
+        "explosion": synthsamples.Explosion(),
+        "collect_diamond": synthsamples.CollectDiamond(),
+        "walk_empty": synthsamples.WalkEmpty(),
+        "walk_dirt": synthsamples.WalkDirt(),
+        "diamond1": synthsamples.Diamond(),   # @todo randomize diamond sound everytime it is played
+        "diamond2": synthsamples.Diamond(),
+        "diamond3": synthsamples.Diamond(),
+        "diamond4": synthsamples.Diamond(),
+        "diamond5": synthsamples.Diamond(),
+        "diamond6": synthsamples.Diamond(),
+        "timeout1": synthsamples.Timeout(1),
+        "timeout2": synthsamples.Timeout(2),
+        "timeout3": synthsamples.Timeout(3),
+        "timeout4": synthsamples.Timeout(4),
+        "timeout5": synthsamples.Timeout(5),
+        "timeout6": synthsamples.Timeout(6),
+        "timeout7": synthsamples.Timeout(7),
+        "timeout8": synthsamples.Timeout(8),
+        "timeout9": synthsamples.Timeout(9),
+    }
+    print("Synths missing for:", samples.keys()-synthesized.keys())
+    assert len(synthesized.keys() - samples.keys()) == 0
+    samples.update(synthesized)
+
     if args.nosound:
         print("No sound output selected.")
         audio.init_audio(samples, dummy=True)
     else:
-        audio.norm_samplerate = 22050
-        audio.norm_samplewidth = 2
-        audio.norm_channels = 2
         audio.init_audio(samples)
     window = BoulderWindow("Boulder Caves v1.3 - created by Irmen de Jong",
                            args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
