@@ -231,18 +231,13 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.pause()
         elif event.keysym == "Escape":
             if self.gamestate.game_status in (GameStatus.LOST, GameStatus.WON):
+                self.popup_frame = 0
                 self.popup_tiles_save = None
                 self.gamestate.restart()
-            elif not self.uncover_tiles and self.gamestate.game_status == GameStatus.PLAYING:
+            elif self.gamestate.game_status == GameStatus.PLAYING and not self.uncover_tiles:
                 self.popup_frame = 0
-                if self.gamestate.rockford_cell:
-                    # @todo move suicide to GameState and improve it a bit so you can see the explosion
-                    self.gamestate.explode(self.gamestate.rockford_cell)
-                if self.gamestate.lives > 0:
-                    self.gamestate.life_lost()
-                else:
-                    self.popup_tiles_save = None
-                    self.gamestate.restart()
+                self.popup_tiles_save = None
+                self.gamestate.suicide()
             elif self.gamestate.game_status == GameStatus.DEMO:
                 self.gamestate.restart()
         elif event.keysym == "F1":

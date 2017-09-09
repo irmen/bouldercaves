@@ -611,6 +611,12 @@ class GameState:
         elif self.game_status == GameStatus.PAUSED:
             self.game_status = GameStatus.PLAYING
 
+    def suicide(self):
+        if self.rockford_cell:
+            self.explode(self.rockford_cell)
+        else:
+            self.life_lost()
+
     def cheat_skip_level(self) -> None:
         if self.game_status in (GameStatus.PLAYING, GameStatus.PAUSED):
             self.load_c64level(self.level % len(caves.CAVES) + 1)
@@ -832,7 +838,7 @@ class GameState:
     def stop_game(self, status: GameStatus) -> None:
         self.game_status = status
         if self.rockford_cell:
-            self.clear_cell(self.rockford_cell)  # @todo buggy, rockford should not stay on screen when game over
+            self.clear_cell(self.rockford_cell)
         self.rockford_found_frame = 0
         if status == GameStatus.LOST:
             audio.play_sample("game_over")
