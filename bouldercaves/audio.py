@@ -118,6 +118,28 @@ class Sample:
             converter = subprocess.Popen(uncompress_command, stdin=tmpfile, stdout=subprocess.PIPE)
             return io.BytesIO(converter.stdout.read())
 
+    def chunked_data(self, chunksize: int, repeat: bool=False,
+                     stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
+        if repeat:
+            # continuously repeated
+            bdata = self.sampledata
+            if len(bdata) < chunksize:
+                bdata = bdata * math.ceil(chunksize / len(bdata))
+            length = len(bdata)
+            bdata += bdata[:chunksize]
+            mdata = memoryview(bdata)
+            i = 0
+            while not stopcondition():
+                yield mdata[i: i + chunksize]
+                i = (i + chunksize) % length
+        else:
+            # one-shot
+            mdata = memoryview(self.sampledata)
+            i = 0
+            while i < len(mdata) and not stopcondition():
+                yield mdata[i: i + chunksize]
+                i += chunksize
+
 
 class DummySample(Sample):
     def __init__(self, name: str, filename: str=None, duration: float=0.0) -> None:
@@ -137,33 +159,12 @@ class SampleMixer:
         self.chunksize = chunksize
         self.mixed_chunks = self.chunks()
 
-    def add_sample(self, sounddata: bytes, repeat: bool=False) -> None:
-        self.active_samples.append(self._chunked(memoryview(sounddata), chunksize=self.chunksize, repeat=repeat))
+    def add_sample(self, sample: Sample, repeat: bool=False) -> None:
+        sample_chunks = sample.chunked_data(chunksize=self.chunksize, repeat=repeat)
+        self.active_samples.append(sample_chunks)
 
     def clear_sources(self) -> None:
         self.active_samples.clear()
-
-    @staticmethod
-    def _chunked(data: memoryview, chunksize: int, repeat: bool=False,
-                 stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
-        if repeat:
-            # continuously repeated
-            bdata = data.tobytes()
-            if len(bdata) < chunksize:
-                bdata = bdata * math.ceil(chunksize / len(bdata))
-            length = len(bdata)
-            bdata += bdata[:chunksize]
-            mdata = memoryview(bdata)
-            i = 0
-            while not stopcondition():
-                yield mdata[i: i + chunksize]
-                i = (i + chunksize) % length
-        else:
-            # one-shot
-            i = 0
-            while i < len(data) and not stopcondition():
-                yield data[i: i + chunksize]
-                i += chunksize
 
     def chunks(self) -> Generator[memoryview, None, None]:
         silence = b"\0" * self.chunksize
@@ -173,18 +174,19 @@ class SampleMixer:
                 try:
                     chunk = next(s)
                     if len(chunk) < self.chunksize:
+                        # pad the chunk with some silence
                         chunk = memoryview(chunk.tobytes() + silence[:self.chunksize - len(chunk)])
                     chunks_to_mix.append(chunk)
                 except StopIteration:
                     self.active_samples.remove(s)
+            chunks_to_mix = chunks_to_mix or [memoryview(silence)]
             assert all(len(c) == self.chunksize for c in chunks_to_mix)
-            if chunks_to_mix:
-                mixed = chunks_to_mix[0]
+            mixed = chunks_to_mix[0]
+            if len(chunks_to_mix) > 1:
                 for to_mix in chunks_to_mix[1:]:
                     mixed = audioop.add(mixed, to_mix, norm_channels)
-                yield mixed
-            else:
-                yield memoryview(silence)
+                mixed = memoryview(mixed)
+            yield mixed
 
 
 class AudioApi:
@@ -244,7 +246,7 @@ class PyAudio(AudioApi):
                         except queue.Empty:
                             pass
                         else:
-                            mixer.add_sample(job["sample"].sampledata, job["repeat"])
+                            mixer.add_sample(job["sample"], job["repeat"])
                         data = next(mixer.mixed_chunks)
                         if isinstance(data, memoryview):
                             data = data.tobytes()   # PyAudio stream can't deal with memoryview
@@ -296,7 +298,7 @@ class SounddeviceThread(AudioApi):
                         except queue.Empty:
                             pass
                         else:
-                            mixer.add_sample(job["sample"].sampledata, job["repeat"])
+                            mixer.add_sample(job["sample"], job["repeat"])
                         data = next(mixer.mixed_chunks)
                         stream.write(data)
                 finally:
@@ -339,7 +341,7 @@ class Sounddevice(AudioApi):
         return sounddevice.get_portaudio_version()[1]
 
     def play(self, sample, repeat=False):
-        self.mixer.add_sample(sample.sampledata, repeat)
+        self.mixer.add_sample(sample, repeat)
 
     def silence(self):
         self.mixer.clear_sources()
