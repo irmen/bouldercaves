@@ -66,15 +66,19 @@ def best_api(dummy_enabled: bool=False):
 
 
 class Sample:
-    """A sample of raw PCM audio data. Uncompresses .ogg to PCM if needed."""
-    def __init__(self, name: str, filename: str=None, data: bytes=None) -> None:
+    """A stereo sample of raw PCM audio data. Uncompresses .ogg to PCM if needed."""
+    def __init__(self, name: str, filename: str=None, filedata: bytes=None, pcmdata: bytes=None) -> None:
         self.duration = 0.0
         self.name = name
         self.filename = filename
+        if pcmdata is not None:
+            self.sampledata = pcmdata
+            self.duration = len(self.sampledata) // norm_channels // norm_samplewidth / norm_samplerate
+            return
         if filename:
             inputfile = open(filename, "rb")
         else:
-            inputfile = io.BytesIO(data)
+            inputfile = io.BytesIO(filedata)
         try:
             with self.convertformat(inputfile) as inputfile:
                 with wave.open(inputfile, "r") as wavesample:
@@ -91,6 +95,15 @@ class Sample:
             print(x)
             raise SystemExit("'oggdec' (vorbis-tools) must be installed on your system to hear sounds in this game. "
                              "Or you can start it with the --nosound option.")
+
+    def append(self, othersample: 'Sample'):
+        self.duration += othersample.duration
+        self.sampledata += othersample.sampledata
+
+    def save_wav(self, filename):
+        with wave.open(filename, "wb") as out:
+            out.setparams((norm_channels, norm_samplewidth, norm_samplerate, 0, "NONE", "not compressed"))
+            out.writeframes(self.sampledata)
 
     def convertformat(self, stream: BinaryIO) -> BinaryIO:
         conversion_required = True
@@ -467,17 +480,19 @@ def init_audio(samples_to_load, dummy=False):
         for name, filename in samples_to_load.items():
             samples[name] = DummySample(name)
         return
-
     print("Loading sound data...")
     for name, filename in samples_to_load.items():
-        data = pkgutil.get_data(__name__, "sounds/" + filename)
-        if isinstance(output.audio_api, Winsound):
-            # winsound needs the samples as physical WAV files on disk.
-            filename = output.audio_api.store_sample_file(filename, data)
-            samples[name] = DummySample(name, filename)
+        if isinstance(filename, Sample):
+            samples[name] = filename
         else:
-            samples[name] = Sample(name, data=data)
-    print("Sound API used:", output.audio_api)
+            data = pkgutil.get_data(__name__, "sounds/" + filename)
+            if isinstance(output.audio_api, Winsound):
+                # winsound needs the samples as physical WAV files on disk.
+                filename = output.audio_api.store_sample_file(filename, data)
+                samples[name] = DummySample(name, filename)
+            else:
+                samples[name] = Sample(name, filedata=data)
+    print("Sound API initialized:", output.audio_api)
     if isinstance(output.audio_api, Winsound):
         print("Winsound is used as fallback. For better audio, it is recommended to install the 'sounddevice' or 'pyaudio' library instead.")
 
@@ -495,12 +510,11 @@ def shutdown_audio():
 
 
 if __name__ == "__main__":
-    # data = b"0123456789"
-    # chunks = chunked(data, chunksize=91, repeat=True)
-    # for _ in range(200):
-    #     print(next(chunks).tobytes())
-    # raise SystemExit
-    norm_samplerate = 22100
+    sample = Sample("test", pcmdata=b"0123456789")
+    chunks = sample.chunked_data(chunksize=51, repeat=True)
+    for _ in range(60):
+        print(next(chunks).tobytes())
+    norm_samplerate = 22050
     init_audio({
         "explosion": "explosion.ogg",
         "amoeba": "amoeba.ogg",

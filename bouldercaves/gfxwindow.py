@@ -660,7 +660,7 @@ def start(sargs: Sequence[str]=None) -> None:
         print("No sound output selected.")
         audio.init_audio(samples, dummy=True)
     else:
-        audio.norm_samplerate = 22100
+        audio.norm_samplerate = 22050
         audio.norm_samplewidth = 2
         audio.norm_channels = 2
         audio.init_audio(samples)
