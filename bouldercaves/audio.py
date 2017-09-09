@@ -105,7 +105,8 @@ class Sample:
             out.setparams((norm_channels, norm_samplewidth, norm_samplerate, 0, "NONE", "not compressed"))
             out.writeframes(self.sampledata)
 
-    def convertformat(self, stream: BinaryIO) -> BinaryIO:
+    @classmethod
+    def convertformat(cls, stream: BinaryIO) -> BinaryIO:
         conversion_required = True
         try:
             # maybe the existing data is already a WAV in the correct format
