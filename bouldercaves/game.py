@@ -607,8 +607,12 @@ class GameState:
 
     def pause(self):
         if self.game_status == GameStatus.PLAYING:
+            self.time_paused = datetime.datetime.now()
             self.game_status = GameStatus.PAUSED
         elif self.game_status == GameStatus.PAUSED:
+            if self.timelimit:
+                pause_duration = datetime.datetime.now() - self.time_paused
+                self.timelimit = self.timelimit + pause_duration
             self.game_status = GameStatus.PLAYING
 
     def suicide(self):
@@ -790,7 +794,7 @@ class GameState:
             self.magicwall["active"] = still_magic
         if self.timelimit and not self.level_won and self.rockford_cell:
             secs_before = self.timeremaining.seconds
-            self.timeremaining = self.timelimit - datetime.datetime.now()   # @todo don't use datetime now; cannot be paused
+            self.timeremaining = self.timelimit - datetime.datetime.now()
             secs_after = self.timeremaining.seconds
             if secs_after <= 0:
                 self.timeremaining = datetime.timedelta(0)
