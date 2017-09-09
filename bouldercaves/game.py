@@ -55,6 +55,7 @@ class Direction(Enum):
 class GameStatus(Enum):
     WAITING = "waiting"
     PLAYING = "playing"
+    PAUSED = "paused"
     LOST = "lost"
     WON = "won"
     DEMO = "demo"
@@ -594,7 +595,8 @@ class GameState:
         self.gfxwindow.tilesheet.all_dirty()
         if level_intro_popup:
             audio.play_sample("diamond2")
-            self.gfxwindow.popup("Level {:d}: {:s}\n\n{:s}".format(self.level, self.level_name, self.level_description))
+            fmt = "{:s}\n\n{:s}" if self.intermission else "Cave {:s}\n\n{:s}"
+            self.gfxwindow.popup(fmt.format(self.level_name, self.level_description))
 
     def start_demo(self):
         if self.game_status == GameStatus.WAITING:
@@ -603,8 +605,15 @@ class GameState:
             self.movement = self.DemoMovementInfo(caves.CAVE_A_DEMO)  # is reset to regular handling when demo ends/new level loads
             self.game_status = GameStatus.DEMO
 
+    def pause(self):
+        if self.game_status == GameStatus.PLAYING:
+            self.game_status = GameStatus.PAUSED
+        elif self.game_status == GameStatus.PAUSED:
+            self.game_status = GameStatus.PLAYING
+
     def cheat_skip_level(self) -> None:
-        self.load_c64level(self.level % len(caves.CAVES) + 1)
+        if self.game_status in (GameStatus.PLAYING, GameStatus.PAUSED):
+            self.load_c64level(self.level % len(caves.CAVES) + 1)
 
     def draw_rectangle(self, obj: GameObject, x1: int, y1: int, width: int, height: int, fillobject: GameObject=None) -> None:
         self.draw_line(obj, x1, y1, width, Direction.RIGHT)
@@ -722,7 +731,7 @@ class GameState:
                     elif cell.obj is GameObject.INBOXBLINKING:
                         self.update_inbox(cell)
                     elif cell.isrockford():
-                        self.update_rockford(cell)
+                        self.update_rockford(cell)  # @todo in intermissions Rockford should move faster (twice as fast?)
                     elif cell.isamoeba():
                         self.update_amoeba(cell)
                     elif cell.obj is GameObject.OUTBOXCLOSED:
@@ -775,7 +784,7 @@ class GameState:
             self.magicwall["active"] = still_magic
         if self.timelimit and not self.level_won and self.rockford_cell:
             secs_before = self.timeremaining.seconds
-            self.timeremaining = self.timelimit - datetime.datetime.now()
+            self.timeremaining = self.timelimit - datetime.datetime.now()   # @todo don't use datetime now; cannot be paused
             secs_after = self.timeremaining.seconds
             if secs_after <= 0:
                 self.timeremaining = datetime.timedelta(0)
@@ -1085,6 +1094,9 @@ class GameState:
             tiles = self.gfxwindow.text2tiles("\x0e  C O N G R A T U L A T I O N S  \x0e".center(self.width))
         elif self.game_status == GameStatus.LOST:
             tiles = self.gfxwindow.text2tiles("\x0b  G A M E   O V E R  \x0b".center(self.width))
+        elif self.game_status == GameStatus.PAUSED:
+            tiles = self.gfxwindow.text2tiles("\x08  P A U S E D  \x08".center(self.width))
         else:
-            tiles = self.gfxwindow.text2tiles("Level {:d}: {:s}".format(self.level, self.level_name).center(self.width))
+            fmt = "{:s}" if self.intermission else "Cave {:s}"
+            tiles = self.gfxwindow.text2tiles(fmt.format(self.level_name).center(self.width))
         self.gfxwindow.tilesheet_score.set_tiles(0, 1, tiles[:40])

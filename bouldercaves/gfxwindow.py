@@ -217,7 +217,6 @@ class BoulderWindow(tkinter.Tk):
         self.after(1000 // 120, self.tick_loop)
 
     def keypress(self, event) -> None:
-        # @todo space=pause/unpause the game
         if event.keysym.startswith("Shift") or event.state & 1:
             self.gamestate.movement.start_grab()
         if event.keysym == "Down":
@@ -228,6 +227,8 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.movement.start_left()
         elif event.keysym == "Right":
             self.gamestate.movement.start_right()
+        elif event.keysym == "space":
+            self.gamestate.pause()
         elif event.keysym == "Escape":
             if self.gamestate.game_status in (GameStatus.LOST, GameStatus.WON):
                 self.popup_tiles_save = None
@@ -273,6 +274,7 @@ class BoulderWindow(tkinter.Tk):
         elif event.keysym == "F7":
             self.gamestate.cheat_skip_level()
         elif event.keysym == "F8":
+            # choose a random color scheme (only works when using retro C-64 colors)
             c1 = random.randint(1, 15)
             c2 = random.randint(1, 15)
             c3 = random.randint(1, 15)
@@ -419,12 +421,16 @@ class BoulderWindow(tkinter.Tk):
                 palettevalues = tile_image.getpalette()
                 assert 768 - palettevalues.count(0) <= 16, "must be an image with <= 16 colors"
                 palette = [(r, g, b) for r, g, b in zip(palettevalues[0:16 * 3:3], palettevalues[1:16 * 3:3], palettevalues[2:16 * 3:3])]
-                palette[1] = (color2 >> 16, (color2 & 0xff00) >> 8, color2 & 0xff)   # pink replace (255,0,255)
-                palette[4] = (color1 >> 16, (color1 & 0xff00) >> 8, color1 & 0xff)   # red replace (255,0,0)
+                pc1 = palette.index((255, 0, 255))
+                pc2 = palette.index((255, 0, 0))
+                pc3 = palette.index((255, 255, 0))
+                pc4 = palette.index((0, 255, 0))
+                palette[pc1] = (color2 >> 16, (color2 & 0xff00) >> 8, color2 & 0xff)
+                palette[pc2] = (color1 >> 16, (color1 & 0xff00) >> 8, color1 & 0xff)
                 if color3 < 0x808080:
                     color3 = 0xffffff
-                palette[3] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)   # yellow replace (255, 255, 0) foreground color
-                palette[6] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)   # green replace (0, 255, 0) foreground color
+                palette[pc3] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)
+                palette[pc4] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)
                 palettevalues = []
                 for rgb in palette:
                     palettevalues.extend(rgb)
