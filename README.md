@@ -8,9 +8,15 @@ is provided for you, and the game *can* optionally use the built-in ``winsound``
 but the sound quality will suffer (no mixing possible) 
   
 
-Graphics and sounds are used from the MIT-licensed GDash https://bitbucket.org/czirkoszoltan/gdash
+Graphics and sounds are used from the MIT-licensed GDash 
+https://bitbucket.org/czirkoszoltan/gdash
 
-Inspired by the javascript version from Jake Gordon http://codeincomplete.com/posts/javascript-boulderdash/
+Inspired by the javascript version from Jake Gordon
+http://codeincomplete.com/posts/javascript-boulderdash/
+
+Much technical info about Boulder Dash can be found here https://www.elmerproductions.com/sp/peterb/
+and here https://www.boulder-dash.nl/
+
 
 There are a few command line options to control the graphics of the game, the zoom level,
 and the graphics update speed (fps).

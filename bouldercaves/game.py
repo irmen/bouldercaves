@@ -57,6 +57,7 @@ class GameStatus(Enum):
     PLAYING = "playing"
     LOST = "lost"
     WON = "won"
+    DEMO = "demo"
 
 
 class GameObject:
@@ -306,7 +307,7 @@ class GameState:
 
         @property
         def moving(self) -> bool:
-            return bool(self.direction)
+            return bool(self.direction != Direction.NOWHERE)
 
         def start_up(self) -> None:
             self.direction = Direction.UP
@@ -364,6 +365,52 @@ class GameState:
             else:
                 return Direction.NOWHERE
 
+        def move_done(self):
+            pass
+
+    class DemoMovementInfo(MovementInfo):
+        # movement controller that doesn't respond to user input,
+        # and instead plays a prerecorded sequence of moves.
+        def __init__(self, demo_moves) -> None:
+            super().__init__()
+            self.demo_direction = Direction.NOWHERE
+            self.demo_moves = self.decompressed(demo_moves)
+            self.demo_finished = False
+
+        @property
+        def moving(self) -> bool:
+            return True
+
+        @property
+        def direction(self) -> Direction:
+            return self.demo_direction
+
+        @direction.setter
+        def direction(self, value: Direction) -> None:
+            pass
+
+        def move_done(self):
+            try:
+                self.demo_direction = next(self.demo_moves)
+            except StopIteration:
+                self.demo_finished = True
+                self.demo_direction = Direction.NOWHERE
+
+        def decompressed(self, demo):
+            for step in demo:
+                d = step & 0x0f
+                if d == 0:
+                    raise StopIteration
+                direction = {
+                    0x0f: Direction.NOWHERE,
+                    0x07: Direction.RIGHT,
+                    0x0b: Direction.LEFT,
+                    0x0d: Direction.DOWN,
+                    0x0e: Direction.UP
+                }[d]
+                for _ in range(step >> 4):
+                    yield direction
+
     def __init__(self, gfxwindow) -> None:
         self.gfxwindow = gfxwindow
         self.graphics_frame_counter = 0    # will be set via the update() method
@@ -396,7 +443,7 @@ class GameState:
     def restart(self) -> None:
         audio.silence_audio()
         audio.play_sample("music", repeat=True)
-        self.frame = 0
+        self.gfxwindow.graphics_frame = self.frame = 0
         self.bonusbg_frame = 0    # till what frame should the bg be the bonus sparkly things instead of spaces
         self.level = -1
         self.level_name = self.level_description = "???"
@@ -478,14 +525,14 @@ class GameState:
         self.draw_single(GameObject.DIRTSLOPEDUPRIGHT, self.width - 4, self.height - 3)
         self.draw_single(GameObject.DIRTSLOPEDUPRIGHT, self.width - 3, self.height - 2)
 
-    def load_c64level(self, levelnumber: int) -> None:
+    def load_c64level(self, levelnumber: int, level_intro_popup: bool=True) -> None:
         audio.silence_audio()
         c64cave = caves.Cave.decode_from_lvl(levelnumber)
         assert c64cave.width == self.width and c64cave.height == self.height
         self.level_name = c64cave.name
         self.level_description = c64cave.description
         self.intermission = c64cave.intermission
-        level_intro_popup = levelnumber != self.level
+        level_intro_popup = level_intro_popup and levelnumber != self.level
         self.level = levelnumber
         self.level_won = False
         self.game_status = GameStatus.PLAYING
@@ -549,6 +596,13 @@ class GameState:
             audio.play_sample("diamond2")
             self.gfxwindow.popup("Level {:d}: {:s}\n\n{:s}".format(self.level, self.level_name, self.level_description))
 
+    def start_demo(self):
+        if self.game_status == GameStatus.WAITING:
+            self.level = 0
+            self.load_next_level(intro_popup=False)
+            self.movement = self.DemoMovementInfo(caves.CAVE_A_DEMO)  # is reset to regular handling when demo ends/new level loads
+            self.game_status = GameStatus.DEMO
+
     def cheat_skip_level(self) -> None:
         self.load_c64level(self.level % len(caves.CAVES) + 1)
 
@@ -601,7 +655,7 @@ class GameState:
 
     def move(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> Cell:
         # move the object in the cell to the given relative direction
-        if not direction:
+        if direction == Direction.NOWHERE:
             return None  # no movement...
         newcell = self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
         self.draw_single_cell(newcell, cell.obj)
@@ -650,7 +704,7 @@ class GameState:
 
     def update(self, graphics_frame_counter: int) -> None:
         self.graphics_frame_counter = graphics_frame_counter    # we store this to properly sync up animation frames
-        if self.game_status != GameStatus.PLAYING:
+        if self.game_status not in (GameStatus.PLAYING, GameStatus.DEMO):
             return
         self.frame_start()
         if not self.level_won:
@@ -735,7 +789,10 @@ class GameState:
                 self.check_extralife_score()
                 self.timeremaining -= datetime.timedelta(seconds=add_score)
             else:
-                self.load_next_level()
+                if self.game_status == GameStatus.DEMO:
+                    self.restart()  # go back to title screen when demo finishes
+                else:
+                    self.load_next_level()
         elif self.timelimit and self.update_timestep * (self.frame - self.rockford_found_frame) > 5:
             # after 5 seconds with dead rockford we reload the current level
             self.life_lost()
@@ -766,7 +823,7 @@ class GameState:
     def stop_game(self, status: GameStatus) -> None:
         self.game_status = status
         if self.rockford_cell:
-            self.clear_cell(self.rockford_cell)
+            self.clear_cell(self.rockford_cell)  # @todo buggy, rockford should not stay on screen when game over
         self.rockford_found_frame = 0
         if status == GameStatus.LOST:
             audio.play_sample("game_over")
@@ -777,13 +834,13 @@ class GameState:
             self.gfxwindow.popup("Congratulations, you finished the game!\n\nYour final score: {:d}\n\n"
                                  "press Escape to return to the title screen".format(self.score))
 
-    def load_next_level(self) -> None:
+    def load_next_level(self, intro_popup: bool=True) -> None:
         level = self.level + 1
         if level > len(caves.CAVES):
             self.stop_game(GameStatus.WON)
         else:
             audio.silence_audio()
-            self.load_c64level(level)
+            self.load_c64level(level, level_intro_popup=intro_popup)
 
     def update_canfall(self, cell: Cell) -> None:
         # if the cell below this one is empty, the object starts to fall
@@ -912,6 +969,7 @@ class GameState:
                 self.level_won = True   # exit found!
                 audio.play_sample("finished")
                 self.movement.stop_all()
+            self.movement.move_done()
         self.rockford_cell = cell
 
     def fall_sound(self, cell: Cell, pushing: bool=False) -> None:
@@ -952,7 +1010,7 @@ class GameState:
 
     def end_rockfordbirth(self, cell: Cell) -> None:
         # rockfordbirth eventually creates the real Rockford and starts the level timer.
-        if self.game_status == GameStatus.PLAYING:
+        if self.game_status in (GameStatus.PLAYING, GameStatus.DEMO):
             self.draw_single_cell(cell, GameObject.ROCKFORD)
             self.timelimit = datetime.datetime.now() + self.timeremaining
             self.inbox_cell = None
@@ -1006,7 +1064,7 @@ class GameState:
                 ts.set_tiles(0, 0, self.gfxwindow.text2tiles("Welcome to Boulder Caves 'authentic'".center(self.width)))
             else:
                 ts.set_tiles(0, 0, self.gfxwindow.text2tiles("Welcome to Boulder Caves".center(self.width)))
-            ts.set_tiles(0, 1, self.gfxwindow.text2tiles("F1  to start new game!".center(self.width)))
+            ts.set_tiles(0, 1, self.gfxwindow.text2tiles("F1 \x04 New game!   F9 \x04 Demo".center(self.width)))
             if not self.gfxwindow.smallwindow:
                 ts[0, 0] = ts[self.width - 1, 0] = ts[0, 1] = ts[self.width - 1, 1] = self.gfxwindow.sprite2tile(GameObject.MEGABOULDER)
                 ts[1, 0] = ts[self.width - 2, 0] = ts[1, 1] = ts[self.width - 2, 1] = self.gfxwindow.sprite2tile(GameObject.FLYINGDIAMOND)

@@ -217,6 +217,7 @@ class BoulderWindow(tkinter.Tk):
         self.after(1000 // 120, self.tick_loop)
 
     def keypress(self, event) -> None:
+        # @todo space=pause/unpause the game
         if event.keysym.startswith("Shift") or event.state & 1:
             self.gamestate.movement.start_grab()
         if event.keysym == "Down":
@@ -234,19 +235,25 @@ class BoulderWindow(tkinter.Tk):
             elif not self.uncover_tiles and self.gamestate.game_status == GameStatus.PLAYING:
                 self.popup_frame = 0
                 if self.gamestate.rockford_cell:
+                    # @todo move suicide to GameState and improve it a bit so you can see the explosion
                     self.gamestate.explode(self.gamestate.rockford_cell)
                 if self.gamestate.lives > 0:
                     self.gamestate.life_lost()
                 else:
                     self.popup_tiles_save = None
                     self.gamestate.restart()
+            elif self.gamestate.game_status == GameStatus.DEMO:
+                self.gamestate.restart()
         elif event.keysym == "F1":
             self.popup_frame = 0
-            if not self.uncover_tiles and self.gamestate.lives < 0:
+            if self.gamestate.game_status == GameStatus.DEMO:
                 self.gamestate.restart()
-            if self.gamestate.level < 1:
-                self.gamestate.level = 0
-                self.gamestate.load_next_level()
+            else:
+                if not self.uncover_tiles and self.gamestate.lives < 0:
+                    self.gamestate.restart()
+                if self.gamestate.level < 1:
+                    self.gamestate.level = 0
+                    self.gamestate.load_next_level()
         elif event.keysym == "F5":
             self.gamestate.add_extra_life()
         elif event.keysym == "F6":
@@ -272,6 +279,8 @@ class BoulderWindow(tkinter.Tk):
             print("random colors:", c1, c2, c3)
             self.create_colored_tiles(colorpalette[c1], colorpalette[c2], colorpalette[c3])
             self.tilesheet.all_dirty()
+        elif event.keysym == "F9":
+            self.gamestate.start_demo()
 
     def repaint(self) -> None:
         self.graphics_frame += 1
@@ -472,6 +481,9 @@ class BoulderWindow(tkinter.Tk):
         if not self.uncover_tiles and self.popup_frame < self.graphics_frame:
             self.gamestate.update(self.graphics_frame)
         self.gamestate.update_scorebar()
+        if self.gamestate.game_status == GameStatus.WAITING and \
+                                self.update_timestep * self.graphics_frame >= audio.samples["music"].duration:
+            self.gamestate.start_demo()
 
     def scroll_focuscell_into_view(self, immediate: bool=False) -> None:
         focus_cell = self.gamestate.focus_cell()
