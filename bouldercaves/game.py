@@ -1,7 +1,7 @@
 """
 Boulder Caves - a Boulder Dash (tm) clone.
 
-This module is the game logic.
+This module contains the game logic.
 
 Written by Irmen de Jong (irmen@razorvine.net)
 License: MIT open-source.
@@ -741,7 +741,7 @@ class GameState:
                     elif cell.obj is GameObject.INBOXBLINKING:
                         self.update_inbox(cell)
                     elif cell.isrockford():
-                        self.update_rockford(cell)  # @todo in intermissions Rockford should move faster (twice as fast?)
+                        self.update_rockford(cell)
                     elif cell.isamoeba():
                         self.update_amoeba(cell)
                     elif cell.obj is GameObject.OUTBOXCLOSED:

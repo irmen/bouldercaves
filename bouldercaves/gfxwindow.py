@@ -1,7 +1,7 @@
 """
 Boulder Caves - a Boulder Dash (tm) clone.
 
-This module is the GUI window logic, handling keyboard input
+This module contains the GUI window logic, handles keyboard input
 and screen drawing via tkinter bitmaps.
 
 Written by Irmen de Jong (irmen@razorvine.net)
@@ -483,7 +483,7 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.update(self.graphics_frame)
         self.gamestate.update_scorebar()
         if self.gamestate.game_status == GameStatus.WAITING and \
-                                self.update_timestep * self.graphics_frame >= audio.samples["music"].duration:
+                self.update_timestep * self.graphics_frame >= audio.samples["music"].duration:
             self.gamestate.start_demo()
 
     def scroll_focuscell_into_view(self, immediate: bool=False) -> None:

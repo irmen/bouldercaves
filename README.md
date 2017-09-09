@@ -53,7 +53,7 @@ You control the game via the keyboard:
 - F6: cheat and add 10 seconds extra time.
 - F7: cheat and skip to the next level.
 - F8: randomize colors (only when using Commodore-64 colors)
-- F9: replay recorded demo (from title screen)
+- F9: replay prerecorded demo (from title screen)
 
 
 ## Screenshot of a level
