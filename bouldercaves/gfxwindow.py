@@ -616,9 +616,16 @@ def start(sargs: Sequence[str]=None) -> None:
         if isinstance(audio_api, audio.Winsound):
             r = tkinter.Tk()
             r.withdraw()
-            tkinter.messagebox.showinfo("inferior Python audio library detected",
-                                        "Winsound is used as python audio library. This library cannot play all sounds correctly.\n\n"
-                                        "Try installing 'sounddevice' to hear properly mixed sounds.")
+            if args.synth:
+                # winsound can't play streaming audio at all
+                tkinter.messagebox.showerror("inferior Python audio library detected",
+                                             "Winsound is used as python audio library. It can't play synthesized audio streams.\n\n"
+                                             "Try installing 'sounddevice' to hear properly mixed sounds (or use the sampled sounds)")
+                raise SystemExit
+            else:
+                tkinter.messagebox.showinfo("inferior Python audio library detected",
+                                            "Winsound is used as python audio library. It can'n play all sounds correctly.\n\n"
+                                            "Try installing 'sounddevice' to hear properly mixed sounds.")
             r.destroy()
 
     args.c64colors |= args.authentic

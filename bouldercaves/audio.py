@@ -384,7 +384,7 @@ class Sounddevice(AudioApi):
 
 
 class Winsound(AudioApi):
-    """Minimally featured api for the winsound library that comes with Python on Windows."""
+    """Minimally featured api for the winsound library that comes with Python on Windows. Can't plays streaming audio."""
     def __init__(self):
         super().__init__()
         del self.samp_queue
