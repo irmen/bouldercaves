@@ -704,7 +704,7 @@ def start(sargs: Sequence[str]=None) -> None:
         assert len(synthesized.keys() - samples.keys()) == 0
         missing = samples.keys()-synthesized.keys()
         if missing:
-            raise SystemExit("Synths missing for: " +str(missing))
+            raise SystemExit("Synths missing for: " + str(missing))
         samples.update(synthesized)
 
     if args.nosound:

@@ -8,6 +8,7 @@ import time
 import audioop
 import array
 import random
+import itertools
 from typing import Callable, Generator
 from .synth import FastTriangle, WhiteNoise, Linear, Triangle, SquareH, EnvelopeFilter, AmpModulationFilter, note_freq
 from . import audio
@@ -29,6 +30,7 @@ def sample_from_osc(osc, raw=False):
 
 
 class TitleMusic(audio.Sample):
+    # The title music. It is generated real-time while being played.
     title_music = [
         (22, 34), (29, 38), (34, 41), (37, 46), (20, 36), (31, 39), (32, 41), (39, 48),
         (18, 42), (18, 44), (30, 46), (18, 49), (32, 44), (51, 55), (33, 45), (49, 53),
@@ -55,22 +57,43 @@ class TitleMusic(audio.Sample):
         3504, 3712, 3912, 4168, 4400, 4680, 4952, 5248, 5560, 5856, 6224, 6608, 7008,
         7424, 7824, 8336, 8800, 9360, 9904, 10496, 11120, 11712
     ]
+    adsr_times = (0.001, 0.001, 0.145, 0.01)
 
     def __init__(self) -> None:
         super().__init__("music", pcmdata=b"")
-        for v1, v2 in self.title_music:
+        # set the duration to a quite precise approximation of the length of the synthesized song:
+        self.duration = len(self.title_music) * sum(self.adsr_times) + 0.005
+
+    def chunked_data(self, chunksize: int, repeat: bool=False,
+                     stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
+        notes = self.title_music
+        if repeat:
+            notes = itertools.cycle(notes)
+        buffer = b""
+        attack, decay, sustain, release = self.adsr_times
+        for v1, v2 in notes:
+            if stopcondition():
+                break
             vf1 = self.music_freq_table[v1]
             vf2 = self.music_freq_table[v2]
             osc1 = FastTriangle(vf1 * _sidfreq, amplitude=0.5, samplerate=audio.norm_samplerate)
             osc2 = FastTriangle(vf2 * _sidfreq, amplitude=0.5, samplerate=audio.norm_samplerate)
-            f1 = EnvelopeFilter(osc1, 0.001, 0.001, 0.145, 1.0, 0.01, stop_at_end=True)
-            f2 = EnvelopeFilter(osc2, 0.001, 0.001, 0.145, 1.0, 0.01, stop_at_end=True)
+            f1 = EnvelopeFilter(osc1, attack, decay, sustain, 1.0, release, stop_at_end=True)
+            f2 = EnvelopeFilter(osc2, attack, decay, sustain, 1.0, release, stop_at_end=True)
             sample1 = sample_from_osc(f1, True)
             sample2 = sample_from_osc(f2, True)
             sample1 = audioop.tostereo(sample1, audio.norm_samplewidth, 1, 0)
             sample2 = audioop.tostereo(sample2, audio.norm_samplewidth, 0, 1)
             sample1 = audioop.add(sample1, sample2, audio.norm_samplewidth)
-            self.append(audio.Sample("music", pcmdata=sample1))
+            buffer += sample1
+            if len(buffer) > chunksize:
+                mbuf = memoryview(buffer)
+                while len(mbuf) > chunksize:
+                    yield mbuf[:chunksize]
+                    mbuf = mbuf[chunksize:]
+                buffer = mbuf.tobytes()
+        if buffer:
+            yield memoryview(buffer)
 
 
 class Amoeba(audio.Sample):
@@ -351,11 +374,11 @@ def demo2():
     # time.sleep(sample.duration)
 
     # ----- title music
-    # print("Title music")
-    # sample = TitleMusic()
-    # print(sample.duration)
-    # api.play(sample)
-    # time.sleep(sample.duration)
+    print("Title music")
+    sample = TitleMusic()
+    print(sample.duration)
+    api.play(sample, repeat=True)
+    time.sleep(max(10, sample.duration + 0.1))
 
     print("CLOSING!")
     api.close()
@@ -363,4 +386,3 @@ def demo2():
 
 if __name__ == "__main__":
     demo2()
-

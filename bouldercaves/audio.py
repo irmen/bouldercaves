@@ -187,6 +187,8 @@ class SampleMixer:
             for s in list(self.active_samples):
                 try:
                     chunk = next(s)
+                    if len(chunk) > self.chunksize:
+                        raise ValueError("chunk from sample is larger than chunksize from mixer")
                     if len(chunk) < self.chunksize:
                         # pad the chunk with some silence
                         chunk = memoryview(chunk.tobytes() + silence[:self.chunksize - len(chunk)])
