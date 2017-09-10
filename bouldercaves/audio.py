@@ -473,6 +473,7 @@ output = None
 
 def init_audio(samples_to_load, dummy=False):
     global output, samples
+    samples.clear()
     if dummy:
         output = Output(DummyAudio())
     else:
@@ -525,7 +526,7 @@ if __name__ == "__main__":
         "game_over": "game_over.ogg",
     })
     with Output(Sounddevice()) as output:
-        print("PLAY MUSIC...", output.audio_api)
+        print("PLAY SAMPLED SOUNDS...", output.audio_api)
         print("CHUNK", output.audio_api.chunksize())
         output.play_sample("amoeba", repeat=True)
         time.sleep(3)

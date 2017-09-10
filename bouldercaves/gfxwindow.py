@@ -311,7 +311,7 @@ class BoulderWindow(tkinter.Tk):
         if self.uncover_tiles:
             # perform random uncover animation before the level starts
             if len(self.uncover_tiles) == self.playfield_rows * self.playfield_columns:
-                audio.play_sample("cover")
+                audio.play_sample("cover", repeat=True)
             for _ in range(int(30 * 30 / self.update_fps)):
                 reveal = random.randrange(1 + self.playfield_columns, self.playfield_columns * (self.playfield_rows - 1))
                 revealy, revealx = divmod(reveal, self.playfield_columns)
