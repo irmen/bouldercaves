@@ -29,7 +29,7 @@ from .game import GameState, GameObject, Direction, GameStatus
 from .caves import colorpalette
 from . import audio, synthsamples
 
-__version__ = "2.0"
+__version__ = "2.1"
 
 
 class Tilesheet:

@@ -30,7 +30,7 @@ import tempfile
 import threading
 import time
 import wave
-from typing import BinaryIO, ByteString, Callable, Generator, List, Union
+from typing import BinaryIO, ByteString, Callable, Generator, List, Union, Dict
 
 
 __all__ = ["init_audio", "play_sample", "silence_audio", "shutdown_audio"]
@@ -467,7 +467,7 @@ class Output:
         self.audio_api.play(samples[samplename], repeat=repeat)
 
 
-samples = {}
+samples = {}    # type: Dict[str, Union[str, Sample]]
 output = None
 
 

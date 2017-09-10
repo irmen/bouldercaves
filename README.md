@@ -6,7 +6,7 @@ Requirements to run this:
 - ``pillow`` (or ``pil``) python library
 - ``sounddevice`` python library, if you want to play with sound.
 
-*Detailed instructions how to run the game are at the bottom of this text.*
+*Detailed instructions how to run the game are [at the bottom of this text.](#how-to-install-and-run-this-game)*
 
 Graphics and sounds are used from the MIT-licensed GDash 
 https://bitbucket.org/czirkoszoltan/gdash
