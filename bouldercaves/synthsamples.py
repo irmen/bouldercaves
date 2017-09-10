@@ -17,7 +17,11 @@ from . import audio
 _sidfreq = 985248.0 / 16777216.0
 
 
-def sample_from_osc(osc, raw=False, chunksize=0):
+class NoteFinished(Exception):
+    pass
+
+
+def sample_from_osc(osc, raw_mono_channel=False, chunksize=0):
     scale = 2 ** (audio.norm_samplewidth * 8 - 1) - 1
     sounddata = array.array('h')
     if chunksize:
@@ -31,8 +35,8 @@ def sample_from_osc(osc, raw=False, chunksize=0):
             sounddata.append(int(scale * v))
     sounddata = sounddata.tobytes()
     if len(sounddata) == 0:
-        raise StopIteration
-    if raw:
+        raise NoteFinished
+    if raw_mono_channel:
         return sounddata
     sounddata = audioop.tostereo(sounddata, audio.norm_samplewidth, 1, 1)
     return audio.Sample("sample", pcmdata=sounddata)
@@ -80,9 +84,6 @@ class TitleMusic(audio.Sample):
             notes = itertools.cycle(notes)
         attack, decay, sustain, release = self.adsr_times
 
-        class NoteFinished(Exception):
-            pass
-
         samplebuffer = b""
         for v1, v2 in notes:
             if stopcondition():
@@ -97,29 +98,20 @@ class TitleMusic(audio.Sample):
             f1_i = iter(f1)
             f2_i = iter(f2)
 
-            def render_chunk():
-                try:
-                    sample1 = sample_from_osc(f1_i, True, chunksize=osc_chunksize)
-                    sample2 = sample_from_osc(f2_i, True, chunksize=osc_chunksize)
-                except StopIteration:
-                    raise NoteFinished
-                else:
-                    sample1 = audioop.tostereo(sample1, audio.norm_samplewidth, 1, 0)
-                    sample2 = audioop.tostereo(sample2, audio.norm_samplewidth, 0, 1)
-                    sample1 = audioop.add(sample1, sample2, audio.norm_samplewidth)
-                    return sample1
-
             while True:
                 # render this note in chunks of the asked size
                 try:
                     while len(samplebuffer) < chunksize:
                         # fill up the sample buffer so we have at least one full chunk
-                        chunk = render_chunk()
-                        samplebuffer += chunk
+                        sample1 = sample_from_osc(f1_i, True, chunksize=osc_chunksize)
+                        sample2 = sample_from_osc(f2_i, True, chunksize=osc_chunksize)
+                        sample1 = audioop.tostereo(sample1, audio.norm_samplewidth, 1, 0)
+                        sample2 = audioop.tostereo(sample2, audio.norm_samplewidth, 0, 1)
+                        sample1 = audioop.add(sample1, sample2, audio.norm_samplewidth)
+                        samplebuffer += sample1
                 except NoteFinished:
                     # go to next note
                     break
-
                 if samplebuffer:
                     chunk = samplebuffer[:chunksize]
                     samplebuffer = samplebuffer[chunksize:]
@@ -131,46 +123,108 @@ class TitleMusic(audio.Sample):
             yield memoryview(samplebuffer)
 
 
-class Amoeba(audio.Sample):
+# @todo some real time samples should be 'repeated' (amoeba, uncover, magicwall)
+# @todo stopcondition in chunker
+
+
+class RealtimeSynthesizedSample:
+    def render_samples(self, osc: Generator[int, None, None], samplebuffer: bytes,
+                       sample_chunksize: int, return_remaining_buffer: bool=False) -> Generator[memoryview, None, bytes]:
+        osc_chunksize = sample_chunksize // audio.norm_samplewidth // audio.norm_channels
+        while True:
+            # render this sample in chunks of the asked size
+            try:
+                while len(samplebuffer) < sample_chunksize:
+                    # fill up the sample buffer so we have at least one full chunk
+                    sample = sample_from_osc(osc, chunksize=osc_chunksize)
+                    samplebuffer += sample.sampledata
+            except NoteFinished:
+                # go to next sample
+                break
+            if samplebuffer:
+                chunk = samplebuffer[:sample_chunksize]
+                samplebuffer = samplebuffer[sample_chunksize:]
+                assert len(chunk) == sample_chunksize
+                yield memoryview(chunk)
+            else:
+                break
+        if return_remaining_buffer:
+            return samplebuffer
+        yield memoryview(samplebuffer)
+
+
+class Amoeba(audio.Sample, RealtimeSynthesizedSample):  # @todo randomize real-time
     def __init__(self) -> None:
         super().__init__("amoeba", pcmdata=b"")
+
+    def chunked_data(self, chunksize: int, repeat: bool=False,
+                     stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
+        assert not repeat
+        samplebuffer = b""
         for _ in range(1, 200):
             freq = random.randint(0x0800, 0x1200)
             osc = FastTriangle(freq * _sidfreq, amplitude=0.75, samplerate=audio.norm_samplerate)
-            filtered = EnvelopeFilter(osc, 0.024, 0.006, 0.0, 0.5, 0.003, stop_at_end=True)
-            self.append(sample_from_osc(filtered))
+            filtered = iter(EnvelopeFilter(osc, 0.024, 0.006, 0.0, 0.5, 0.003, stop_at_end=True))
+            samplebuffer = yield from self.render_samples(filtered, samplebuffer, chunksize, return_remaining_buffer=True)
+        if samplebuffer:
+            yield memoryview(samplebuffer)
 
 
-class MagicWall(audio.Sample):
+class MagicWall(audio.Sample, RealtimeSynthesizedSample):   # @todo randomize real-time
     def __init__(self) -> None:
         super().__init__("magicwall", pcmdata=b"")
+
+    def chunked_data(self, chunksize: int, repeat: bool=False,
+                     stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
+        assert not repeat
+        samplebuffer = b""
         for _ in range(1, 200):
             freq = random.randint(0x8600, 0x9f00)
             freq &= 0b0001100100000000
             freq |= 0b1000011000000000
             osc = FastTriangle(freq * _sidfreq, amplitude=0.4, samplerate=audio.norm_samplerate)
-            filtered = EnvelopeFilter(osc, 0.002, 0.008, 0.0, 0.6, 0.03, stop_at_end=True)
-            self.append(sample_from_osc(filtered))
+            filtered = iter(EnvelopeFilter(osc, 0.002, 0.008, 0.0, 0.6, 0.03, stop_at_end=True))
+            samplebuffer = yield from self.render_samples(filtered, samplebuffer, chunksize, return_remaining_buffer=True)
+        if samplebuffer:
+            yield memoryview(samplebuffer)
 
 
-class Cover(audio.Sample):
+class Cover(audio.Sample, RealtimeSynthesizedSample):
     def __init__(self) -> None:
         super().__init__("cover", pcmdata=b"")
+
+    def chunked_data(self, chunksize: int, repeat: bool=False,
+                     stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
+        assert not repeat
+        samplebuffer = b""
         for _ in range(1, 100):
+            if stopcondition():
+                break
             freq = random.randint(0x6000, 0xd800)
             osc = FastTriangle(freq * _sidfreq, amplitude=0.7, samplerate=audio.norm_samplerate)
-            filtered = EnvelopeFilter(osc, 0.002, 0.02, 0.0, 0.5, 0.02, stop_at_end=True)
-            self.append(sample_from_osc(filtered))
+            filtered = iter(EnvelopeFilter(osc, 0.002, 0.02, 0.0, 0.5, 0.02, stop_at_end=True))
+            samplebuffer = yield from self.render_samples(filtered, samplebuffer, chunksize, return_remaining_buffer=True)
+        if samplebuffer:
+            yield memoryview(samplebuffer)
 
 
-class Finished(audio.Sample):
+class Finished(audio.Sample, RealtimeSynthesizedSample):
     def __init__(self) -> None:
         super().__init__("finished", pcmdata=b"")
+
+    def chunked_data(self, chunksize: int, repeat: bool=False,
+                     stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
+        assert not repeat
+        samplebuffer = b""
         for n in range(0, 180):
+            if stopcondition():
+                break
             freq = 0x8000 - n * 180
             osc = FastTriangle(freq * _sidfreq, amplitude=0.8, samplerate=audio.norm_samplerate)
-            filtered = EnvelopeFilter(osc, 0.002, 0.004, 0.0, 0.6, 0.02, stop_at_end=True)
-            self.append(sample_from_osc(filtered))
+            filtered = iter(EnvelopeFilter(osc, 0.002, 0.004, 0.0, 0.6, 0.02, stop_at_end=True))
+            samplebuffer = yield from self.render_samples(filtered, samplebuffer, chunksize, return_remaining_buffer=True)
+        if samplebuffer:
+            yield memoryview(samplebuffer)
 
 
 class ExtraLife(audio.Sample):
@@ -183,15 +237,19 @@ class ExtraLife(audio.Sample):
             self.append(sample_from_osc(filtered))
 
 
-class GameOver(audio.Sample):
+class GameOver(audio.Sample, RealtimeSynthesizedSample):
     def __init__(self) -> None:
         super().__init__("game_over", pcmdata=b"")
+
+    def chunked_data(self, chunksize: int, repeat: bool=False,
+                     stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
+        assert not repeat
         fm = Linear(0, -2.3e-5, samplerate=audio.norm_samplerate).generator()
         osc = Triangle(1567.98174, fm_lfo=fm, samplerate=audio.norm_samplerate)
         filtered = EnvelopeFilter(osc, 0.1, 0.3, 1.5, 1.0, 0.07, stop_at_end=True)
         ampmod = SquareH(10, 9, amplitude=0.5, bias=0.5, samplerate=audio.norm_samplerate).generator()
-        filtered = AmpModulationFilter(filtered, ampmod)
-        self.append(sample_from_osc(filtered))
+        filtered = iter(AmpModulationFilter(filtered, ampmod))
+        yield from self.render_samples(filtered, b"", chunksize)
 
 
 class WalkDirt(audio.Sample):
@@ -250,174 +308,134 @@ class BoxPush(audio.Sample):
         self.append(sample_from_osc(filtered))
 
 
-class Diamond(audio.Sample):
+class Diamond(audio.Sample, RealtimeSynthesizedSample):
     def __init__(self) -> None:
         super().__init__("diamond", pcmdata=b"")
 
     def chunked_data(self, chunksize: int, repeat: bool=False,
                      stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
-        # generate a new random diamond sound
-        begin = time.perf_counter()
+        # generate a new random diamond sound everytime this is played
         freq = random.randint(0x8600, 0xfeff)
-        print("new diamond sound", freq)  # XXX
         freq &= 0b0111100011111111
         freq |= 0b1000011000000000
         osc = FastTriangle(freq * _sidfreq, amplitude=0.7, samplerate=audio.norm_samplerate)
-        filtered = EnvelopeFilter(osc, 0.002, 0.006, 0.0, 0.7, 0.6, stop_at_end=True)
-        sample = sample_from_osc(filtered)
-        print("samp took", time.perf_counter() - begin)   # XXX
-        self.duration = sample.duration
-        self.sampledata = sample.sampledata
-        return super().chunked_data(chunksize, repeat, stopcondition)
+        filtered = iter(EnvelopeFilter(osc, 0.002, 0.006, 0.0, 0.7, 0.6, stop_at_end=True))
+        yield from self.render_samples(filtered, b"", chunksize)
 
 
 class Timeout(audio.Sample):
     def __init__(self, timeout) -> None:
-        super().__init__("timeout_"+str(timeout), pcmdata=b"")
+        super().__init__("timeout_" + str(timeout), pcmdata=b"")
         osc = FastTriangle((timeout * 256 + 0x1E00) * _sidfreq, amplitude=0.99, samplerate=audio.norm_samplerate)
         filtered = EnvelopeFilter(osc, 0.002, 0.2, 0.1, 0.5, 0.8, stop_at_end=True)
         self.append(sample_from_osc(filtered))
 
 
-def demo1():
+def demo():
     audio.norm_samplerate = 22050
-    scale = 2 ** (audio.norm_samplewidth * 8 - 1) - 1
     api = audio.best_api()
-    print("Generating tones...")
-    for note in ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']:
-        duration = 0.5
-        osc = FastTriangle(note_freq(note, 4), samplerate=audio.norm_samplerate)
-        filtered = EnvelopeFilter(osc, 0.05, 0.05, 0.1, 0.6, 0.1, stop_at_end=False)
-        wave = filtered.generator()
-        a = array.array('h', [int(scale*next(wave)) for _ in range(int(duration*audio.norm_samplerate))])
-        sounddata = a.tobytes()
-        sounddata = audioop.tostereo(sounddata, audio.norm_samplewidth, 1, 1)
-        sample = audio.Sample("test", pcmdata=sounddata)
+
+    # ------ explosion
+    print("Explosion")
+    sample = Explosion()
+    api.play(sample)
+    time.sleep(sample.duration + 0.1)
+
+    # ------ diamond
+    print("Diamonds")
+    for _ in range(10):
+        sample = Diamond()
         api.play(sample)
-        time.sleep(sample.duration + 0.1)
-    print("CLOSING!")
-    api.close()
+        time.sleep(0.3)
 
+    # ---- collect diamond
+    print("Collect diamond")
+    sample = CollectDiamond()
+    api.play(sample)
+    time.sleep(sample.duration + 0.1)
 
-def demo2():
-    audio.norm_samplerate = 22050
-    api = audio.best_api()
+    # ------ boulder
+    print("Boulder")
+    sample = Boulder()
+    api.play(sample)
+    time.sleep(sample.duration + 0.1)
 
-    # # ------ explosion
-    # print("Explosion")
-    # sample = Explosion()
-    # api.play(sample)
-    # time.sleep(sample.duration + 0.1)
-    #
-    # # # ------ diamond
-    # print("Diamonds")
-    # for _ in range(5):
-    #     sample = Diamond()
-    #     print(sample.duration)
-    #     api.play(sample)
-    #     time.sleep(sample.duration + 0.1)
-    #
-    # # ---- collect diamond
-    # print("Collect diamond")
-    # sample = CollectDiamond()
-    # print(sample.duration)
-    # api.play(sample)
-    # time.sleep(sample.duration + 0.1)
-    #
-    # # ------ boulder
-    # print("Boulder")
-    # sample = Boulder()
-    # print(sample.duration)
-    # api.play(sample)
-    # time.sleep(sample.duration + 0.1)
-    #
-    # # ------ crack
-    # print("Crack", _sidfreq)
-    # sample = Crack()
-    # api.play(sample)
-    # time.sleep(sample.duration + 0.1)
+    # ------ crack
+    print("Crack")
+    sample = Crack()
+    api.play(sample)
+    time.sleep(sample.duration + 0.1)
 
     # ---- out of time
-    # print("Out of time")
-    # for n in range(1, 10):
-    #     sample = Timeout(n)
-    #     print(sample.duration)
-    #     api.play(sample)
-    #     time.sleep(sample.duration + 0.1)
+    print("Out of time")
+    for n in range(1, 10):
+        sample = Timeout(n)
+        api.play(sample)
+        time.sleep(sample.duration + 0.02)
 
     # ---- uncover
-    # print("Uncover")
-    # sample = Cover()
-    # print(sample.duration)
-    # api.play(sample)
-    # time.sleep(sample.duration)
+    print("Uncover")
+    sample = Cover()
+    api.play(sample)
+    time.sleep(max(5, sample.duration + 0.5))
 
     # ------ Amoeba
-    # print("Amoeba")
-    # sample = Amoeba()
-    # print(sample.duration)
-    # api.play(sample)
-    # time.sleep(sample.duration)
+    print("Amoeba")
+    sample = Amoeba()
+    api.play(sample)
+    time.sleep(max(7, sample.duration + 0.5))
 
     # ------- Magic wall
-    # print("Magic wall")
-    # sample = MagicWall()
-    # print(sample.duration)
-    # api.play(sample)
-    # time.sleep(sample.duration)
-
-    # # ---- bonus points sound
-    # print("Bonus points")
-    # sample = Finished()
-    # print(sample.duration)
-    # api.play(sample)
-    # time.sleep(sample.duration)
+    print("Magic wall")
+    sample = MagicWall()
+    api.play(sample)
+    time.sleep(max(9, sample.duration + 0.5))
 
     # ------ moving
-    # print("Move (dirt)")
-    # sample = WalkDirt()
-    # for _ in range(10):
-    #     print(sample.duration)
-    #     api.play(sample)
-    #     time.sleep(sample.duration + 0.1)
-    # print("Move (space)")
-    # sample = WalkEmpty()
-    # for _ in range(10):
-    #     print(sample.duration)
-    #     api.play(sample)
-    #     time.sleep(sample.duration + 0.1)
+    print("Move (dirt)")
+    sample = WalkDirt()
+    for _ in range(10):
+        api.play(sample)
+        time.sleep(sample.duration + 0.1)
+    print("Move (space)")
+    sample = WalkEmpty()
+    for _ in range(10):
+        api.play(sample)
+        time.sleep(sample.duration + 0.1)
 
     # ----- box push
-    # print("Box Push")
-    # sample = BoxPush()
-    # print(sample.duration)
-    # api.play(sample)
-    # time.sleep(sample.duration)
+    print("Box Push")
+    sample = BoxPush()
+    api.play(sample)
+    time.sleep(sample.duration)
 
     # ----- extra life
-    # print("Extra life")
-    # sample = ExtraLife()
-    # print(sample.duration)
-    # api.play(sample)
-    # time.sleep(sample.duration+0.5)
+    print("Extra life")
+    sample = ExtraLife()
+    api.play(sample)
+    time.sleep(sample.duration + 0.5)
 
     # ----- game over
-    # print("Game over")
-    # sample = GameOver()
-    # print(sample.duration)
-    # api.play(sample)
-    # time.sleep(sample.duration)
+    print("Game over")
+    sample = GameOver()
+    api.play(sample)
+    time.sleep(max(3, sample.duration + 0.5))
+
+    # ----- finished
+    print("Finished")
+    sample = Finished()
+    api.play(sample)
+    time.sleep(max(5, sample.duration + 0.5))
 
     # ----- title music
     print("Title music")
     sample = TitleMusic()
-    print(sample.duration)
     api.play(sample, repeat=True)
-    time.sleep(max(10, sample.duration + 0.1))
+    time.sleep(min(5, sample.duration + 0.1))
 
     print("CLOSING!")
     api.close()
 
 
 if __name__ == "__main__":
-    demo2()
+    demo()

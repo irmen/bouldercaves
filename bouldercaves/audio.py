@@ -483,7 +483,8 @@ def init_audio(samples_to_load, dummy=False):
         for name, filename in samples_to_load.items():
             samples[name] = DummySample(name)
         return
-    print("Loading sound data...")
+    if any(isinstance(sample, str) for sample in samples_to_load.values()):
+        print("Loading sound files...")
     for name, filename in samples_to_load.items():
         if isinstance(filename, Sample):
             samples[name] = filename

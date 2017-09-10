@@ -368,7 +368,7 @@ class BoulderWindow(tkinter.Tk):
                     obj.anim_end_callback(cell)
             # flash
             if self.gamestate.flash > self.gamestate.frame:
-                self.configure(background="yellow" if self.graphics_frame % 2 else "black")
+                self.configure(background=self.tkcolor(15) if self.graphics_frame % 2 else self.tkcolor(0))
             elif self.gamestate.flash > 0:
                 self.configure(background="black")
             for index, tile in self.tilesheet.dirty():
@@ -469,7 +469,7 @@ class BoulderWindow(tkinter.Tk):
         return int(sx * self.scalexy), int(sy * self.scalexy)
 
     def tkcolor(self, color: int) -> str:
-        return "#{:06x}".format(self.colorpalette[color & len(self.colorpalette) - 1])
+        return "#{:06x}".format(colorpalette[color & len(colorpalette) - 1])
 
     def scrollxypixels(self, x: float, y: float) -> None:
         self.view_x, self.view_y = self.clamp_scroll_xy(x, y)
@@ -673,8 +673,7 @@ def start(sargs: Sequence[str]=None) -> None:
     }
 
     if args.synth:
-        print("Synthesizing sounds...")
-        start = time.perf_counter()
+        print("Pre-synthesizing sounds...")
         diamond = synthsamples.Diamond()   # is randomized everytime it is played
         synthesized = {
             "music": synthsamples.TitleMusic(),
@@ -707,20 +706,19 @@ def start(sargs: Sequence[str]=None) -> None:
             "timeout8": synthsamples.Timeout(8),
             "timeout9": synthsamples.Timeout(9),
         }
-        print("...synthesizing took {:.2f} sec.".format(time.perf_counter()-start))
         assert len(synthesized.keys() - samples.keys()) == 0
-        missing = samples.keys()-synthesized.keys()
+        missing = samples.keys() - synthesized.keys()
         if missing:
             raise SystemExit("Synths missing for: " + str(missing))
-        samples.update(synthesized)
+        samples.update(synthesized)     # type: ignore
 
     if args.nosound:
         print("No sound output selected.")
         audio.init_audio(samples, dummy=True)
     else:
         audio.init_audio(samples)
-    window = BoulderWindow("Boulder Caves v1.3 - created by Irmen de Jong",
-                           args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
+    title = "Boulder Caves v1.3 {:s} - created by Irmen de Jong".format("[using sound synthesizer]" if args.synth else "")
+    window = BoulderWindow(title, args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
     window.start()
     window.mainloop()
 
