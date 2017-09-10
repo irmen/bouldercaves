@@ -6,6 +6,8 @@ the ``oggdec`` tool has to be installed on your system.  Usually that is part of
 the ``vorbis-tools`` package (Linux, Mac OS).  On Windows a version of the tool 
 is provided for you, and the game *can* optionally use the built-in ``winsound`` module -
 but the sound quality will suffer (no mixing possible) 
+
+If you choose to use the built-in sound synthesizer, no sound files and oggdec tool are required at all.
   
 
 Graphics and sounds are used from the MIT-licensed GDash 
@@ -54,6 +56,18 @@ You control the game via the keyboard:
 - F7: cheat and skip to the next level.
 - F8: randomize colors (only when using Commodore-64 colors)
 - F9: replay prerecorded demo (from title screen)
+
+## Sound
+
+You can choose between *sampled sounds* and *synthesized sounds* via a command line option.
+
+The sampled sounds require the 'oggdec' tool and the sound files. If you use the 
+sound synthesizer however, both of these are not needed at all - all sounds are generated
+by the program. For this I'm using a slightly tweaked version of my software FM-synthesizer
+available here: https://github.com/irmen/synthesizer
+
+The Python zip app script creates two versions of this game, one with the sound files included,
+and another one ()that is much smaller) without the sound files because it uses the synthesizer.
 
 
 ## Screenshot of a level
