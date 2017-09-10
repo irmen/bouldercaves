@@ -27,7 +27,7 @@ except ImportError:
     raise SystemExit
 from .game import GameState, GameObject, Direction, GameStatus
 from .caves import colorpalette
-from . import audio
+from . import audio, synthsamples
 
 
 class Tilesheet:
@@ -368,7 +368,7 @@ class BoulderWindow(tkinter.Tk):
                     obj.anim_end_callback(cell)
             # flash
             if self.gamestate.flash > self.gamestate.frame:
-                self.configure(background="yellow" if self.graphics_frame % 2 else "black")
+                self.configure(background=self.tkcolor(15) if self.graphics_frame % 2 else self.tkcolor(0))
             elif self.gamestate.flash > 0:
                 self.configure(background="black")
             for index, tile in self.tilesheet.dirty():
@@ -469,7 +469,7 @@ class BoulderWindow(tkinter.Tk):
         return int(sx * self.scalexy), int(sy * self.scalexy)
 
     def tkcolor(self, color: int) -> str:
-        return "#{:06x}".format(self.colorpalette[color & len(self.colorpalette) - 1])
+        return "#{:06x}".format(colorpalette[color & len(colorpalette) - 1])
 
     def scrollxypixels(self, x: float, y: float) -> None:
         self.view_x, self.view_y = self.clamp_scroll_xy(x, y)
@@ -599,10 +599,13 @@ def start(sargs: Sequence[str]=None) -> None:
     ap.add_argument("-c", "--c64colors", help="use Commodore-64 colors", action="store_true")
     ap.add_argument("-a", "--authentic", help="use C-64 colors AND limited window size", action="store_true")
     ap.add_argument("-n", "--nosound", help="don't use sound", action="store_true")
+    ap.add_argument("-y", "--synth", help="use synthesized sounds instead of samples", action="store_true")
     args = ap.parse_args(sargs)
 
-    # validate required libraries
-    if not args.nosound:
+    if args.nosound:
+        args.synth = False
+    else:
+        # validate required libraries
         audio_api = audio.best_api(dummy_enabled=True)
         if isinstance(audio_api, audio.DummyAudio):
             r = tkinter.Tk()
@@ -613,9 +616,16 @@ def start(sargs: Sequence[str]=None) -> None:
         if isinstance(audio_api, audio.Winsound):
             r = tkinter.Tk()
             r.withdraw()
-            tkinter.messagebox.showinfo("inferior Python audio library detected",
-                                        "Winsound is used as python audio library. This library cannot play all sounds correctly.\n\n"
-                                        "Try installing 'sounddevice' to hear properly mixed sounds.")
+            if args.synth:
+                # winsound can't play streaming audio at all
+                tkinter.messagebox.showerror("inferior Python audio library detected",
+                                             "Winsound is used as python audio library. It can't play synthesized audio streams.\n\n"
+                                             "Try installing 'sounddevice' to hear properly mixed sounds (or use the sampled sounds)")
+                raise SystemExit
+            else:
+                tkinter.messagebox.showinfo("inferior Python audio library detected",
+                                            "Winsound is used as python audio library. It can'n play all sounds correctly.\n\n"
+                                            "Try installing 'sounddevice' to hear properly mixed sounds.")
             r.destroy()
 
     args.c64colors |= args.authentic
@@ -625,6 +635,11 @@ def start(sargs: Sequence[str]=None) -> None:
     else:
         print("Using multicolor replacement graphics.")
         print("You can use the '-c' or '--c64colors' argument to get the original C-64 colors.")
+
+    # initialize the audio system
+    audio.norm_samplerate = 22050
+    audio.norm_samplewidth = 2
+    audio.norm_channels = 2
     samples = {
         "music": "bdmusic.ogg",
         "cover": "cover.ogg",
@@ -639,13 +654,13 @@ def start(sargs: Sequence[str]=None) -> None:
         "box_push": "box_push.ogg",
         "amoeba": "amoeba.ogg",
         "magic_wall": "magic_wall.ogg",
+        "game_over": "game_over.ogg",
         "diamond1": "diamond1.ogg",
         "diamond2": "diamond2.ogg",
         "diamond3": "diamond3.ogg",
         "diamond4": "diamond4.ogg",
         "diamond5": "diamond5.ogg",
         "diamond6": "diamond6.ogg",
-        "game_over": "game_over.ogg",
         "timeout1": "timeout1.ogg",
         "timeout2": "timeout2.ogg",
         "timeout3": "timeout3.ogg",
@@ -656,16 +671,54 @@ def start(sargs: Sequence[str]=None) -> None:
         "timeout8": "timeout8.ogg",
         "timeout9": "timeout9.ogg",
     }
+
+    if args.synth:
+        print("Pre-synthesizing sounds...")
+        diamond = synthsamples.Diamond()   # is randomized everytime it is played
+        synthesized = {
+            "music": synthsamples.TitleMusic(),
+            "cover": synthsamples.Cover(),
+            "crack": synthsamples.Crack(),
+            "boulder": synthsamples.Boulder(),
+            "amoeba": synthsamples.Amoeba(),
+            "magic_wall": synthsamples.MagicWall(),
+            "finished": synthsamples.Finished(),
+            "explosion": synthsamples.Explosion(),
+            "collect_diamond": synthsamples.CollectDiamond(),
+            "walk_empty": synthsamples.WalkEmpty(),
+            "walk_dirt": synthsamples.WalkDirt(),
+            "box_push": synthsamples.BoxPush(),
+            "extra_life": synthsamples.ExtraLife(),
+            "game_over": synthsamples.GameOver(),
+            "diamond1": diamond,
+            "diamond2": diamond,
+            "diamond3": diamond,
+            "diamond4": diamond,
+            "diamond5": diamond,
+            "diamond6": diamond,
+            "timeout1": synthsamples.Timeout(1),
+            "timeout2": synthsamples.Timeout(2),
+            "timeout3": synthsamples.Timeout(3),
+            "timeout4": synthsamples.Timeout(4),
+            "timeout5": synthsamples.Timeout(5),
+            "timeout6": synthsamples.Timeout(6),
+            "timeout7": synthsamples.Timeout(7),
+            "timeout8": synthsamples.Timeout(8),
+            "timeout9": synthsamples.Timeout(9),
+        }
+        assert len(synthesized.keys() - samples.keys()) == 0
+        missing = samples.keys() - synthesized.keys()
+        if missing:
+            raise SystemExit("Synths missing for: " + str(missing))
+        samples.update(synthesized)     # type: ignore
+
     if args.nosound:
         print("No sound output selected.")
         audio.init_audio(samples, dummy=True)
     else:
-        audio.norm_samplerate = 22050
-        audio.norm_samplewidth = 2
-        audio.norm_channels = 2
         audio.init_audio(samples)
-    window = BoulderWindow("Boulder Caves v1.3 - created by Irmen de Jong",
-                           args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
+    title = "Boulder Caves v1.3 {:s} - created by Irmen de Jong".format("[using sound synthesizer]" if args.synth else "")
+    window = BoulderWindow(title, args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
     window.start()
     window.mainloop()
 

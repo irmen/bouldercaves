@@ -187,6 +187,8 @@ class SampleMixer:
             for s in list(self.active_samples):
                 try:
                     chunk = next(s)
+                    if len(chunk) > self.chunksize:
+                        raise ValueError("chunk from sample is larger than chunksize from mixer")
                     if len(chunk) < self.chunksize:
                         # pad the chunk with some silence
                         chunk = memoryview(chunk.tobytes() + silence[:self.chunksize - len(chunk)])
@@ -382,7 +384,7 @@ class Sounddevice(AudioApi):
 
 
 class Winsound(AudioApi):
-    """Minimally featured api for the winsound library that comes with Python on Windows."""
+    """Minimally featured api for the winsound library that comes with Python on Windows. Can't plays streaming audio."""
     def __init__(self):
         super().__init__()
         del self.samp_queue
@@ -481,7 +483,8 @@ def init_audio(samples_to_load, dummy=False):
         for name, filename in samples_to_load.items():
             samples[name] = DummySample(name)
         return
-    print("Loading sound data...")
+    if any(isinstance(sample, str) for sample in samples_to_load.values()):
+        print("Loading sound files...")
     for name, filename in samples_to_load.items():
         if isinstance(filename, Sample):
             samples[name] = filename
