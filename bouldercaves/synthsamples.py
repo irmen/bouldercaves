@@ -17,12 +17,21 @@ from . import audio
 _sidfreq = 985248.0 / 16777216.0
 
 
-def sample_from_osc(osc, raw=False):
+def sample_from_osc(osc, raw=False, chunksize=0):
     scale = 2 ** (audio.norm_samplewidth * 8 - 1) - 1
     sounddata = array.array('h')
-    for v in osc.generator():
-        sounddata.append(int(scale * v))
+    if chunksize:
+        try:
+            for _ in range(chunksize):
+                sounddata.append(int(scale * next(osc)))
+        except StopIteration:
+            pass
+    else:
+        for v in osc:
+            sounddata.append(int(scale * v))
     sounddata = sounddata.tobytes()
+    if len(sounddata) == 0:
+        raise StopIteration
     if raw:
         return sounddata
     sounddata = audioop.tostereo(sounddata, audio.norm_samplewidth, 1, 1)
@@ -69,8 +78,12 @@ class TitleMusic(audio.Sample):
         notes = self.title_music
         if repeat:
             notes = itertools.cycle(notes)
-        buffer = b""
         attack, decay, sustain, release = self.adsr_times
+
+        class NoteFinished(Exception):
+            pass
+
+        samplebuffer = b""
         for v1, v2 in notes:
             if stopcondition():
                 break
@@ -80,20 +93,42 @@ class TitleMusic(audio.Sample):
             osc2 = FastTriangle(vf2 * _sidfreq, amplitude=0.5, samplerate=audio.norm_samplerate)
             f1 = EnvelopeFilter(osc1, attack, decay, sustain, 1.0, release, stop_at_end=True)
             f2 = EnvelopeFilter(osc2, attack, decay, sustain, 1.0, release, stop_at_end=True)
-            sample1 = sample_from_osc(f1, True)
-            sample2 = sample_from_osc(f2, True)
-            sample1 = audioop.tostereo(sample1, audio.norm_samplewidth, 1, 0)
-            sample2 = audioop.tostereo(sample2, audio.norm_samplewidth, 0, 1)
-            sample1 = audioop.add(sample1, sample2, audio.norm_samplewidth)
-            buffer += sample1
-            if len(buffer) > chunksize:
-                mbuf = memoryview(buffer)
-                while len(mbuf) > chunksize:
-                    yield mbuf[:chunksize]
-                    mbuf = mbuf[chunksize:]
-                buffer = mbuf.tobytes()
-        if buffer:
-            yield memoryview(buffer)
+            osc_chunksize = chunksize // audio.norm_samplewidth // audio.norm_channels
+            f1_i = iter(f1)
+            f2_i = iter(f2)
+
+            def render_chunk():
+                try:
+                    sample1 = sample_from_osc(f1_i, True, chunksize=osc_chunksize)
+                    sample2 = sample_from_osc(f2_i, True, chunksize=osc_chunksize)
+                except StopIteration:
+                    raise NoteFinished
+                else:
+                    sample1 = audioop.tostereo(sample1, audio.norm_samplewidth, 1, 0)
+                    sample2 = audioop.tostereo(sample2, audio.norm_samplewidth, 0, 1)
+                    sample1 = audioop.add(sample1, sample2, audio.norm_samplewidth)
+                    return sample1
+
+            while True:
+                # render this note in chunks of the asked size
+                try:
+                    while len(samplebuffer) < chunksize:
+                        # fill up the sample buffer so we have at least one full chunk
+                        chunk = render_chunk()
+                        samplebuffer += chunk
+                except NoteFinished:
+                    # go to next note
+                    break
+
+                if samplebuffer:
+                    chunk = samplebuffer[:chunksize]
+                    samplebuffer = samplebuffer[chunksize:]
+                    assert len(chunk) == chunksize
+                    yield memoryview(chunk)
+                else:
+                    break
+        if samplebuffer:
+            yield memoryview(samplebuffer)
 
 
 class Amoeba(audio.Sample):
