@@ -101,7 +101,7 @@ the sampled sounds version. However the sound quality is sub-par and no sound mi
 is possible, so please just use ``sounddevice`` :)
 
 
-**Unix-like (Mac OS, Linux)**
+**Mac OS, Linux, ...**
 
 1. make sure you have Python 3.5 or newer installed
 1. make sure you have the ``pillow`` (or ``pil``) and ``sounddevice`` python libraries 

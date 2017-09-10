@@ -1,5 +1,12 @@
 #!/bin/sh
 
+# This script downloads the sampled sound files from GDash and converts
+# them to a smaller version (half sample rate), and copies those
+# into the sounds directory inside our package. Format: Ogg
+# Usually you don't have to run this script because the converted
+# sample files are included in the bouldercaves repository already.
+# GDash is here:  https://bitbucket.org/czirkoszoltan/gdash.git
+
 GDASH_ROOT="./_gdash"
 GDASH="${GDASH_ROOT}/sound/"
 OUT="./bouldercaves/sounds/"
@@ -22,7 +29,6 @@ else
 fi
 
 echo "Converting source sound files..."
-# FFMPEG_OPTS="-v error -hide_banner -ar 22050 -ac 1 -f wav -acodec pcm_s16le -y"
 FFMPEG_OPTS="-v error -hide_banner -ar 22050 -ac 1 -y"
 OEXT="ogg"
 
