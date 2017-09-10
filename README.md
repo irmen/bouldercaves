@@ -1,14 +1,12 @@
 # Boulder Caves
 A Boulder Dash (tm) clone in pure python.
-Requires Python 3.5 + and the ``pillow`` (or ``pil``) library.
-Want to hear sound? Install the ``sounddevice`` or ``pyaudio`` library as well, and
-the ``oggdec`` tool has to be installed on your system.  Usually that is part of
-the ``vorbis-tools`` package (Linux, Mac OS).  On Windows a version of the tool 
-is provided for you, and the game *can* optionally use the built-in ``winsound`` module -
-but the sound quality will suffer (no mixing possible) 
 
-If you choose to use the built-in sound synthesizer, no sound files and oggdec tool are required at all.
-  
+Requirements to run this:
+- Python 3.5 +
+- ``pillow`` (or ``pil``) python library
+- ``sounddevice`` python library, if you want to play with sound.
+
+*Detailed instructions how to run the game are at the bottom of this text.*
 
 Graphics and sounds are used from the MIT-licensed GDash 
 https://bitbucket.org/czirkoszoltan/gdash
@@ -28,7 +26,7 @@ the screen fast enough, try adjusting the parameters on the command line.
 
 ## Screenshot
 
-![Boulder Caves title screen](screenshots/screenshot.png?raw=true "Screenshot of the title screen")
+![a level](screenshots/screenshot2.png?raw=true "Screenshot of a level in progress")
 
 
 ## Objective and rules of the game
@@ -70,12 +68,50 @@ The Python zip app script creates two versions of this game, one with the sound 
 and another one ()that is much smaller) without the sound files because it uses the synthesizer.
 
 
-## Screenshot of a level
+## The title screen
 
-![a level](screenshots/screenshot2.png?raw=true "Screenshot of a level in progress")
+![Boulder Caves title screen](screenshots/screenshot.png?raw=true "Screenshot of the title screen")
 
 
 ## Screenshot of 'authentic' C-64 mode
 
 ![a level](screenshots/screenshot3.png?raw=true "Screenshot of the game runnig in 'authentic' C-64 mode")
+
+
+## How to install and run this game
+
+All platforms: if you just want to *play* the game and are not interested in the code,
+you can simply download one of the Python zip apps (*.pyz) files that can be found
+on the releases tab. The small one with 'synth' in the name uses synthesized sounds
+while the larger one uses sampled sounds. 
+
+If you run the game from a command prompt, you are able to tweak some command line settings.
+To see what is available just use the ``-h`` (help) argument.
+
+
+**Windows**
+
+1. install Python 3.5 or newer https://www.python.org/downloads/
+1. open a command prompt and type:
+   ``pip install --user pillow sounddevice``
+1. double-click on the ``*.pyz`` file that you downloaded or on ``startgame.py``
+
+You can play the game without the ``sounddevice`` library if you disable sounds or use
+the sampled sounds version. However the sound quality is sub-par and no sound mixing
+is possible, so please just use ``sounddevice`` :)
+
+
+**Unix-like (Mac OS, Linux)**
+
+1. make sure you have Python 3.5 or newer installed
+1. make sure you have the ``pillow`` (or ``pil``) and ``sounddevice`` python libraries 
+   installed. You can often find them in your package manager or install them with pip.
+1. if you want to play the version with synthesized sounds, you're all set.
+1. if you want to play the version with sampled sounds, make sure you have the
+   ``oggdec`` tool installed as well (usually available as part of the ``vorbis-tools`` package)
+1. type ``python3 startgame.py``  or just execute the python zip app ``*.pyz`` file if you
+   downloaded that.  If ``python3`` doesn't work just try ``python`` instead. 
+
+You can skip installing the sound related libraries if you run the game with sounds disabled.
+This is a command line option.
 
