@@ -285,8 +285,8 @@ class BoulderWindow(tkinter.Tk):
         if self.smallwindow and self.gamestate.game_status == GameStatus.WAITING and self.popup_frame < self.graphics_frame:
             # move the waiting screen (title screen) around so you can see it all :)
             wavew, waveh = self.tile2screencor(self.playfield_columns - self.visible_columns, self.playfield_rows - self.visible_rows)
-            x = (1 + math.sin(self.graphics_frame / 25)) * wavew / 2
-            y = (1 + math.cos(self.graphics_frame / 30)) * waveh / 2
+            x = (1 + math.sin(1.5 * math.pi + self.graphics_frame / self.update_fps)) * wavew / 2
+            y = (1 + math.cos(math.pi + self.graphics_frame / self.update_fps / 1.4)) * waveh / 2
             self.scrollxypixels(x, y)
         for index, tile in self.tilesheet_score.dirty():
             self.scorecanvas.itemconfigure(self.cscore_tiles[index], image=self.tile_images[tile])
@@ -325,6 +325,7 @@ class BoulderWindow(tkinter.Tk):
                 self.canvas.itemconfigure(self.c_tiles[index], image=self.tile_images[tile])
             if len(self.uncover_tiles) < self.playfield_columns * self.playfield_rows // 4:
                 self.uncover_tiles = set()   # this ends the uncover animation and starts the level
+                audio.silence_audio()    # stop the cover sound
                 self.tilesheet.all_dirty()
         else:
             if self.gamestate.rockford_cell:
