@@ -29,6 +29,8 @@ from .game import GameState, GameObject, Direction, GameStatus
 from .caves import colorpalette
 from . import audio, synthsamples
 
+__version__ = "2.0"
+
 
 class Tilesheet:
     def __init__(self, width: int, height: int, view_width: int, view_height: int) -> None:
@@ -718,7 +720,8 @@ def start(sargs: Sequence[str]=None) -> None:
         audio.init_audio(samples, dummy=True)
     else:
         audio.init_audio(samples)
-    title = "Boulder Caves v1.3 {:s} - created by Irmen de Jong".format("[using sound synthesizer]" if args.synth else "")
+    title = "Boulder Caves {version:s} {sound:s} - created by Irmen de Jong - irmen@razorvine.net"\
+        .format(version=__version__, sound="[using sound synthesizer]" if args.synth else "")
     window = BoulderWindow(title, args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
     window.start()
     window.mainloop()
