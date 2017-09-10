@@ -599,10 +599,13 @@ def start(sargs: Sequence[str]=None) -> None:
     ap.add_argument("-c", "--c64colors", help="use Commodore-64 colors", action="store_true")
     ap.add_argument("-a", "--authentic", help="use C-64 colors AND limited window size", action="store_true")
     ap.add_argument("-n", "--nosound", help="don't use sound", action="store_true")
+    ap.add_argument("-y", "--synth", help="use synthesized sounds instead of samples", action="store_true")
     args = ap.parse_args(sargs)
 
-    # validate required libraries
-    if not args.nosound:
+    if args.nosound:
+        args.synth = False
+    else:
+        # validate required libraries
         audio_api = audio.best_api(dummy_enabled=True)
         if isinstance(audio_api, audio.DummyAudio):
             r = tkinter.Tk()
@@ -643,14 +646,14 @@ def start(sargs: Sequence[str]=None) -> None:
         "collect_diamond": "collectdiamond.ogg",
         "box_push": "box_push.ogg",
         "amoeba": "amoeba.ogg",
-        "magic_wall": "magicwall.ogg",
+        "magic_wall": "magic_wall.ogg",
+        "game_over": "game_over.ogg",
         "diamond1": "diamond1.ogg",
         "diamond2": "diamond2.ogg",
         "diamond3": "diamond3.ogg",
         "diamond4": "diamond4.ogg",
         "diamond5": "diamond5.ogg",
         "diamond6": "diamond6.ogg",
-        "game_over": "game_over.ogg",
         "timeout1": "timeout1.ogg",
         "timeout2": "timeout2.ogg",
         "timeout3": "timeout3.ogg",
@@ -662,38 +665,47 @@ def start(sargs: Sequence[str]=None) -> None:
         "timeout9": "timeout9.ogg",
     }
 
-    print("Synthesizing sounds...")
-    synthesized = {
-        "music": synthsamples.TitleMusic(),
-        "cover": synthsamples.Cover(),
-        "crack": synthsamples.Crack(),
-        "boulder": synthsamples.Boulder(),
-        "amoeba": synthsamples.Amoeba(),
-        "magic_wall": synthsamples.MagicWall(),
-        "finished": synthsamples.Finished(),
-        "explosion": synthsamples.Explosion(),
-        "collect_diamond": synthsamples.CollectDiamond(),
-        "walk_empty": synthsamples.WalkEmpty(),
-        "walk_dirt": synthsamples.WalkDirt(),
-        "diamond1": synthsamples.Diamond(),   # @todo randomize diamond sound everytime it is played
-        "diamond2": synthsamples.Diamond(),
-        "diamond3": synthsamples.Diamond(),
-        "diamond4": synthsamples.Diamond(),
-        "diamond5": synthsamples.Diamond(),
-        "diamond6": synthsamples.Diamond(),
-        "timeout1": synthsamples.Timeout(1),
-        "timeout2": synthsamples.Timeout(2),
-        "timeout3": synthsamples.Timeout(3),
-        "timeout4": synthsamples.Timeout(4),
-        "timeout5": synthsamples.Timeout(5),
-        "timeout6": synthsamples.Timeout(6),
-        "timeout7": synthsamples.Timeout(7),
-        "timeout8": synthsamples.Timeout(8),
-        "timeout9": synthsamples.Timeout(9),
-    }
-    print("Synths missing for:", samples.keys()-synthesized.keys())
-    assert len(synthesized.keys() - samples.keys()) == 0
-    samples.update(synthesized)
+    if args.synth:
+        print("Synthesizing sounds...")
+        start = time.perf_counter()
+        diamond = synthsamples.Diamond()   # is randomized everytime it is played
+        synthesized = {
+            "music": synthsamples.TitleMusic(),
+            "cover": synthsamples.Cover(),
+            "crack": synthsamples.Crack(),
+            "boulder": synthsamples.Boulder(),
+            "amoeba": synthsamples.Amoeba(),
+            "magic_wall": synthsamples.MagicWall(),
+            "finished": synthsamples.Finished(),
+            "explosion": synthsamples.Explosion(),
+            "collect_diamond": synthsamples.CollectDiamond(),
+            "walk_empty": synthsamples.WalkEmpty(),
+            "walk_dirt": synthsamples.WalkDirt(),
+            "box_push": synthsamples.BoxPush(),
+            "extra_life": synthsamples.ExtraLife(),
+            "game_over": synthsamples.GameOver(),
+            "diamond1": diamond,
+            "diamond2": diamond,
+            "diamond3": diamond,
+            "diamond4": diamond,
+            "diamond5": diamond,
+            "diamond6": diamond,
+            "timeout1": synthsamples.Timeout(1),
+            "timeout2": synthsamples.Timeout(2),
+            "timeout3": synthsamples.Timeout(3),
+            "timeout4": synthsamples.Timeout(4),
+            "timeout5": synthsamples.Timeout(5),
+            "timeout6": synthsamples.Timeout(6),
+            "timeout7": synthsamples.Timeout(7),
+            "timeout8": synthsamples.Timeout(8),
+            "timeout9": synthsamples.Timeout(9),
+        }
+        print("...synthesizing took {:.2f} sec.".format(time.perf_counter()-start))
+        assert len(synthesized.keys() - samples.keys()) == 0
+        missing = samples.keys()-synthesized.keys()
+        if missing:
+            raise SystemExit("Synths missing for: " +str(missing))
+        samples.update(synthesized)
 
     if args.nosound:
         print("No sound output selected.")

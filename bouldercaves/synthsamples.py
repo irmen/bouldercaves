@@ -9,7 +9,7 @@ import audioop
 import array
 import random
 from typing import Callable, Generator
-from .synth import WaveSynth, FastTriangle, WhiteNoise, FastSine, EnvelopeFilter, note_freq
+from .synth import FastTriangle, WhiteNoise, Linear, Triangle, SquareH, EnvelopeFilter, AmpModulationFilter, note_freq
 from . import audio
 
 
@@ -18,9 +18,8 @@ _sidfreq = 985248.0 / 16777216.0
 
 def sample_from_osc(osc, raw=False):
     scale = 2 ** (audio.norm_samplewidth * 8 - 1) - 1
-    wave = osc.generator()
     sounddata = array.array('h')
-    for v in wave:
+    for v in osc.generator():
         sounddata.append(int(scale * v))
     sounddata = sounddata.tobytes()
     if raw:
@@ -116,6 +115,27 @@ class Finished(audio.Sample):
             self.append(sample_from_osc(filtered))
 
 
+class ExtraLife(audio.Sample):
+    def __init__(self) -> None:
+        super().__init__("extra_life", pcmdata=b"")
+        for n in range(0, 16):
+            freq = 0x1400 + n * 1024
+            osc = FastTriangle(freq * _sidfreq, amplitude=0.8, samplerate=audio.norm_samplerate)
+            filtered = EnvelopeFilter(osc, 0.002, 0.024, 0.0, 0.6, 0.03, stop_at_end=True)
+            self.append(sample_from_osc(filtered))
+
+
+class GameOver(audio.Sample):
+    def __init__(self) -> None:
+        super().__init__("game_over", pcmdata=b"")
+        fm = Linear(0, -2.3e-5, samplerate=audio.norm_samplerate).generator()
+        osc = Triangle(1567.98174, fm_lfo=fm, samplerate=audio.norm_samplerate)
+        filtered = EnvelopeFilter(osc, 0.1, 0.3, 1.5, 1.0, 0.07, stop_at_end=True)
+        ampmod = SquareH(10, 9, amplitude=0.5, bias=0.5, samplerate=audio.norm_samplerate).generator()
+        filtered = AmpModulationFilter(filtered, ampmod)
+        self.append(sample_from_osc(filtered))
+
+
 class WalkDirt(audio.Sample):
     def __init__(self) -> None:
         super().__init__("walk_dirt", pcmdata=b"")
@@ -164,15 +184,33 @@ class Crack(audio.Sample):
         self.append(sample_from_osc(filtered))
 
 
+class BoxPush(audio.Sample):
+    def __init__(self) -> None:
+        super().__init__("boxpush", pcmdata=b"")
+        osc = WhiteNoise(2637, amplitude=0.6, samplerate=audio.norm_samplerate)
+        filtered = EnvelopeFilter(osc, 0.2, 0.2, 0.0, 0.25, 0, stop_at_end=True)
+        self.append(sample_from_osc(filtered))
+
+
 class Diamond(audio.Sample):
     def __init__(self) -> None:
         super().__init__("diamond", pcmdata=b"")
+
+    def chunked_data(self, chunksize: int, repeat: bool=False,
+                     stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
+        # generate a new random diamond sound
+        begin = time.perf_counter()
         freq = random.randint(0x8600, 0xfeff)
+        print("new diamond sound", freq)  # XXX
         freq &= 0b0111100011111111
         freq |= 0b1000011000000000
-        osc = FastTriangle(freq * _sidfreq, amplitude=0.8, samplerate=audio.norm_samplerate)
+        osc = FastTriangle(freq * _sidfreq, amplitude=0.7, samplerate=audio.norm_samplerate)
         filtered = EnvelopeFilter(osc, 0.002, 0.006, 0.0, 0.7, 0.6, stop_at_end=True)
-        self.append(sample_from_osc(filtered))
+        sample = sample_from_osc(filtered)
+        print("samp took", time.perf_counter() - begin)   # XXX
+        self.duration = sample.duration
+        self.sampledata = sample.sampledata
+        return super().chunked_data(chunksize, repeat, stopcondition)
 
 
 class Timeout(audio.Sample):
@@ -242,61 +280,82 @@ def demo2():
     # time.sleep(sample.duration + 0.1)
 
     # ---- out of time
-    print("Out of time")
-    for n in range(1, 10):
-        sample = Timeout(n)
-        print(sample.duration)
-        api.play(sample)
-        time.sleep(sample.duration + 0.1)
+    # print("Out of time")
+    # for n in range(1, 10):
+    #     sample = Timeout(n)
+    #     print(sample.duration)
+    #     api.play(sample)
+    #     time.sleep(sample.duration + 0.1)
 
     # ---- uncover
-    print("Uncover")
-    sample = Cover()
-    print(sample.duration)
-    api.play(sample)
-    time.sleep(sample.duration)
+    # print("Uncover")
+    # sample = Cover()
+    # print(sample.duration)
+    # api.play(sample)
+    # time.sleep(sample.duration)
 
     # ------ Amoeba
-    print("Amoeba")
-    sample = Amoeba()
-    print(sample.duration)
-    api.play(sample)
-    time.sleep(sample.duration)
+    # print("Amoeba")
+    # sample = Amoeba()
+    # print(sample.duration)
+    # api.play(sample)
+    # time.sleep(sample.duration)
 
     # ------- Magic wall
-    print("Magic wall")
-    sample = MagicWall()
-    print(sample.duration)
-    api.play(sample)
-    time.sleep(sample.duration)
+    # print("Magic wall")
+    # sample = MagicWall()
+    # print(sample.duration)
+    # api.play(sample)
+    # time.sleep(sample.duration)
 
     # # ---- bonus points sound
-    print("Bonus points")
-    sample = Finished()
-    print(sample.duration)
-    api.play(sample)
-    time.sleep(sample.duration)
+    # print("Bonus points")
+    # sample = Finished()
+    # print(sample.duration)
+    # api.play(sample)
+    # time.sleep(sample.duration)
 
-    # # ------ moving
-    print("Move (dirt)")
-    sample = WalkDirt()
-    for _ in range(10):
-        print(sample.duration)
-        api.play(sample)
-        time.sleep(sample.duration + 0.1)
-    print("Move (space)")
-    sample = WalkEmpty()
-    for _ in range(10):
-        print(sample.duration)
-        api.play(sample)
-        time.sleep(sample.duration + 0.1)
+    # ------ moving
+    # print("Move (dirt)")
+    # sample = WalkDirt()
+    # for _ in range(10):
+    #     print(sample.duration)
+    #     api.play(sample)
+    #     time.sleep(sample.duration + 0.1)
+    # print("Move (space)")
+    # sample = WalkEmpty()
+    # for _ in range(10):
+    #     print(sample.duration)
+    #     api.play(sample)
+    #     time.sleep(sample.duration + 0.1)
+
+    # ----- box push
+    # print("Box Push")
+    # sample = BoxPush()
+    # print(sample.duration)
+    # api.play(sample)
+    # time.sleep(sample.duration)
+
+    # ----- extra life
+    # print("Extra life")
+    # sample = ExtraLife()
+    # print(sample.duration)
+    # api.play(sample)
+    # time.sleep(sample.duration+0.5)
+
+    # ----- game over
+    # print("Game over")
+    # sample = GameOver()
+    # print(sample.duration)
+    # api.play(sample)
+    # time.sleep(sample.duration)
 
     # ----- title music
-    print("Title music")
-    sample = TitleMusic()
-    print(sample.duration)
-    api.play(sample)
-    time.sleep(sample.duration)
+    # print("Title music")
+    # sample = TitleMusic()
+    # print(sample.duration)
+    # api.play(sample)
+    # time.sleep(sample.duration)
 
     print("CLOSING!")
     api.close()
