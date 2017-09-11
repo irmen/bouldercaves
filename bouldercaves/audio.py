@@ -31,6 +31,7 @@ import threading
 import time
 import wave
 from typing import BinaryIO, ByteString, Callable, Generator, List, Union, Dict
+from . import user_data_dir
 
 
 __all__ = ["init_audio", "play_sample", "silence_audio", "shutdown_audio"]
@@ -396,10 +397,9 @@ class Winsound(AudioApi):
 
     @staticmethod
     def ensure_oggdegexe():
-        filename = os.path.expanduser("~/.bouldercaves/oggdec.exe")
+        filename = user_data_dir + "oggdec.exe"
         if os.path.isfile(filename):
             return filename
-        os.makedirs(os.path.expanduser("~/.bouldercaves"), exist_ok=True)
         oggdecexe = pkgutil.get_data(__name__, "sounds/oggdec.exe")
         with open(filename, "wb") as exefile:
             exefile.write(oggdecexe)
@@ -420,7 +420,7 @@ class Winsound(AudioApi):
 
     def store_sample_file(self, filename, data):
         # convert the sample file to a wav file on disk.
-        oggfilename = os.path.expanduser("~/.bouldercaves/") + filename
+        oggfilename = user_data_dir + filename
         with open(oggfilename, "wb") as oggfile:
             oggfile.write(data)
         wavfilename = os.path.splitext(oggfilename)[0] + ".wav"

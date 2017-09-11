@@ -38,6 +38,7 @@ the screen fast enough, try adjusting the parameters on the command line.
 - Amoeba grows and grows but it is often worthwhile to contain it. 
 - *Intermission* levels are bonus stages where you have one chance to complete them.
 You won't lose a life here if you die.
+- A small high score table is saved. 
 
 
 ## Controls

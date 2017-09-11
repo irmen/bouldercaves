@@ -17,7 +17,7 @@ import tkinter
 import tkinter.messagebox
 import pkgutil
 import time
-from typing import Tuple, Union, Sequence, List, Set, Iterable
+from typing import Tuple, Union, Sequence, List, Set, Iterable, Callable
 try:
     from PIL import Image
 except ImportError:
@@ -158,6 +158,7 @@ class BoulderWindow(tkinter.Tk):
             self.tilesheet_score = Tilesheet(self.visible_columns, 2, self.visible_columns, 2)
             score_canvas_height = 32 * self.scalexy
         self.popup_tiles_save = None   # type: Tuple[int, int, int, int, Sequence[Iterable[int]]]
+        self.on_popup_closed = None   # type: Callable
         self.scrolling_into_view = False
         self.scorecanvas = tkinter.Canvas(self, width=self.visible_columns * 16 * self.scalexy,
                                           height=score_canvas_height, borderwidth=0, highlightthickness=0, background="black")
@@ -190,6 +191,7 @@ class BoulderWindow(tkinter.Tk):
 
     def destroy(self) -> None:
         audio.shutdown_audio()
+        self.gamestate.destroy()
         super().destroy()
 
     def start(self) -> None:
@@ -232,19 +234,18 @@ class BoulderWindow(tkinter.Tk):
         elif event.keysym == "space":
             self.gamestate.pause()
         elif event.keysym == "Escape":
+            self.popup_close()
             if self.gamestate.game_status in (GameStatus.LOST, GameStatus.WON):
-                self.popup_frame = 0
-                self.popup_tiles_save = None
                 self.gamestate.restart()
             elif self.gamestate.game_status == GameStatus.PLAYING and not self.uncover_tiles:
-                self.popup_frame = 0
-                self.popup_tiles_save = None
                 self.gamestate.suicide()
-            elif self.gamestate.game_status == GameStatus.DEMO:
+            elif self.gamestate.game_status in (GameStatus.DEMO, GameStatus.HIGHSCORE):
                 self.gamestate.restart()
         elif event.keysym == "F1":
-            self.popup_frame = 0
-            if self.gamestate.game_status == GameStatus.DEMO:
+            self.popup_close()
+            if self.gamestate.game_status in (GameStatus.LOST, GameStatus.WON):
+                self.gamestate.restart()
+            elif self.gamestate.game_status in (GameStatus.DEMO, GameStatus.HIGHSCORE):
                 self.gamestate.restart()
             else:
                 if not self.uncover_tiles and self.gamestate.lives < 0:
@@ -278,6 +279,8 @@ class BoulderWindow(tkinter.Tk):
             print("random colors:", c1, c2, c3)
             self.create_colored_tiles(colorpalette[c1], colorpalette[c2], colorpalette[c3])
             self.tilesheet.all_dirty()
+        elif event.keysym == "F4":
+            self.gamestate.show_highscores()
         elif event.keysym == "F9":
             self.gamestate.start_demo()
 
@@ -487,7 +490,7 @@ class BoulderWindow(tkinter.Tk):
         self.gamestate.update_scorebar()
         if self.gamestate.game_status == GameStatus.WAITING and \
                 self.update_timestep * self.graphics_frame >= audio.samples["music"].duration:
-            self.gamestate.start_demo()
+            self.gamestate.tile_music_ended()
 
     def scroll_focuscell_into_view(self, immediate: bool=False) -> None:
         focus_cell = self.gamestate.focus_cell()
@@ -520,7 +523,7 @@ class BoulderWindow(tkinter.Tk):
     def text2tiles(self, text: str) -> Sequence[int]:
         return [self.font_tiles_startindex + ord(c) for c in text]
 
-    def popup(self, text: str) -> None:
+    def popup(self, text: str, duration: float=5.0, on_close: Callable=None) -> None:
         self.scroll_focuscell_into_view(immediate=True)   # snap the view to the focus cell
         lines = []
         width = self.visible_columns - 4 if self.smallwindow else int(self.visible_columns * 0.6)
@@ -582,14 +585,21 @@ class BoulderWindow(tkinter.Tk):
         self.tilesheet.set_tiles(x, y, [self.sprite2tile(GameObject.STEELSLOPEDDOWNLEFT)] +
                                  [self.sprite2tile(GameObject.STEEL)] * (popupwidth - 2) +
                                  [self.sprite2tile(GameObject.STEELSLOPEDDOWNRIGHT)])
-        self.popup_frame = self.graphics_frame + self.update_fps * 5   # popup remains for 5 seconds
+        self.popup_frame = self.graphics_frame + self.update_fps * duration
+        self.on_popup_closed = on_close
 
     def popup_close(self) -> None:
+        if not self.popup_tiles_save:
+            return
         x, y, width, height, saved_tiles = self.popup_tiles_save
         for tiles in saved_tiles:
             self.tilesheet.set_tiles(x, y, tiles)
             y += 1
         self.popup_tiles_save = None
+        self.popup_frame = 0
+        if self.on_popup_closed:
+            self.on_popup_closed()
+            self.on_popup_closed = None
 
 
 def start(sargs: Sequence[str]=None) -> None:

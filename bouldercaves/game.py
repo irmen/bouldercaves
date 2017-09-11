@@ -9,9 +9,10 @@ License: MIT open-source.
 
 import datetime
 import random
+import json
 from enum import Enum
 from typing import Callable, List, Optional
-from . import caves, audio
+from . import caves, audio, user_data_dir
 
 
 class Direction(Enum):
@@ -53,12 +54,13 @@ class Direction(Enum):
 
 
 class GameStatus(Enum):
-    WAITING = "waiting"
-    PLAYING = "playing"
-    PAUSED = "paused"
-    LOST = "lost"
-    WON = "won"
-    DEMO = "demo"
+    WAITING = 1
+    PLAYING = 2
+    PAUSED = 3
+    LOST = 4
+    WON = 5
+    DEMO = 6
+    HIGHSCORE = 7
 
 
 class GameObject:
@@ -232,6 +234,47 @@ GameObject.ROCKFORD.rocketlauncher = (1, 46, 0, 0)
 # row 49 - 50
 GameObject.ROCKFORD.pushleft = (0, 49, 8, 20)
 GameObject.ROCKFORD.pushright = (0, 50, 8, 20)
+
+
+class HighScores:
+    # high score table is 8 entries, name len=7 max, score max=999999
+    # table starts with score then the name, for easy sorting
+    max_namelen = 7
+
+    def __init__(self) -> None:
+        self.load()
+
+    def __del__(self):
+        self.save()
+
+    def __iter__(self):
+        yield from self.scores
+
+    def save(self):
+        with open(user_data_dir + "highscores.json", "wt") as out:
+            json.dump(self.scores, out)
+
+    def load(self):
+        try:
+            with open(user_data_dir + "highscores.json", "rt") as scorefile:
+                self.scores = json.load(scorefile)
+        except FileNotFoundError:
+            print("Using new high-score table.")
+            self.scores = [(400, "idj")] * 8
+            self.save()
+
+    def score_pos(self, playerscore: int) -> Optional[int]:
+        for pos, (score, _) in enumerate(self.scores, start=1):
+            if score < playerscore:
+                return pos
+        return None
+
+    def add(self, name, score):
+        pos = self.score_pos(score)
+        if not pos:
+            raise ValueError("score is not a new high score")
+        self.scores.insert(pos - 1, (score, name))
+        self.scores = self.scores[:8]
 
 
 # noinspection PyAttributeOutsideInit
@@ -438,8 +481,13 @@ class GameState:
         GameObject.ROCKFORDBIRTH.anim_end_callback = self.end_rockfordbirth
         GameObject.EXPLOSION.anim_end_callback = self.end_explosion
         GameObject.DIAMONDBIRTH.anim_end_callback = self.end_diamondbirth
+        self.demo_or_highscore = True
+        self.highscores = HighScores()
         # and start the game on the title screen.
         self.restart()
+
+    def destroy(self):
+        self.highscores.save()
 
     def restart(self) -> None:
         audio.silence_audio()
@@ -598,12 +646,30 @@ class GameState:
             fmt = "{:s}\n\n{:s}" if self.intermission else "Cave {:s}\n\n{:s}"
             self.gfxwindow.popup(fmt.format(self.level_name, self.level_description))
 
+    def tile_music_ended(self):
+        # do one of two things: play the demo, or show the highscore list for a short time
+        self.demo_or_highscore = not self.demo_or_highscore
+        if self.demo_or_highscore:
+            self.start_demo()
+        else:
+            self.show_highscores()
+
     def start_demo(self):
         if self.game_status == GameStatus.WAITING:
             self.level = 0
             self.load_next_level(intro_popup=False)
             self.movement = self.DemoMovementInfo(caves.CAVE_A_DEMO)  # is reset to regular handling when demo ends/new level loads
             self.game_status = GameStatus.DEMO
+
+    def show_highscores(self):
+        def reset_game_status():
+            self.game_status = GameStatus.WAITING
+        if self.game_status == GameStatus.WAITING:
+            self.game_status = GameStatus.HIGHSCORE
+            txt = ["\x0e\x0e\x0eHigh Scores\x0e\x0e"]
+            for pos, (score, name) in enumerate(self.highscores, start=1):
+                txt.append("{:d} {:\x0f<7s} {:_>6d}".format(pos, name, score))
+            self.gfxwindow.popup("\n".join(txt), 10, on_close=reset_game_status)
 
     def pause(self):
         if self.game_status == GameStatus.PLAYING:
@@ -846,7 +912,16 @@ class GameState:
         self.rockford_found_frame = 0
         if status == GameStatus.LOST:
             audio.play_sample("game_over")
-            self.gfxwindow.popup("Game Over.\n\nYour final score: {:d}\n\npress Escape to return to the title screen".format(self.score))
+            score_pos = self.highscores.score_pos(self.score)
+            if score_pos:
+                popuptxt = "Game Over.\n\nYour final score: {:d}\n\nCongratulations with a new #{:d} high score!"\
+                    .format(self.score, score_pos)
+                import getpass
+                username = getpass.getuser()[:HighScores.max_namelen]  # XXX let user type this in
+                self.highscores.add(username, self.score)
+            else:
+                popuptxt = "Game Over.\n\nYour final score: {:d}".format(self.score)
+            self.gfxwindow.popup(popuptxt)
         elif status == GameStatus.WON:
             self.lives = 0
             audio.play_sample("extra_life")
@@ -1083,7 +1158,7 @@ class GameState:
                 ts.set_tiles(0, 0, self.gfxwindow.text2tiles("Welcome to Boulder Caves 'authentic'".center(self.width)))
             else:
                 ts.set_tiles(0, 0, self.gfxwindow.text2tiles("Welcome to Boulder Caves".center(self.width)))
-            ts.set_tiles(0, 1, self.gfxwindow.text2tiles("F1 \x04 New game!   F9 \x04 Demo".center(self.width)))
+            ts.set_tiles(0, 1, self.gfxwindow.text2tiles("F1\x04New game! F4\x04Scores F9\x04Demo".center(self.width)))
             if not self.gfxwindow.smallwindow:
                 ts[0, 0] = ts[self.width - 1, 0] = ts[0, 1] = ts[self.width - 1, 1] = self.gfxwindow.sprite2tile(GameObject.MEGABOULDER)
                 ts[1, 0] = ts[self.width - 2, 0] = ts[1, 1] = ts[self.width - 2, 1] = self.gfxwindow.sprite2tile(GameObject.FLYINGDIAMOND)
