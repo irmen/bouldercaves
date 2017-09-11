@@ -666,9 +666,14 @@ class GameState:
             self.game_status = GameStatus.WAITING
         if self.game_status == GameStatus.WAITING:
             self.game_status = GameStatus.HIGHSCORE
-            txt = ["\x0e\x0e\x0eHigh Scores\x0e\x0e"]
-            for pos, (score, name) in enumerate(self.highscores, start=1):
-                txt.append("{:d} {:\x0f<7s} {:_>6d}".format(pos, name, score))
+            if self.gfxwindow.smallwindow:
+                txt = ["\x0e\x0e\x0eHigh Scores\x0e\x0e"]
+                for pos, (score, name) in enumerate(self.highscores, start=1):
+                    txt.append("{:d} {:\x0f<7s} {:_>6d}".format(pos, name, score))
+            else:
+                txt = ["\x0e\x0e\x0e High Scores \x0e\x0e\x0e\n-------------------\n"]
+                for pos, (score, name) in enumerate(self.highscores, start=1):
+                    txt.append("\x0f{:d}  {:\x0f<7s}  {:_>6d}".format(pos, name, score))
             self.gfxwindow.popup("\n".join(txt), 10, on_close=reset_game_status)
 
     def pause(self):

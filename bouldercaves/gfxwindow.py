@@ -489,7 +489,7 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.update(self.graphics_frame)
         self.gamestate.update_scorebar()
         if self.gamestate.game_status == GameStatus.WAITING and \
-                self.update_timestep * self.graphics_frame >= audio.samples["music"].duration:
+                self.update_timestep * self.graphics_frame >= max(15, audio.samples["music"].duration):
             self.gamestate.tile_music_ended()
 
     def scroll_focuscell_into_view(self, immediate: bool=False) -> None:
@@ -524,7 +524,7 @@ class BoulderWindow(tkinter.Tk):
         return [self.font_tiles_startindex + ord(c) for c in text]
 
     def popup(self, text: str, duration: float=5.0, on_close: Callable=None) -> None:
-        self.scroll_focuscell_into_view(immediate=True)   # snap the view to the focus cell
+        self.scroll_focuscell_into_view(immediate=True)   # snap the view to the focus cell otherwise popup may appear off-screen
         lines = []
         width = self.visible_columns - 4 if self.smallwindow else int(self.visible_columns * 0.6)
         for line in text.splitlines():
@@ -546,9 +546,9 @@ class BoulderWindow(tkinter.Tk):
             popupheight = len(lines) + 4
         else:
             bchar = "\x0e"
-            x, y = (self.visible_columns - width - 6) // 2, self.visible_rows // 4
             popupwidth = width + 6
             popupheight = len(lines) + 6
+        x, y = (self.visible_columns - popupwidth) // 2, (self.visible_rows - popupheight) // 2 + 1
 
         # move the popup inside the currently viewable portion of the playfield
         x += self.view_x // 16
@@ -585,7 +585,7 @@ class BoulderWindow(tkinter.Tk):
         self.tilesheet.set_tiles(x, y, [self.sprite2tile(GameObject.STEELSLOPEDDOWNLEFT)] +
                                  [self.sprite2tile(GameObject.STEEL)] * (popupwidth - 2) +
                                  [self.sprite2tile(GameObject.STEELSLOPEDDOWNRIGHT)])
-        self.popup_frame = self.graphics_frame + self.update_fps * duration
+        self.popup_frame = int(self.graphics_frame + self.update_fps * duration)
         self.on_popup_closed = on_close
 
     def popup_close(self) -> None:
