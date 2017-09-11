@@ -283,6 +283,15 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.show_highscores()
         elif event.keysym == "F9":
             self.gamestate.start_demo()
+        elif event.keysym == "F2":   # XXX temporary
+            self.gamestate.score = max(self.gamestate.highscores)[0] + 1
+            print("SCORE", self.gamestate.score)
+            self.gamestate.stop_game(GameStatus.WON)   # XXX
+        elif event.keysym == "F3":   # XXX temporary
+            self.gamestate.score = max(self.gamestate.highscores)[0] + 1
+            print("SCORE", self.gamestate.score)
+            self.gamestate.stop_game(GameStatus.LOST)   # XXX
+
 
     def repaint(self) -> None:
         self.graphics_frame += 1

@@ -260,7 +260,7 @@ class HighScores:
                 self.scores = json.load(scorefile)
         except FileNotFoundError:
             print("Using new high-score table.")
-            self.scores = [(400, "idj")] * 8
+            self.scores = [[400, "idj"]] * 8
             self.save()
 
     def score_pos(self, playerscore: int) -> Optional[int]:
@@ -273,7 +273,7 @@ class HighScores:
         pos = self.score_pos(score)
         if not pos:
             raise ValueError("score is not a new high score")
-        self.scores.insert(pos - 1, (score, name))
+        self.scores.insert(pos - 1, [score, name])
         self.scores = self.scores[:8]
 
 
@@ -917,21 +917,20 @@ class GameState:
         self.rockford_found_frame = 0
         if status == GameStatus.LOST:
             audio.play_sample("game_over")
-            score_pos = self.highscores.score_pos(self.score)
-            if score_pos:
-                popuptxt = "Game Over.\n\nYour final score: {:d}\n\nCongratulations with a new #{:d} high score!"\
-                    .format(self.score, score_pos)
-                import getpass
-                username = getpass.getuser()[:HighScores.max_namelen]  # XXX let user type this in
-                self.highscores.add(username, self.score)
-            else:
-                popuptxt = "Game Over.\n\nYour final score: {:d}".format(self.score)
-            self.gfxwindow.popup(popuptxt)
+            popuptxt = "Game Over.\n\nScore: {:d}".format(self.score)
         elif status == GameStatus.WON:
             self.lives = 0
             audio.play_sample("extra_life")
-            self.gfxwindow.popup("Congratulations, you finished the game!\n\nYour final score: {:d}\n\n"
-                                 "press Escape to return to the title screen".format(self.score))
+            popuptxt = "Congratulations, you finished the game!\n\nScore: {:d}".format(self.score)
+        else:
+            popuptxt = "??invalid status??"
+        score_pos = self.highscores.score_pos(self.score)
+        if score_pos:
+            popuptxt += "\n\nYou got a new #{:d} high score!".format(score_pos)
+            import getpass
+            username = getpass.getuser()[:HighScores.max_namelen]  # XXX let user type this in
+            self.highscores.add(username, self.score)
+        self.gfxwindow.popup(popuptxt)
 
     def load_next_level(self, intro_popup: bool=True) -> None:
         level = self.level + 1
