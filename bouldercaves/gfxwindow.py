@@ -15,8 +15,10 @@ import sys
 import math
 import tkinter
 import tkinter.messagebox
+import tkinter.simpledialog
 import pkgutil
 import time
+import getpass
 from typing import Tuple, Union, Sequence, List, Set, Iterable, Callable
 try:
     from PIL import Image
@@ -25,7 +27,7 @@ except ImportError:
     r.withdraw()
     tkinter.messagebox.showerror("missing Python library", "The 'pillow' or 'pil' python library is required.")
     raise SystemExit
-from .game import GameState, GameObject, Direction, GameStatus
+from .game import GameState, GameObject, Direction, GameStatus, HighScores
 from .caves import colorpalette
 from . import audio, synthsamples
 
@@ -283,15 +285,6 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.show_highscores()
         elif event.keysym == "F9":
             self.gamestate.start_demo()
-        elif event.keysym == "F2":   # XXX temporary
-            self.gamestate.score = max(self.gamestate.highscores)[0] + 1
-            print("SCORE", self.gamestate.score)
-            self.gamestate.stop_game(GameStatus.WON)   # XXX
-        elif event.keysym == "F3":   # XXX temporary
-            self.gamestate.score = max(self.gamestate.highscores)[0] + 1
-            print("SCORE", self.gamestate.score)
-            self.gamestate.stop_game(GameStatus.LOST)   # XXX
-
 
     def repaint(self) -> None:
         self.graphics_frame += 1
@@ -609,6 +602,17 @@ class BoulderWindow(tkinter.Tk):
         if self.on_popup_closed:
             self.on_popup_closed()
             self.on_popup_closed = None
+
+    def ask_highscore_name(self, score_pos: int, score: int) -> str:
+        username = getpass.getuser()[:HighScores.max_namelen]
+        while True:
+            name = tkinter.simpledialog.askstring("Enter your name", "Enter your name for the high-score table!\n\n"
+                                                  "#{:d} score:  {:d}\n\n(max {:d} letters)"
+                                                  .format(score_pos, score, HighScores.max_namelen),
+                                                  initialvalue=username, parent=self) or ""
+            name = name.strip()
+            if 0 < len(name) <= HighScores.max_namelen:
+                return name
 
 
 def start(sargs: Sequence[str]=None) -> None:

@@ -673,7 +673,7 @@ class GameState:
             else:
                 txt = ["\x0e\x0e\x0e High Scores \x0e\x0e\x0e\n-------------------\n"]
                 for pos, (score, name) in enumerate(self.highscores, start=1):
-                    txt.append("\x0f{:d}  {:\x0f<7s}  {:_>6d}".format(pos, name, score))
+                    txt.append("\x0f{:d}\x0f {:\x0f<7s}\x0f {:_>6d}".format(pos, name, score))
             self.gfxwindow.popup("\n".join(txt), 10, on_close=reset_game_status)
 
     def pause(self):
@@ -927,10 +927,11 @@ class GameState:
         score_pos = self.highscores.score_pos(self.score)
         if score_pos:
             popuptxt += "\n\nYou got a new #{:d} high score!".format(score_pos)
-            import getpass
-            username = getpass.getuser()[:HighScores.max_namelen]  # XXX let user type this in
-            self.highscores.add(username, self.score)
-        self.gfxwindow.popup(popuptxt)
+        def ask_highscore_name(score_pos, score):
+            if score_pos:
+                name = self.gfxwindow.ask_highscore_name(score_pos, score)
+                self.highscores.add(name, score)
+        self.gfxwindow.popup(popuptxt, on_close=lambda: ask_highscore_name(score_pos, self.score))
 
     def load_next_level(self, intro_popup: bool=True) -> None:
         level = self.level + 1
