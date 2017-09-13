@@ -332,7 +332,7 @@ class BoulderWindow(tkinter.Tk):
                 self.canvas.itemconfigure(self.c_tiles[index], image=self.tile_images[tile])
             if len(self.uncover_tiles) < self.playfield_columns * self.playfield_rows // 4:
                 self.uncover_tiles = set()   # this ends the uncover animation and starts the level
-                audio.silence_audio()    # stop the cover sound
+                audio.silence_audio("cover")
                 self.tilesheet.all_dirty()
         else:
             if self.gamestate.rockford_cell:

@@ -848,11 +848,11 @@ class GameState:
         if self.amoeba["dead"] is None:
             if self.amoeba["enclosed"]:
                 self.amoeba["dead"] = Objects.DIAMOND
-                audio.silence_audio()  # stop amoeba sound
+                audio.silence_audio("amoeba")
                 audio.play_sample("diamond1")
             elif self.amoeba["size"] > self.amoeba["max"]:
                 self.amoeba["dead"] = Objects.BOULDER
-                audio.silence_audio()  # stop amoeba sound
+                audio.silence_audio("amoeba")
                 audio.play_sample("boulder")
             elif self.amoeba["slow"] > 0:
                 if not self.amoeba["sound_active"]:
@@ -864,7 +864,7 @@ class GameState:
             still_magic = self.magicwall["time"] > 0
             if self.magicwall["active"] and not still_magic:
                 # magic wall has stopped! stop playing the milling sound
-                audio.silence_audio()
+                audio.silence_audio("magic_wall")
             self.magicwall["active"] = still_magic
         if self.timelimit and not self.level_won and self.rockford_cell:
             secs_before = self.timeremaining.seconds
