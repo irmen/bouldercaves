@@ -27,7 +27,7 @@ except ImportError:
     r.withdraw()
     tkinter.messagebox.showerror("missing Python library", "The 'pillow' or 'pil' python library is required.")
     raise SystemExit
-from .game import GameState, GameObject, Direction, GameStatus, HighScores
+from .game import GameState, GameObject, Objects, Direction, GameStatus, HighScores
 from .caves import colorpalette
 from . import audio, synthsamples
 
@@ -325,7 +325,7 @@ class BoulderWindow(tkinter.Tk):
                 self.uncover_tiles.discard(reveal)
                 tile = self.tilesheet[revealx, revealy]
                 self.canvas.itemconfigure(self.c_tiles[reveal], image=self.tile_images[tile])
-            covered = GameObject.COVERED
+            covered = Objects.COVERED
             animframe = int(covered.sfps / self.update_fps * self.graphics_frame) % covered.sframes
             tile = self.sprite2tile(covered, animframe)
             for index in self.uncover_tiles:
@@ -340,21 +340,21 @@ class BoulderWindow(tkinter.Tk):
                 if self.gamestate.movement.direction == Direction.LEFT or \
                         (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
                          self.gamestate.movement.lastXdir == Direction.LEFT):
-                    spritex, spritey, sframes, sfps = GameObject.ROCKFORD.left
+                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.left
                 elif self.gamestate.movement.direction == Direction.RIGHT or \
                         (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
                          self.gamestate.movement.lastXdir == Direction.RIGHT):
-                    spritex, spritey, sframes, sfps = GameObject.ROCKFORD.right
+                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.right
                 # handle rockford idle state/animation
                 elif self.gamestate.idle["tap"] and self.gamestate.idle["blink"]:
-                    spritex, spritey, sframes, sfps = GameObject.ROCKFORD.tapblink
+                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.tapblink
                 elif self.gamestate.idle["tap"]:
-                    spritex, spritey, sframes, sfps = GameObject.ROCKFORD.tap
+                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.tap
                 elif self.gamestate.idle["blink"]:
-                    spritex, spritey, sframes, sfps = GameObject.ROCKFORD.blink
+                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.blink
                 else:
-                    spritex, spritey, sframes, sfps = GameObject.ROCKFORD.spritex, GameObject.ROCKFORD.spritey,\
-                        GameObject.ROCKFORD.sframes, GameObject.ROCKFORD.sfps
+                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.spritex, Objects.ROCKFORD.spritey, \
+                        Objects.ROCKFORD.sframes, Objects.ROCKFORD.sfps
                 if sframes:
                     animframe = int(sfps / self.update_fps *
                                     (self.graphics_frame - self.gamestate.rockford_cell.anim_start_gfx_frame)) % sframes
@@ -365,9 +365,9 @@ class BoulderWindow(tkinter.Tk):
             # other animations:
             for cell in self.gamestate.cells_with_animations():
                 obj = cell.obj
-                if obj is GameObject.MAGICWALL:
+                if obj is Objects.MAGICWALL:
                     if not self.gamestate.magicwall["active"]:
-                        obj = GameObject.BRICK
+                        obj = Objects.BRICK
                 animframe = int(obj.sfps / self.update_fps * (self.graphics_frame - cell.anim_start_gfx_frame))
                 tile = self.sprite2tile(obj, animframe)
                 self.tilesheet[cell.x, cell.y] = tile
@@ -560,14 +560,14 @@ class BoulderWindow(tkinter.Tk):
             x, y, popupwidth, popupheight,
             self.tilesheet.get_tiles(x, y, popupwidth, popupheight)
         )
-        self.tilesheet.set_tiles(x, y, [self.sprite2tile(GameObject.STEELSLOPEDUPLEFT)] +
-                                 [self.sprite2tile(GameObject.STEEL)] * (popupwidth - 2) +
-                                 [self.sprite2tile(GameObject.STEELSLOPEDUPRIGHT)])
+        self.tilesheet.set_tiles(x, y, [self.sprite2tile(Objects.STEELSLOPEDUPLEFT)] +
+                                 [self.sprite2tile(Objects.STEEL)] * (popupwidth - 2) +
+                                 [self.sprite2tile(Objects.STEELSLOPEDUPRIGHT)])
         y += 1
         if not self.smallwindow:
             self.tilesheet.set_tiles(x + 1, y, self.text2tiles(bchar * (popupwidth - 2)))
-            self.tilesheet[x, y] = self.sprite2tile(GameObject.STEEL)
-            self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(GameObject.STEEL)
+            self.tilesheet[x, y] = self.sprite2tile(Objects.STEEL)
+            self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(Objects.STEEL)
             y += 1
         lines.insert(0, "")
         lines.append("")
@@ -575,18 +575,18 @@ class BoulderWindow(tkinter.Tk):
             if not line:
                 line = " "
             tiles = self.text2tiles(bchar + " " + line.ljust(width) + " " + bchar)
-            self.tilesheet[x, y] = self.sprite2tile(GameObject.STEEL)
-            self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(GameObject.STEEL)
+            self.tilesheet[x, y] = self.sprite2tile(Objects.STEEL)
+            self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(Objects.STEEL)
             self.tilesheet.set_tiles(x + 1, y, tiles)
             y += 1
         if not self.smallwindow:
-            self.tilesheet[x, y] = self.sprite2tile(GameObject.STEEL)
-            self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(GameObject.STEEL)
+            self.tilesheet[x, y] = self.sprite2tile(Objects.STEEL)
+            self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(Objects.STEEL)
             self.tilesheet.set_tiles(x + 1, y, self.text2tiles(bchar * (popupwidth - 2)))
             y += 1
-        self.tilesheet.set_tiles(x, y, [self.sprite2tile(GameObject.STEELSLOPEDDOWNLEFT)] +
-                                 [self.sprite2tile(GameObject.STEEL)] * (popupwidth - 2) +
-                                 [self.sprite2tile(GameObject.STEELSLOPEDDOWNRIGHT)])
+        self.tilesheet.set_tiles(x, y, [self.sprite2tile(Objects.STEELSLOPEDDOWNLEFT)] +
+                                 [self.sprite2tile(Objects.STEEL)] * (popupwidth - 2) +
+                                 [self.sprite2tile(Objects.STEELSLOPEDDOWNRIGHT)])
         self.popup_frame = int(self.graphics_frame + self.update_fps * duration)
         self.on_popup_closed = on_close
 

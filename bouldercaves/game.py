@@ -77,163 +77,166 @@ class GameObject:
         self.sfps = sfps
         self.anim_end_callback = anim_end_callback
 
-# row 0
-GameObject.EMPTY = GameObject("EMPTY", False, False, True, 0, 0)
-GameObject.BOULDER = GameObject("BOULDER", True, False, True, 1, 0)
-GameObject.DIRT = GameObject("DIRT", False, False, True, 2, 0)
-GameObject.DIRT2 = GameObject("DIRT2", False, False, True, 3, 0)
-GameObject.STEEL = GameObject("STEEL", False, False, False, 4, 0)
-GameObject.BRICK = GameObject("BRICK", True, False, True, 5, 0)
-GameObject.BLADDERSPENDER = GameObject("BLADDERSPENDER", False, False, False, 6, 0)
-GameObject.VOODOO = GameObject("VOODOO", True, False, True, 7, 0)
-# row 1
-GameObject.SWEET = GameObject("SWEET", True, False, True, 0, 1)
-GameObject.GRAVESTONE = GameObject("GRAVESTONE", True, False, False, 1, 1)
-GameObject.TRAPPEDDIAMOND = GameObject("TRAPPEDDIAMOND", False, False, False, 2, 1)
-GameObject.DIAMONDKEY = GameObject("DIAMONDKEY", True, True, True, 3, 1)
-GameObject.BITERSWITCH1 = GameObject("BITERSWITCH1", False, False, True, 4, 1)
-GameObject.BITERSWITCH2 = GameObject("BITERSWITCH2", False, False, True, 5, 1)
-GameObject.BITERSWITCH3 = GameObject("BITERSWITCH3", False, False, True, 6, 1)
-GameObject.BITERSWITCH4 = GameObject("BITERSWITCH4", False, False, True, 7, 1)
-# row 2
-GameObject.CLOCK = GameObject("CLOCK", True, False, True, 0, 2)
-GameObject.CHASINGBOULDER = GameObject("CHASINGBOULDER", True, False, True, 1, 2)
-GameObject.CREATURESWITCH = GameObject("CREATURESWITCH", False, False, False, 2, 2)
-GameObject.CREATURESWITCHON = GameObject("CREATURESWITCHON", False, False, False, 3, 2)
-GameObject.ACID = GameObject("ACID", False, False, False, 4, 2)
-GameObject.SOKOBANBOX = GameObject("SOKOBANBOX", False, False, False, 5, 2)
-GameObject.INBOXBLINKING = GameObject("INBOXBLINKING", False, False, False, 6, 2, sframes=2, sfps=4)
-GameObject.OUTBOXBLINKING = GameObject("OUTBOXBLINKING", False, False, False, 6, 2, sframes=2, sfps=4)
-GameObject.OUTBOXCLOSED = GameObject("OUTBOXCLOSED", False, False, False, 6, 2)
-# row 3
-GameObject.STEELWALLBIRTH = GameObject("STEELWALLBIRTH", False, False, False, 0, 3, sframes=4, sfps=10)
-GameObject.CLOCKBIRTH = GameObject("CLOCKBIRTH", False, False, False, 4, 3, sframes=4, sfps=10)
-# row 4
-GameObject.ROCKFORDBIRTH = GameObject("ROCKFORDBIRTH", False, False, False, 0, 4, sframes=4, sfps=10)
-GameObject.ROCKFORD = GameObject("ROCKFORD", False, True, True, 3, 4)  # standing still
-GameObject.BOULDERBIRTH = GameObject("BOULDERBIRTH", False, False, False, 4, 4, sframes=4, sfps=10)
-# row 5
-GameObject.EXPANDINGWALLSWITCHHORIZ = GameObject("EXPANDINGWALLSWITCHHORIZ", False, False, False, 0, 5)
-GameObject.EXPANDINGWALLSWITCHVERT = GameObject("EXPANDINGWALLSWITCHVERT", False, False, False, 1, 5)
-GameObject.ROCKFORD.bomb = (2, 5, 0, 0)
-GameObject.EXPLOSION = GameObject("EXPLOSION", False, False, False, 3, 5, sframes=5, sfps=10)
-# row 6
-GameObject.BOMB = GameObject("BOMB", True, False, True, 0, 6)
-GameObject.IGNITEDBOMB = GameObject("IGNITEDBOMB", True, False, True, 1, 6, sframes=7, sfps=10)
-# row 7
-GameObject.DIAMONDBIRTH = GameObject("DIAMONDBIRTH", False, False, False, 0, 7, sframes=5, sfps=10)
-GameObject.TELEPORTER = GameObject("TELEPORTER", False, False, False, 5, 7)
-GameObject.HAMMER = GameObject("HAMMER", True, False, False, 6, 7)
-GameObject.POT = GameObject("POT", True, False, False, 7, 7)
-# row 8
-GameObject.DOOR1 = GameObject("DOOR1", False, False, False, 0, 8)
-GameObject.DOOR2 = GameObject("DOOR2", False, False, False, 1, 8)
-GameObject.DOOR3 = GameObject("DOOR3", False, False, False, 2, 8)
-GameObject.KEY1 = GameObject("KEY1", False, False, False, 3, 8)
-GameObject.KEY2 = GameObject("KEY2", False, False, False, 4, 8)
-GameObject.KEY3 = GameObject("KEY3", False, False, False, 5, 8)
-# row 10
-GameObject.GHOSTEXPLODE = GameObject("GHOSTEXPLODE", False, False, False, 0, 10, sframes=4, sfps=10)
-GameObject.BOMBEXPLODE = GameObject("BOMBEXPLODE", False, False, False, 4, 10, sframes=4, sfps=10)
-# row 11
-GameObject.COW = GameObject("COW", False, True, True, 0, 11, sframes=8, sfps=10)
-# row 12
-GameObject.WATER = GameObject("WATER", False, False, True, 0, 12, sframes=8, sfps=20)
-# row 13
-GameObject.ALTFIREFLY = GameObject("ALTFIREFLY", False, True, True, 0, 13, sframes=8, sfps=20)
-# row 14
-GameObject.ALTBUTTERFLY = GameObject("ALTBUTTERFLY", False, True, True, 0, 14, sframes=8, sfps=20)
-# row 15
-GameObject.BONUSBG = GameObject("BONUSBG", False, False, True, 0, 15, sframes=8, sfps=10)
-# row 16
-GameObject.COVERED = GameObject("COVERED", False, False, False, 0, 16, sframes=8, sfps=20)
-# row 17
-GameObject.FIREFLY = GameObject("FIREFLY", False, True, True, 0, 17, sframes=8, sfps=20)
-# row 18
-GameObject.BUTTERFLY = GameObject("BUTTERFLY", False, True, True, 0, 18, sframes=8, sfps=20)
-# row 19
-GameObject.STONEFLY = GameObject("STONEFLY", False, True, True, 0, 19, sframes=8, sfps=20)
-# row 20
-GameObject.GHOST = GameObject("GHOST", False, True, True, 0, 20, sframes=8, sfps=20)
-# row 21
-GameObject.BITER = GameObject("BITER", False, True, True, 0, 21, sframes=8, sfps=20)
-# row 22
-GameObject.BLADDER = GameObject("BLADDER", False, True, True, 0, 22, sframes=8, sfps=20)
-# row 23
-GameObject.MAGICWALL = GameObject("MAGICWALL", False, False, True, 0, 23, sframes=8, sfps=20)
-# row 24
-GameObject.AMOEBA = GameObject("AMOEBA", False, False, True, 0, 24, sframes=8, sfps=20)
-# row 25
-GameObject.SLIME = GameObject("SLIME", False, False, True, 0, 25, sframes=8, sfps=20)
-# row 26 - 30
-GameObject.ROCKFORD.blink = (0, 26, 8, 20)
-GameObject.ROCKFORD.tap = (0, 27, 8, 20)
-GameObject.ROCKFORD.tapblink = (0, 28, 8, 20)
-GameObject.ROCKFORD.left = (0, 29, 8, 20)
-GameObject.ROCKFORD.right = (0, 30, 8, 20)
-# row 31
-GameObject.DIAMOND = GameObject("DIAMOND", True, False, True, 0, 31, sframes=8, sfps=20)
-# row 32
-GameObject.ROCKFORD.stirring = (0, 32, 8, 20)
-# row 33   # ...contains hammer
-# row 34
-GameObject.MEGABOULDER = GameObject("MEGABOULDER", True, False, True, 0, 34)
-GameObject.SKELETON = GameObject("SKELETON", True, False, True, 1, 34)
-GameObject.GRAVITYSWITCH = GameObject("GRAVITYSWITCH", False, False, False, 2, 34)
-GameObject.GRAVITYSWITCHON = GameObject("GRAVITYSWITCHON", False, False, False, 3, 34)
-GameObject.BRICKSLOPEDUPRIGHT = GameObject("BRICKSLOPEDUPRIGHT", True, False, True, 4, 34)
-GameObject.BRICKSLOPEDUPLEFT = GameObject("BRICKSLOPEDUPLEFT", True, False, True, 5, 34)
-GameObject.BRICKSLOPEDDOWNLEFT = GameObject("BRICKSLOPEDDOWNLEFT", True, False, True, 6, 34)
-GameObject.BRICKSLOPEDDOWNRIGHT = GameObject("BRICKSLOPEDDOWNRIGHT", True, False, True, 7, 34)
-# row 35
-GameObject.DIRTSLOPEDUPRIGHT = GameObject("DIRTSLOPEDUPRIGHT", True, False, True, 0, 35)
-GameObject.DIRTSLOPEDUPLEFT = GameObject("DIRTSLOPEDUPLEFT", True, False, True, 1, 35)
-GameObject.DIRTSLOPEDDOWNLEFT = GameObject("DIRTSLOPEDDOWNLEFT", True, False, True, 2, 35)
-GameObject.DIRTSLOPEDDOWNRIGHT = GameObject("DIRTSLOPEDDOWNRIGHT", True, False, True, 3, 35)
-GameObject.STEELSLOPEDUPRIGHT = GameObject("STEELSLOPEDUPRIGHT", True, False, True, 4, 35)
-GameObject.STEELSLOPEDUPLEFT = GameObject("STEELSLOPEDUPLEFT", True, False, True, 5, 35)
-GameObject.STEELSLOPEDDOWNLEFT = GameObject("STEELSLOPEDDOWNLEFT", True, False, True, 6, 35)
-GameObject.STEELSLOPEDDOWNRIGHT = GameObject("STEELSLOPEDDOWNRIGHT", True, False, True, 7, 35)
-# row 36
-GameObject.NITROFLASK = GameObject("NITROFLASK", True, False, True, 0, 36)
-GameObject.DIRTBALL = GameObject("DIRTBALL", True, False, True, 1, 36)
-GameObject.REPLICATORSWITCHON = GameObject("REPLICATORSWITCHON", False, False, False, 2, 36)
-GameObject.REPLICATORSWITCHOFF = GameObject("REPLICATORSWITCHOFF", False, False, False, 3, 36)
-GameObject.AMOEBAEXPLODE = GameObject("AMOEBAEXPLODE", False, False, False, 4, 36, sframes=4, sfps=10)
-# row 37
-GameObject.AMOEBARECTANGLE = GameObject("AMOEBARECTANGLE", False, True, True, 0, 37, sframes=8, sfps=10)
-# row 38
-GameObject.REPLICATOR = GameObject("REPLICATOR", False, False, False, 0, 38, sframes=8, sfps=20)
-# row 39
-GameObject.LAVA = GameObject("LAVA", False, False, True, 0, 39, sframes=8, sfps=20)
-# row 40
-GameObject.CONVEYORRIGHT = GameObject("CONVEYORRIGHT", False, False, True, 0, 40, sframes=8, sfps=20)
-# row 41
-GameObject.CONVEYORLEFT = GameObject("CONVEYORLEFT", False, False, True, 0, 41, sframes=8, sfps=20)
-# row 42
-GameObject.DRAGONFLY = GameObject("DRAGONFLY", False, True, True, 0, 42, sframes=8, sfps=20)
-# row 43
-GameObject.FLYINGDIAMOND = GameObject("FLYINGDIAMOND", True, False, True, 0, 43, sframes=8, sfps=20)
-# row 44
-GameObject.DIRTLOOSE = GameObject("DIRTLOOSE", False, False, True, 0, 44)
-GameObject.CONVEYORDIRECTIONSWITCHNORMAL = GameObject("CONVEYORDIRECTIONSWITCHNORMAL", False, False, False, 1, 44)
-GameObject.CONVEYORDIRECTIONSWITCHCHANGED = GameObject("CONVEYORDIRECTIONSWITCHCHANGED", False, False, False, 2, 44)
-GameObject.CONVEYORDIRECTIONSWITCHOFF = GameObject("CONVEYORDIRECTIONSWITCHOFF", False, False, False, 3, 44)
-GameObject.CONVEYORDIRECTIONSWITCHON = GameObject("CONVEYORDIRECTIONSWITCHON", False, False, False, 4, 44)
-GameObject.FLYINGBOULDER = GameObject("FLYINGBOULDER", False, True, True, 5, 44)
-GameObject.COCONUT = GameObject("COCONUT", False, False, True, 6, 44)
-# row 45
-GameObject.NUTCRACK = GameObject("NUTCRACK", False, False, False, 0, 45, sframes=4, sfps=10)
-GameObject.ROCKETRIGHT = GameObject("ROCKETRIGHT", False, False, True, 4, 45)
-GameObject.ROCKETUP = GameObject("ROCKETUP", False, False, True, 5, 45)
-GameObject.ROCKETLEFT = GameObject("ROCKETLEFT", False, False, True, 6, 45)
-GameObject.ROCKETDOWN = GameObject("ROCKETDOWN", False, False, True, 7, 45)
-# row 46
-GameObject.ROCKETLAUNCHER = GameObject("ROCKETLAUNCHER", False, False, True, 0, 46)
-GameObject.ROCKFORD.rocketlauncher = (1, 46, 0, 0)
-# row 49 - 50
-GameObject.ROCKFORD.pushleft = (0, 49, 8, 20)
-GameObject.ROCKFORD.pushright = (0, 50, 8, 20)
+
+class Objects:      # namespace for the game objects in the tilesheet
+    # row 0
+    g = GameObject
+    EMPTY = g("EMPTY", False, False, True, 0, 0)
+    BOULDER = g("BOULDER", True, False, True, 1, 0)
+    DIRT = g("DIRT", False, False, True, 2, 0)
+    DIRT2 = g("DIRT2", False, False, True, 3, 0)
+    STEEL = g("STEEL", False, False, False, 4, 0)
+    BRICK = g("BRICK", True, False, True, 5, 0)
+    BLADDERSPENDER = g("BLADDERSPENDER", False, False, False, 6, 0)
+    VOODOO = g("VOODOO", True, False, True, 7, 0)
+    # row 1
+    SWEET = g("SWEET", True, False, True, 0, 1)
+    GRAVESTONE = g("GRAVESTONE", True, False, False, 1, 1)
+    TRAPPEDDIAMOND = g("TRAPPEDDIAMOND", False, False, False, 2, 1)
+    DIAMONDKEY = g("DIAMONDKEY", True, True, True, 3, 1)
+    BITERSWITCH1 = g("BITERSWITCH1", False, False, True, 4, 1)
+    BITERSWITCH2 = g("BITERSWITCH2", False, False, True, 5, 1)
+    BITERSWITCH3 = g("BITERSWITCH3", False, False, True, 6, 1)
+    BITERSWITCH4 = g("BITERSWITCH4", False, False, True, 7, 1)
+    # row 2
+    CLOCK = g("CLOCK", True, False, True, 0, 2)
+    CHASINGBOULDER = g("CHASINGBOULDER", True, False, True, 1, 2)
+    CREATURESWITCH = g("CREATURESWITCH", False, False, False, 2, 2)
+    CREATURESWITCHON = g("CREATURESWITCHON", False, False, False, 3, 2)
+    ACID = g("ACID", False, False, False, 4, 2)
+    SOKOBANBOX = g("SOKOBANBOX", False, False, False, 5, 2)
+    INBOXBLINKING = g("INBOXBLINKING", False, False, False, 6, 2, sframes=2, sfps=4)
+    OUTBOXBLINKING = g("OUTBOXBLINKING", False, False, False, 6, 2, sframes=2, sfps=4)
+    OUTBOXCLOSED = g("OUTBOXCLOSED", False, False, False, 6, 2)
+    # row 3
+    STEELWALLBIRTH = g("STEELWALLBIRTH", False, False, False, 0, 3, sframes=4, sfps=10)
+    CLOCKBIRTH = g("CLOCKBIRTH", False, False, False, 4, 3, sframes=4, sfps=10)
+    # row 4
+    ROCKFORDBIRTH = g("ROCKFORDBIRTH", False, False, False, 0, 4, sframes=4, sfps=10)
+    ROCKFORD = g("ROCKFORD", False, True, True, 3, 4)  # standing still
+    BOULDERBIRTH = g("BOULDERBIRTH", False, False, False, 4, 4, sframes=4, sfps=10)
+    # row 5
+    EXPANDINGWALLSWITCHHORIZ = g("EXPANDINGWALLSWITCHHORIZ", False, False, False, 0, 5)
+    EXPANDINGWALLSWITCHVERT = g("EXPANDINGWALLSWITCHVERT", False, False, False, 1, 5)
+    ROCKFORD.bomb = (2, 5, 0, 0)
+    EXPLOSION = g("EXPLOSION", False, False, False, 3, 5, sframes=5, sfps=10)
+    # row 6
+    BOMB = g("BOMB", True, False, True, 0, 6)
+    IGNITEDBOMB = g("IGNITEDBOMB", True, False, True, 1, 6, sframes=7, sfps=10)
+    # row 7
+    DIAMONDBIRTH = g("DIAMONDBIRTH", False, False, False, 0, 7, sframes=5, sfps=10)
+    TELEPORTER = g("TELEPORTER", False, False, False, 5, 7)
+    HAMMER = g("HAMMER", True, False, False, 6, 7)
+    POT = g("POT", True, False, False, 7, 7)
+    # row 8
+    DOOR1 = g("DOOR1", False, False, False, 0, 8)
+    DOOR2 = g("DOOR2", False, False, False, 1, 8)
+    DOOR3 = g("DOOR3", False, False, False, 2, 8)
+    KEY1 = g("KEY1", False, False, False, 3, 8)
+    KEY2 = g("KEY2", False, False, False, 4, 8)
+    KEY3 = g("KEY3", False, False, False, 5, 8)
+    # row 10
+    GHOSTEXPLODE = g("GHOSTEXPLODE", False, False, False, 0, 10, sframes=4, sfps=10)
+    BOMBEXPLODE = g("BOMBEXPLODE", False, False, False, 4, 10, sframes=4, sfps=10)
+    # row 11
+    COW = g("COW", False, True, True, 0, 11, sframes=8, sfps=10)
+    # row 12
+    WATER = g("WATER", False, False, True, 0, 12, sframes=8, sfps=20)
+    # row 13
+    ALTFIREFLY = g("ALTFIREFLY", False, True, True, 0, 13, sframes=8, sfps=20)
+    # row 14
+    ALTBUTTERFLY = g("ALTBUTTERFLY", False, True, True, 0, 14, sframes=8, sfps=20)
+    # row 15
+    BONUSBG = g("BONUSBG", False, False, True, 0, 15, sframes=8, sfps=10)
+    # row 16
+    COVERED = g("COVERED", False, False, False, 0, 16, sframes=8, sfps=20)
+    # row 17
+    FIREFLY = g("FIREFLY", False, True, True, 0, 17, sframes=8, sfps=20)
+    # row 18
+    BUTTERFLY = g("BUTTERFLY", False, True, True, 0, 18, sframes=8, sfps=20)
+    # row 19
+    STONEFLY = g("STONEFLY", False, True, True, 0, 19, sframes=8, sfps=20)
+    # row 20
+    GHOST = g("GHOST", False, True, True, 0, 20, sframes=8, sfps=20)
+    # row 21
+    BITER = g("BITER", False, True, True, 0, 21, sframes=8, sfps=20)
+    # row 22
+    BLADDER = g("BLADDER", False, True, True, 0, 22, sframes=8, sfps=20)
+    # row 23
+    MAGICWALL = g("MAGICWALL", False, False, True, 0, 23, sframes=8, sfps=20)
+    # row 24
+    AMOEBA = g("AMOEBA", False, False, True, 0, 24, sframes=8, sfps=20)
+    # row 25
+    SLIME = g("SLIME", False, False, True, 0, 25, sframes=8, sfps=20)
+    # row 26 - 30
+    ROCKFORD.blink = (0, 26, 8, 20)
+    ROCKFORD.tap = (0, 27, 8, 20)
+    ROCKFORD.tapblink = (0, 28, 8, 20)
+    ROCKFORD.left = (0, 29, 8, 20)
+    ROCKFORD.right = (0, 30, 8, 20)
+    # row 31
+    DIAMOND = g("DIAMOND", True, False, True, 0, 31, sframes=8, sfps=20)
+    # row 32
+    ROCKFORD.stirring = (0, 32, 8, 20)
+    # row 33   # ...contains hammer
+    # row 34
+    MEGABOULDER = g("MEGABOULDER", True, False, True, 0, 34)
+    SKELETON = g("SKELETON", True, False, True, 1, 34)
+    GRAVITYSWITCH = g("GRAVITYSWITCH", False, False, False, 2, 34)
+    GRAVITYSWITCHON = g("GRAVITYSWITCHON", False, False, False, 3, 34)
+    BRICKSLOPEDUPRIGHT = g("BRICKSLOPEDUPRIGHT", True, False, True, 4, 34)
+    BRICKSLOPEDUPLEFT = g("BRICKSLOPEDUPLEFT", True, False, True, 5, 34)
+    BRICKSLOPEDDOWNLEFT = g("BRICKSLOPEDDOWNLEFT", True, False, True, 6, 34)
+    BRICKSLOPEDDOWNRIGHT = g("BRICKSLOPEDDOWNRIGHT", True, False, True, 7, 34)
+    # row 35
+    DIRTSLOPEDUPRIGHT = g("DIRTSLOPEDUPRIGHT", True, False, True, 0, 35)
+    DIRTSLOPEDUPLEFT = g("DIRTSLOPEDUPLEFT", True, False, True, 1, 35)
+    DIRTSLOPEDDOWNLEFT = g("DIRTSLOPEDDOWNLEFT", True, False, True, 2, 35)
+    DIRTSLOPEDDOWNRIGHT = g("DIRTSLOPEDDOWNRIGHT", True, False, True, 3, 35)
+    STEELSLOPEDUPRIGHT = g("STEELSLOPEDUPRIGHT", True, False, True, 4, 35)
+    STEELSLOPEDUPLEFT = g("STEELSLOPEDUPLEFT", True, False, True, 5, 35)
+    STEELSLOPEDDOWNLEFT = g("STEELSLOPEDDOWNLEFT", True, False, True, 6, 35)
+    STEELSLOPEDDOWNRIGHT = g("STEELSLOPEDDOWNRIGHT", True, False, True, 7, 35)
+    # row 36
+    NITROFLASK = g("NITROFLASK", True, False, True, 0, 36)
+    DIRTBALL = g("DIRTBALL", True, False, True, 1, 36)
+    REPLICATORSWITCHON = g("REPLICATORSWITCHON", False, False, False, 2, 36)
+    REPLICATORSWITCHOFF = g("REPLICATORSWITCHOFF", False, False, False, 3, 36)
+    AMOEBAEXPLODE = g("AMOEBAEXPLODE", False, False, False, 4, 36, sframes=4, sfps=10)
+    # row 37
+    AMOEBARECTANGLE = g("AMOEBARECTANGLE", False, True, True, 0, 37, sframes=8, sfps=10)
+    # row 38
+    REPLICATOR = g("REPLICATOR", False, False, False, 0, 38, sframes=8, sfps=20)
+    # row 39
+    LAVA = g("LAVA", False, False, True, 0, 39, sframes=8, sfps=20)
+    # row 40
+    CONVEYORRIGHT = g("CONVEYORRIGHT", False, False, True, 0, 40, sframes=8, sfps=20)
+    # row 41
+    CONVEYORLEFT = g("CONVEYORLEFT", False, False, True, 0, 41, sframes=8, sfps=20)
+    # row 42
+    DRAGONFLY = g("DRAGONFLY", False, True, True, 0, 42, sframes=8, sfps=20)
+    # row 43
+    FLYINGDIAMOND = g("FLYINGDIAMOND", True, False, True, 0, 43, sframes=8, sfps=20)
+    # row 44
+    DIRTLOOSE = g("DIRTLOOSE", False, False, True, 0, 44)
+    CONVEYORDIRECTIONSWITCHNORMAL = g("CONVEYORDIRECTIONSWITCHNORMAL", False, False, False, 1, 44)
+    CONVEYORDIRECTIONSWITCHCHANGED = g("CONVEYORDIRECTIONSWITCHCHANGED", False, False, False, 2, 44)
+    CONVEYORDIRECTIONSWITCHOFF = g("CONVEYORDIRECTIONSWITCHOFF", False, False, False, 3, 44)
+    CONVEYORDIRECTIONSWITCHON = g("CONVEYORDIRECTIONSWITCHON", False, False, False, 4, 44)
+    FLYINGBOULDER = g("FLYINGBOULDER", False, True, True, 5, 44)
+    COCONUT = g("COCONUT", False, False, True, 6, 44)
+    # row 45
+    NUTCRACK = g("NUTCRACK", False, False, False, 0, 45, sframes=4, sfps=10)
+    ROCKETRIGHT = g("ROCKETRIGHT", False, False, True, 4, 45)
+    ROCKETUP = g("ROCKETUP", False, False, True, 5, 45)
+    ROCKETLEFT = g("ROCKETLEFT", False, False, True, 6, 45)
+    ROCKETDOWN = g("ROCKETDOWN", False, False, True, 7, 45)
+    # row 46
+    ROCKETLAUNCHER = g("ROCKETLAUNCHER", False, False, True, 0, 46)
+    ROCKFORD.rocketlauncher = (1, 46, 0, 0)
+    # row 49 - 50
+    ROCKFORD.pushleft = (0, 49, 8, 20)
+    ROCKFORD.pushright = (0, 50, 8, 20)
 
 
 class HighScores:
@@ -295,15 +298,15 @@ class GameState:
             return "<Cell {:s} @{:d},{:d}>".format(self.obj.name, self.x, self.y)
 
         def isempty(self) -> bool:
-            return self.obj in {GameObject.EMPTY, GameObject.BONUSBG, None}
+            return self.obj in {Objects.EMPTY, Objects.BONUSBG, None}
 
         def isdirt(self) -> bool:
-            return self.obj in {GameObject.DIRTBALL, GameObject.DIRT, GameObject.DIRT2, GameObject.DIRTLOOSE,
-                                GameObject.DIRTSLOPEDDOWNLEFT, GameObject.DIRTSLOPEDDOWNRIGHT,
-                                GameObject.DIRTSLOPEDUPLEFT, GameObject.DIRTSLOPEDUPRIGHT}
+            return self.obj in {Objects.DIRTBALL, Objects.DIRT, Objects.DIRT2, Objects.DIRTLOOSE,
+                                Objects.DIRTSLOPEDDOWNLEFT, Objects.DIRTSLOPEDDOWNRIGHT,
+                                Objects.DIRTSLOPEDUPLEFT, Objects.DIRTSLOPEDUPRIGHT}
 
         def isrockford(self) -> bool:
-            return self.obj is GameObject.ROCKFORD
+            return self.obj is Objects.ROCKFORD
 
         def isrounded(self) -> bool:
             return self.obj.rounded
@@ -315,32 +318,32 @@ class GameState:
             return self.obj.consumable
 
         def ismagic(self) -> bool:
-            return self.obj is GameObject.MAGICWALL
+            return self.obj is Objects.MAGICWALL
 
         def isbutterfly(self) -> bool:
             # these explode to diamonds
-            return self.obj is GameObject.BUTTERFLY or self.obj is GameObject.ALTBUTTERFLY
+            return self.obj is Objects.BUTTERFLY or self.obj is Objects.ALTBUTTERFLY
 
         def isamoeba(self) -> bool:
-            return self.obj is GameObject.AMOEBA or self.obj is GameObject.AMOEBARECTANGLE
+            return self.obj is Objects.AMOEBA or self.obj is Objects.AMOEBARECTANGLE
 
         def isfirefly(self) -> bool:
-            return self.obj is GameObject.FIREFLY or self.obj is GameObject.ALTFIREFLY
+            return self.obj is Objects.FIREFLY or self.obj is Objects.ALTFIREFLY
 
         def isdiamond(self) -> bool:
-            return self.obj is GameObject.DIAMOND or self.obj is GameObject.FLYINGDIAMOND
+            return self.obj is Objects.DIAMOND or self.obj is Objects.FLYINGDIAMOND
 
         def isboulder(self) -> bool:
-            return self.obj in {GameObject.BOULDER, GameObject.MEGABOULDER, GameObject.CHASINGBOULDER, GameObject.FLYINGBOULDER}
+            return self.obj in {Objects.BOULDER, Objects.MEGABOULDER, Objects.CHASINGBOULDER, Objects.FLYINGBOULDER}
 
         def isoutbox(self) -> bool:
-            return self.obj is GameObject.OUTBOXBLINKING
+            return self.obj is Objects.OUTBOXBLINKING
 
         def canfall(self) -> bool:
-            return self.obj in {GameObject.BOULDER, GameObject.SWEET, GameObject.DIAMONDKEY, GameObject.BOMB,
-                                GameObject.IGNITEDBOMB, GameObject.KEY1, GameObject.KEY2, GameObject.KEY3,
-                                GameObject.DIAMOND, GameObject.MEGABOULDER, GameObject.SKELETON, GameObject.NITROFLASK,
-                                GameObject.DIRTBALL, GameObject.COCONUT, GameObject.ROCKETLAUNCHER}
+            return self.obj in {Objects.BOULDER, Objects.SWEET, Objects.DIAMONDKEY, Objects.BOMB,
+                                Objects.IGNITEDBOMB, Objects.KEY1, Objects.KEY2, Objects.KEY3,
+                                Objects.DIAMOND, Objects.MEGABOULDER, Objects.SKELETON, Objects.NITROFLASK,
+                                Objects.DIRTBALL, Objects.COCONUT, Objects.ROCKETLAUNCHER}
 
     class MovementInfo:
         def __init__(self) -> None:
@@ -476,11 +479,11 @@ class GameState:
         self.cave = []   # type: List[GameState.Cell]
         for y in range(self.height):
             for x in range(self.width):
-                self.cave.append(self.Cell(GameObject.EMPTY, x, y))
+                self.cave.append(self.Cell(Objects.EMPTY, x, y))
         # set the anim end callbacks:
-        GameObject.ROCKFORDBIRTH.anim_end_callback = self.end_rockfordbirth
-        GameObject.EXPLOSION.anim_end_callback = self.end_explosion
-        GameObject.DIAMONDBIRTH.anim_end_callback = self.end_diamondbirth
+        Objects.ROCKFORDBIRTH.anim_end_callback = self.end_rockfordbirth
+        Objects.EXPLOSION.anim_end_callback = self.end_explosion
+        Objects.DIAMONDBIRTH.anim_end_callback = self.end_diamondbirth
         self.demo_or_highscore = True
         self.highscores = HighScores()
         # and start the game on the title screen.
@@ -533,7 +536,7 @@ class GameState:
         self.movement = self.MovementInfo()
         self.flash = 0
         # draw the 'title screen'
-        self.draw_rectangle(GameObject.DIRT2, 0, 0, self.width, self.height, GameObject.EMPTY)
+        self.draw_rectangle(Objects.DIRT2, 0, 0, self.width, self.height, Objects.EMPTY)
         title = r"""
 /**\           *\     *
 *  *   +        *   + *        +
@@ -556,23 +559,23 @@ class GameState:
                 if c == ' ':
                     continue
                 obj = {
-                    '*': GameObject.BRICK,
-                    '/': GameObject.BRICKSLOPEDUPLEFT,
-                    '\\': GameObject.BRICKSLOPEDUPRIGHT,
-                    '@': GameObject.BRICKSLOPEDDOWNLEFT,
-                    '$': GameObject.BRICKSLOPEDDOWNRIGHT,
-                    '+': GameObject.FLYINGDIAMOND,
-                    '#': GameObject.BOULDER,
-                    'f': GameObject.ALTFIREFLY
+                    '*': Objects.BRICK,
+                    '/': Objects.BRICKSLOPEDUPLEFT,
+                    '\\': Objects.BRICKSLOPEDUPRIGHT,
+                    '@': Objects.BRICKSLOPEDDOWNLEFT,
+                    '$': Objects.BRICKSLOPEDDOWNRIGHT,
+                    '+': Objects.FLYINGDIAMOND,
+                    '#': Objects.BOULDER,
+                    'f': Objects.ALTFIREFLY
                 }[c]
                 self.draw_single(obj, 2 + x, 1 + y)
 
-        self.draw_line(GameObject.LAVA, 4, self.height - 3, self.width - 8, Direction.RIGHT)
-        self.draw_line(GameObject.DIRT, 3, self.height - 2, self.width - 6, Direction.RIGHT)
-        self.draw_single(GameObject.DIRTSLOPEDUPLEFT, 3, self.height - 3)
-        self.draw_single(GameObject.DIRTSLOPEDUPLEFT, 2, self.height - 2)
-        self.draw_single(GameObject.DIRTSLOPEDUPRIGHT, self.width - 4, self.height - 3)
-        self.draw_single(GameObject.DIRTSLOPEDUPRIGHT, self.width - 3, self.height - 2)
+        self.draw_line(Objects.LAVA, 4, self.height - 3, self.width - 8, Direction.RIGHT)
+        self.draw_line(Objects.DIRT, 3, self.height - 2, self.width - 6, Direction.RIGHT)
+        self.draw_single(Objects.DIRTSLOPEDUPLEFT, 3, self.height - 3)
+        self.draw_single(Objects.DIRTSLOPEDUPLEFT, 2, self.height - 2)
+        self.draw_single(Objects.DIRTSLOPEDUPRIGHT, self.width - 4, self.height - 3)
+        self.draw_single(Objects.DIRTSLOPEDUPRIGHT, self.width - 3, self.height - 2)
 
     def load_c64level(self, levelnumber: int, level_intro_popup: bool=True) -> None:
         audio.silence_audio()
@@ -612,28 +615,28 @@ class GameState:
         }
         # convert the c64 cave map
         conversion = {
-            0x00: (GameObject.EMPTY, Direction.NOWHERE),
-            0x01: (GameObject.DIRT, Direction.NOWHERE),
-            0x02: (GameObject.BRICK, Direction.NOWHERE),
-            0x03: (GameObject.MAGICWALL, Direction.NOWHERE),
-            0x04: (GameObject.OUTBOXCLOSED, Direction.NOWHERE),
-            0x05: (GameObject.OUTBOXBLINKING, Direction.NOWHERE),
-            0x07: (GameObject.STEEL, Direction.NOWHERE),
-            0x08: (GameObject.FIREFLY, Direction.LEFT),
-            0x09: (GameObject.FIREFLY, Direction.UP),
-            0x0a: (GameObject.FIREFLY, Direction.RIGHT),
-            0x0b: (GameObject.FIREFLY, Direction.DOWN),
-            0x10: (GameObject.BOULDER, Direction.NOWHERE),
-            0x12: (GameObject.BOULDER, Direction.NOWHERE),
-            0x14: (GameObject.DIAMOND, Direction.NOWHERE),
-            0x16: (GameObject.DIAMOND, Direction.NOWHERE),
-            0x25: (GameObject.INBOXBLINKING, Direction.NOWHERE),
-            0x30: (GameObject.BUTTERFLY, Direction.DOWN),
-            0x31: (GameObject.BUTTERFLY, Direction.LEFT),
-            0x32: (GameObject.BUTTERFLY, Direction.UP),
-            0x33: (GameObject.BUTTERFLY, Direction.RIGHT),
-            0x38: (GameObject.ROCKFORD, Direction.NOWHERE),
-            0x3a: (GameObject.AMOEBA, Direction.NOWHERE)
+            0x00: (Objects.EMPTY, Direction.NOWHERE),
+            0x01: (Objects.DIRT, Direction.NOWHERE),
+            0x02: (Objects.BRICK, Direction.NOWHERE),
+            0x03: (Objects.MAGICWALL, Direction.NOWHERE),
+            0x04: (Objects.OUTBOXCLOSED, Direction.NOWHERE),
+            0x05: (Objects.OUTBOXBLINKING, Direction.NOWHERE),
+            0x07: (Objects.STEEL, Direction.NOWHERE),
+            0x08: (Objects.FIREFLY, Direction.LEFT),
+            0x09: (Objects.FIREFLY, Direction.UP),
+            0x0a: (Objects.FIREFLY, Direction.RIGHT),
+            0x0b: (Objects.FIREFLY, Direction.DOWN),
+            0x10: (Objects.BOULDER, Direction.NOWHERE),
+            0x12: (Objects.BOULDER, Direction.NOWHERE),
+            0x14: (Objects.DIAMOND, Direction.NOWHERE),
+            0x16: (Objects.DIAMOND, Direction.NOWHERE),
+            0x25: (Objects.INBOXBLINKING, Direction.NOWHERE),
+            0x30: (Objects.BUTTERFLY, Direction.DOWN),
+            0x31: (Objects.BUTTERFLY, Direction.LEFT),
+            0x32: (Objects.BUTTERFLY, Direction.UP),
+            0x33: (Objects.BUTTERFLY, Direction.RIGHT),
+            0x38: (Objects.ROCKFORD, Direction.NOWHERE),
+            0x3a: (Objects.AMOEBA, Direction.NOWHERE)
         }
         for i, obj in enumerate(c64cave.map):
             y, x = divmod(i, self.width)
@@ -730,14 +733,14 @@ class GameState:
         cell.frame = self.frame
         cell.anim_start_gfx_frame = self.graphics_frame_counter
         cell.falling = False
-        if obj is GameObject.MAGICWALL:
+        if obj is Objects.MAGICWALL:
             if not self.magicwall["active"]:
-                obj = GameObject.BRICK
+                obj = Objects.BRICK
         self.gfxwindow.tilesheet[cell.x, cell.y] = obj.spritex + self.gfxwindow.tile_image_numcolumns * obj.spritey
         # animation is handled by the graphics refresh
 
     def clear_cell(self, cell: Cell) -> None:
-        self.draw_single_cell(cell, GameObject.BONUSBG if self.bonusbg_frame > self.frame else GameObject.EMPTY)
+        self.draw_single_cell(cell, Objects.BONUSBG if self.bonusbg_frame > self.frame else Objects.EMPTY)
 
     def get(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> Cell:
         # retrieve the cell relative to the given cell
@@ -779,11 +782,11 @@ class GameState:
             self.clear_cell(cell)
             cell_under_wall = self.get(self.get(cell, Direction.DOWN), Direction.DOWN)
             if cell_under_wall.isempty():
-                if obj is GameObject.DIAMOND:
-                    self.draw_single_cell(cell_under_wall, GameObject.BOULDER)
+                if obj is Objects.DIAMOND:
+                    self.draw_single_cell(cell_under_wall, Objects.BOULDER)
                     audio.play_sample("boulder")
-                elif obj is GameObject.BOULDER:
-                    self.draw_single_cell(cell_under_wall, GameObject.DIAMOND)
+                elif obj is Objects.BOULDER:
+                    self.draw_single_cell(cell_under_wall, Objects.DIAMOND)
                     audio.play_sample("diamond" + str(random.randint(1, 6)))
         else:
             # magic wall is disabled, stuff falling on it just disappears (a sound is already played)
@@ -809,17 +812,17 @@ class GameState:
                         self.update_firefly(cell)
                     elif cell.isbutterfly():
                         self.update_butterfly(cell)
-                    elif cell.obj is GameObject.INBOXBLINKING:
+                    elif cell.obj is Objects.INBOXBLINKING:
                         self.update_inbox(cell)
                     elif cell.isrockford():
                         self.update_rockford(cell)
                     elif cell.isamoeba():
                         self.update_amoeba(cell)
-                    elif cell.obj is GameObject.OUTBOXCLOSED:
+                    elif cell.obj is Objects.OUTBOXCLOSED:
                         self.update_outboxclosed(cell)
-                    elif cell.obj is GameObject.BONUSBG:
+                    elif cell.obj is Objects.BONUSBG:
                         if self.bonusbg_frame < self.frame:
-                            self.draw_single_cell(cell, GameObject.EMPTY)
+                            self.draw_single_cell(cell, Objects.EMPTY)
         self.frame_end()
 
     def frame_start(self) -> None:
@@ -844,11 +847,11 @@ class GameState:
             self.fall_sound_to_play = ""
         if self.amoeba["dead"] is None:
             if self.amoeba["enclosed"]:
-                self.amoeba["dead"] = GameObject.DIAMOND
+                self.amoeba["dead"] = Objects.DIAMOND
                 audio.silence_audio()  # stop amoeba sound
                 audio.play_sample("diamond1")
             elif self.amoeba["size"] > self.amoeba["max"]:
-                self.amoeba["dead"] = GameObject.BOULDER
+                self.amoeba["dead"] = Objects.BOULDER
                 audio.silence_audio()  # stop amoeba sound
                 audio.play_sample("boulder")
             elif self.amoeba["slow"] > 0:
@@ -895,7 +898,7 @@ class GameState:
         # search for the inbox when the game isn't running yet
         if self.level > 0:
             for cell in self.cave:
-                if cell.obj is GameObject.INBOXBLINKING:
+                if cell.obj is Objects.INBOXBLINKING:
                     self.last_focus_cell = cell
                     break
         return self.last_focus_cell
@@ -927,6 +930,7 @@ class GameState:
         score_pos = self.highscores.score_pos(self.score)
         if score_pos:
             popuptxt += "\n\nYou got a new #{:d} high score!".format(score_pos)
+
         def ask_highscore_name(score_pos, score):
             if score_pos:
                 name = self.gfxwindow.ask_highscore_name(score_pos, score)
@@ -1009,14 +1013,14 @@ class GameState:
         # after 4 blinks (=2 seconds), Rockford spawns in the inbox.
         self.inbox_cell = cell
         if self.update_timestep * self.frame > 2.0:
-            self.draw_single_cell(cell, GameObject.ROCKFORDBIRTH)
+            self.draw_single_cell(cell, Objects.ROCKFORDBIRTH)
             audio.play_sample("crack")
 
     def update_outboxclosed(self, cell: Cell) -> None:
         if self.diamonds >= self.diamonds_needed:
-            if cell.obj is not GameObject.OUTBOXBLINKING:
+            if cell.obj is not Objects.OUTBOXBLINKING:
                 audio.play_sample("crack")
-            self.draw_single_cell(cell, GameObject.OUTBOXBLINKING)
+            self.draw_single_cell(cell, Objects.OUTBOXBLINKING)
 
     def update_amoeba(self, cell: Cell) -> None:
         if self.amoeba["dead"] is not None:
@@ -1100,8 +1104,8 @@ class GameState:
         self.lives += 1
         audio.play_sample("extra_life")
         for cell in self.cave:
-            if cell.obj is GameObject.EMPTY:
-                self.draw_single_cell(cell, GameObject.BONUSBG)
+            if cell.obj is Objects.EMPTY:
+                self.draw_single_cell(cell, Objects.BONUSBG)
                 self.bonusbg_frame = self.frame + self.fps * 6   # sparkle for 6 seconds
 
     def add_extra_time(self, seconds: float) -> None:
@@ -1110,7 +1114,7 @@ class GameState:
     def end_rockfordbirth(self, cell: Cell) -> None:
         # rockfordbirth eventually creates the real Rockford and starts the level timer.
         if self.game_status in (GameStatus.PLAYING, GameStatus.DEMO):
-            self.draw_single_cell(cell, GameObject.ROCKFORD)
+            self.draw_single_cell(cell, Objects.ROCKFORD)
             self.timelimit = datetime.datetime.now() + self.timeremaining
             self.inbox_cell = None
 
@@ -1120,15 +1124,15 @@ class GameState:
 
     def end_diamondbirth(self, cell: Cell) -> None:
         # diamondbirth ends with a diamond
-        self.draw_single_cell(cell, GameObject.DIAMOND)
+        self.draw_single_cell(cell, Objects.DIAMOND)
 
     def explode(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> None:
         audio.play_sample("explosion")
         explosioncell = self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
         if explosioncell.isbutterfly():
-            obj = GameObject.DIAMONDBIRTH
+            obj = Objects.DIAMONDBIRTH
         else:
-            obj = GameObject.EXPLOSION
+            obj = Objects.EXPLOSION
         self.draw_single_cell(explosioncell, obj)
         for direction in Direction:
             if direction is Direction.NOWHERE:
@@ -1151,11 +1155,11 @@ class GameState:
         # )).ljust(self.width)
         # self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.gfxwindow.text2tiles(text))
         # if self.keys["one"]:
-        #     self.gfxwindow.tilesheet_score[9, 0] = GameObject.KEY1.spritex + GameObject.KEY1.spritey * self.gfxwindow.tile_image_numcolumns
+        #     self.gfxwindow.tilesheet_score[9, 0] = Objects.KEY1.spritex + Objects.KEY1.spritey * self.gfxwindow.tile_image_numcolumns
         # if self.keys["two"]:
-        #     self.gfxwindow.tilesheet_score[10, 0] = GameObject.KEY2.spritex + GameObject.KEY2.spritey * self.gfxwindow.tile_image_numcolumns
+        #     self.gfxwindow.tilesheet_score[10, 0] = Objects.KEY2.spritex + Objects.KEY2.spritey * self.gfxwindow.tile_image_numcolumns
         # if self.keys["three"]:
-        #     self.gfxwindow.tilesheet_score[11, 0] = GameObject.KEY3.spritex + GameObject.KEY3.spritey * self.gfxwindow.tile_image_numcolumns
+        #     self.gfxwindow.tilesheet_score[11, 0] = Objects.KEY3.spritex + Objects.KEY3.spritey * self.gfxwindow.tile_image_numcolumns
         if self.level < 1:
             # level has not been loaded yet (we're still at the title screen)
             ts = self.gfxwindow.tilesheet_score
@@ -1165,11 +1169,11 @@ class GameState:
                 ts.set_tiles(0, 0, self.gfxwindow.text2tiles("Welcome to Boulder Caves".center(self.width)))
             ts.set_tiles(0, 1, self.gfxwindow.text2tiles("F1\x04New game! F4\x04Scores F9\x04Demo".center(self.width)))
             if not self.gfxwindow.smallwindow:
-                ts[0, 0] = ts[self.width - 1, 0] = ts[0, 1] = ts[self.width - 1, 1] = self.gfxwindow.sprite2tile(GameObject.MEGABOULDER)
-                ts[1, 0] = ts[self.width - 2, 0] = ts[1, 1] = ts[self.width - 2, 1] = self.gfxwindow.sprite2tile(GameObject.FLYINGDIAMOND)
-                ts[2, 0] = ts[self.width - 3, 0] = ts[2, 1] = ts[self.width - 3, 1] = self.gfxwindow.sprite2tile(GameObject.DIAMOND)
-                ts[3, 0] = ts[3, 1] = self.gfxwindow.sprite2tile(GameObject.ROCKFORD.pushleft)
-                ts[self.width - 4, 0] = ts[self.width - 4, 1] = self.gfxwindow.sprite2tile(GameObject.ROCKFORD.pushright)
+                ts[0, 0] = ts[self.width - 1, 0] = ts[0, 1] = ts[self.width - 1, 1] = self.gfxwindow.sprite2tile(Objects.MEGABOULDER)
+                ts[1, 0] = ts[self.width - 2, 0] = ts[1, 1] = ts[self.width - 2, 1] = self.gfxwindow.sprite2tile(Objects.FLYINGDIAMOND)
+                ts[2, 0] = ts[self.width - 3, 0] = ts[2, 1] = ts[self.width - 3, 1] = self.gfxwindow.sprite2tile(Objects.DIAMOND)
+                ts[3, 0] = ts[3, 1] = self.gfxwindow.sprite2tile(Objects.ROCKFORD.pushleft)
+                ts[self.width - 4, 0] = ts[self.width - 4, 1] = self.gfxwindow.sprite2tile(Objects.ROCKFORD.pushright)
             return
         text = ("\x08{lives:2d}   {normal:d}\x0e{extra:d}  {diamonds:<10s}  {time:s}  $ {score:06d}".format(
             lives=self.lives,
