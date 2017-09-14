@@ -253,7 +253,7 @@ class Cave:
         cave.fgcolor = colorpalette[data[0x15]]
         cave.random_objects = data[0x18], data[0x19], data[0x1a], data[0x1b]
         cave.random_probabilities = data[0x1c], data[0x1d], data[0x1e], data[0x1f]
-        cave.amoebamaxsize = 200
+        cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)
         cave.build_map(data[0x20:])
         return cave
 

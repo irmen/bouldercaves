@@ -614,6 +614,7 @@ class GameState:
             "sound_active": False
         }
         # convert the c64 cave map
+        # @todo move this to level supplier class
         conversion = {
             0x00: (Objects.EMPTY, Direction.NOWHERE),
             0x01: (Objects.DIRT, Direction.NOWHERE),
@@ -1101,12 +1102,13 @@ class GameState:
             self.add_extra_life()
 
     def add_extra_life(self) -> None:
-        self.lives += 1
-        audio.play_sample("extra_life")
-        for cell in self.cave:
-            if cell.obj is Objects.EMPTY:
-                self.draw_single_cell(cell, Objects.BONUSBG)
-                self.bonusbg_frame = self.frame + self.fps * 6   # sparkle for 6 seconds
+        if self.lives < 9:   # 9 is the maximum number of lives
+            self.lives += 1
+            audio.play_sample("extra_life")
+            for cell in self.cave:
+                if cell.obj is Objects.EMPTY:
+                    self.draw_single_cell(cell, Objects.BONUSBG)
+                    self.bonusbg_frame = self.frame + self.fps * 6   # sparkle for 6 seconds
 
     def add_extra_time(self, seconds: float) -> None:
         self.timelimit += datetime.timedelta(seconds=seconds)
