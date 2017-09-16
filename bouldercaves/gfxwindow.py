@@ -253,7 +253,7 @@ class BoulderWindow(tkinter.Tk):
                 if not self.uncover_tiles and self.gamestate.lives < 0:
                     self.gamestate.restart()
                 if self.gamestate.level < 1:
-                    self.gamestate.level = 0
+                    self.gamestate.level = self.gamestate.start_level_number - 1
                     self.gamestate.load_next_level()
         elif event.keysym == "F5":
             self.gamestate.cheat_used = True
@@ -643,6 +643,7 @@ def start(sargs: Sequence[str]=None) -> None:
     ap.add_argument("-a", "--authentic", help="use C-64 colors AND limited window size", action="store_true")
     ap.add_argument("-n", "--nosound", help="don't use sound", action="store_true")
     ap.add_argument("-y", "--synth", help="use synthesized sounds instead of samples", action="store_true")
+    ap.add_argument("-l", "--level", help="select start level (cave number)", type=int, default=1)
     args = ap.parse_args(sargs)
 
     if args.nosound:
@@ -769,6 +770,8 @@ def start(sargs: Sequence[str]=None) -> None:
     window = BoulderWindow(title, args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
     if args.game:
         window.gamestate.use_bdcff(args.game)
+    if args.level:
+        window.gamestate.use_startlevel(args.level)
     cs = window.gamestate.caveset
     print("Playing caveset '{name}' (by {author}, {date})".format(name=cs.name, author=cs.author, date=cs.date))
     window.start()

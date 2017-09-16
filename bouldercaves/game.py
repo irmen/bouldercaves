@@ -490,6 +490,7 @@ class GameState:
             Direction.RIGHTDOWN: self.width + 1
         }
         self.caveset = caves.CaveSet()
+        self.start_level_number = 1
         self.cave = []   # type: List[GameState.Cell]
         for y in range(self.height):
             for x in range(self.width):
@@ -518,7 +519,7 @@ class GameState:
         self.game_status = GameStatus.WAITING    # waiting / playing / lost / won
         self.intermission = False
         self.score = self.extralife_score = 0
-        self.cheat_used = False
+        self.cheat_used = self.start_level_number > 1
         self.death_by_voodoo = False
         self.slime_permeability = 0
         self.diamondvalue_initial = self.diamondvalue_extra = 0
@@ -595,12 +596,19 @@ class GameState:
         self.draw_single(Objects.DIRTSLOPEDUPRIGHT, self.width - 4, self.height - 3)
         self.draw_single(Objects.DIRTSLOPEDUPRIGHT, self.width - 3, self.height - 2)
 
-    def use_bdcff(self, filename):
+    def use_bdcff(self, filename: str) -> None:
         self.caveset = caves.CaveSet(filename)
         self.highscores = HighScores(self.caveset.name)
 
+    def use_startlevel(self, levelnumber: int) -> None:
+        if levelnumber < 1 or levelnumber > self.caveset.num_caves:
+            raise ValueError("invalid level number")
+        self.cheat_used = levelnumber > 1
+        self.start_level_number = levelnumber
+
     def load_level(self, levelnumber: int, level_intro_popup: bool=True) -> None:
         audio.silence_audio()
+        self.cheat_used |= self.start_level_number > 1
         cave = self.caveset.cave(levelnumber)
         self.level_name = cave.name
         self.level_description = cave.description
@@ -944,7 +952,7 @@ class GameState:
             popuptxt = "Congratulations, you finished the game!\n\nScore: {:d}".format(self.score)
         else:
             popuptxt = "??invalid status??"
-        if self.cheat_used:
+        if self.cheat_used or self.start_level_number > 1:
             popuptxt += "\n\nYou cheated, so the score is not recorded."
             score_pos = 0
         else:
