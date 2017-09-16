@@ -245,7 +245,8 @@ class HighScores:
     # @todo highscore table per caveset (name)
     max_namelen = 7
 
-    def __init__(self) -> None:
+    def __init__(self, cavesetname) -> None:
+        self.name = cavesetname.lower().replace(' ', '_').replace('.', '_')
         self.load()
 
     def __del__(self):
@@ -255,16 +256,16 @@ class HighScores:
         yield from self.scores
 
     def save(self):
-        with open(user_data_dir + "highscores.json", "wt") as out:
+        with open(user_data_dir + "highscores-{:s}.json".format(self.name), "wt") as out:
             json.dump(self.scores, out)
 
     def load(self):
         try:
-            with open(user_data_dir + "highscores.json", "rt") as scorefile:
+            with open(user_data_dir + "highscores-{:s}.json".format(self.name), "rt") as scorefile:
                 self.scores = json.load(scorefile)
         except FileNotFoundError:
             print("Using new high-score table.")
-            self.scores = [[400, "idj"]] * 8
+            self.scores = [[200, "idj"]] * 8
             self.save()
 
     def score_pos(self, playerscore: int) -> Optional[int]:
@@ -496,7 +497,7 @@ class GameState:
         Objects.EXPLOSION.anim_end_callback = self.end_explosion
         Objects.DIAMONDBIRTH.anim_end_callback = self.end_diamondbirth
         self.demo_or_highscore = True
-        self.highscores = HighScores()
+        self.highscores = HighScores(self.caveset.name)
         # and start the game on the title screen.
         self.restart()
 
@@ -592,6 +593,7 @@ class GameState:
 
     def use_bdcff(self, filename):
         self.caveset = caves.CaveSet(filename)
+        self.highscores = HighScores(self.caveset.name)
 
     def load_level(self, levelnumber: int, level_intro_popup: bool=True) -> None:
         audio.silence_audio()
@@ -663,11 +665,12 @@ class GameState:
         if self.game_status == GameStatus.WAITING:
             self.game_status = GameStatus.HIGHSCORE
             if self.gfxwindow.smallwindow:
-                txt = ["\x0e\x0e\x0eHigh Scores\x0e\x0e"]
+                smallname = self.caveset.name.replace('.', '').replace("Vol", "").replace("vol", "")[:16]
+                txt = [smallname, "\x0e\x0e\x0eHigh Scores\x0e\x0e"]
                 for pos, (score, name) in enumerate(self.highscores, start=1):
                     txt.append("{:d} {:\x0f<7s} {:_>6d}".format(pos, name, score))
             else:
-                txt = ["\x0e\x0e\x0e High Scores \x0e\x0e\x0e\n-------------------\n"]
+                txt = ["\x05 " + self.caveset.name + " \x05", "\n\x0e\x0e\x0e High Scores \x0e\x0e\x0e\n-------------------\n"]
                 for pos, (score, name) in enumerate(self.highscores, start=1):
                     txt.append("\x0f{:d}\x0f {:\x0f<7s}\x0f {:_>6d}".format(pos, name, score))
             self.gfxwindow.popup("\n".join(txt), 10, on_close=reset_game_status)

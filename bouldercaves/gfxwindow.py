@@ -584,7 +584,8 @@ class BoulderWindow(tkinter.Tk):
             self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(Objects.STEEL)
             y += 1
         lines.insert(0, "")
-        lines.append("")
+        if not self.smallwindow:
+            lines.append("")
         for line in lines:
             if not line:
                 line = " "
