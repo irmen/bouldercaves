@@ -230,6 +230,7 @@ class Cave:
         self.diamondvalue_extra = 0
         self.diamonds_needed = 0
         self.amoebamaxsize = 0
+        self.slime_permeability = 0
         self.time = 0
         self.bgcolor1 = 0
         self.bgcolor2 = 0
@@ -422,6 +423,7 @@ class CaveSet:
         cave.diamonds_needed = bdcff.diamonds_required
         cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)
         cave.time = bdcff.cavetime
+        cave.slime_permeability = bdcff.slimepermeability
         cave.bordercolor = colorpalette[bdcff.color_border]
         cave.screencolor = colorpalette[bdcff.color_screen]
         cave.bgcolor1 = colorpalette[bdcff.color_fg1]

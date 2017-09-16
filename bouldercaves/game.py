@@ -167,7 +167,7 @@ class Objects:      # namespace for the game objects in the tilesheet
     # row 24
     AMOEBA = g("AMOEBA", False, False, True, 0, 24, sframes=8, sfps=20)
     # row 25
-    SLIME = g("SLIME", False, False, True, 0, 25, sframes=8, sfps=20)       # @todo implement behavior see http://www.boulder-dash.nl/forum/viewtopic.php?t=260&sid=1cbed23a91d0c489d3f2721be5881886
+    SLIME = g("SLIME", False, False, True, 0, 25, sframes=8, sfps=20)
     # row 26 - 30
     ROCKFORD.blink = (0, 26, 8, 20)
     ROCKFORD.tap = (0, 27, 8, 20)
@@ -242,7 +242,6 @@ class Objects:      # namespace for the game objects in the tilesheet
 class HighScores:
     # high score table is 8 entries, name len=7 max, score max=999999
     # table starts with score then the name, for easy sorting
-    # @todo highscore table per caveset (name)
     max_namelen = 7
 
     def __init__(self, cavesetname) -> None:
@@ -321,6 +320,9 @@ class GameState:
 
         def ismagic(self) -> bool:
             return self.obj is Objects.MAGICWALL
+
+        def isslime(self) -> bool:
+            return self.obj is Objects.SLIME
 
         def isbutterfly(self) -> bool:
             # these explode to diamonds
@@ -518,6 +520,7 @@ class GameState:
         self.score = self.extralife_score = 0
         self.cheat_used = False
         self.death_by_voodoo = False
+        self.slime_permeability = 0
         self.diamondvalue_initial = self.diamondvalue_extra = 0
         self.diamonds = self.diamonds_needed = 0
         self.lives = 3
@@ -598,20 +601,21 @@ class GameState:
 
     def load_level(self, levelnumber: int, level_intro_popup: bool=True) -> None:
         audio.silence_audio()
-        c64cave = self.caveset.cave(levelnumber)
-        self.level_name = c64cave.name
-        self.level_description = c64cave.description
-        self.intermission = c64cave.intermission
+        cave = self.caveset.cave(levelnumber)
+        self.level_name = cave.name
+        self.level_description = cave.description
+        self.intermission = cave.intermission
         level_intro_popup = level_intro_popup and levelnumber != self.level
         self.level = levelnumber
         self.level_won = False
         self.game_status = GameStatus.PLAYING
         self.flash = 0
         self.diamonds = 0
-        self.diamonds_needed = c64cave.diamonds_needed
-        self.diamondvalue_initial = c64cave.diamondvalue_initial
-        self.diamondvalue_extra = c64cave.diamondvalue_extra
-        self.timeremaining = datetime.timedelta(seconds=c64cave.time)
+        self.diamonds_needed = cave.diamonds_needed
+        self.diamondvalue_initial = cave.diamondvalue_initial
+        self.diamondvalue_extra = cave.diamondvalue_extra
+        self.timeremaining = datetime.timedelta(seconds=cave.time)
+        self.slime_permeability = cave.slime_permeability
         self.frame = 0
         self.bonusbg_frame = 0
         self.death_by_voodoo = False
@@ -619,26 +623,26 @@ class GameState:
         self.idle["blink"] = self.idle["tap"] = False
         self.idle["uncover"] = True
         self.magicwall["active"] = False
-        self.magicwall["time"] = c64cave.magicwall_millingtime / self.update_timestep
+        self.magicwall["time"] = cave.magicwall_millingtime / self.update_timestep
         self.rockford_cell = None     # the cell where Rockford currently is
         self.inbox_cell = self.last_focus_cell = None
         self.rockford_found_frame = 0
         self.movement = self.MovementInfo()
         self.amoeba = {
             "size": 0,
-            "max": c64cave.amoebamaxsize,
-            "slow": c64cave.amoeba_slowgrowthtime / self.update_timestep,
+            "max": cave.amoebamaxsize,
+            "slow": cave.amoeba_slowgrowthtime / self.update_timestep,
             "enclosed": False,
             "dead": None,
             "sound_active": False
         }
         # clear the previous cave data and replace with data from new cave
         self.draw_rectangle(Objects.STEEL, 0, 0, self.width, self.height, Objects.STEEL)
-        for i, (gobj, direction) in enumerate(c64cave.map):
-            y, x = divmod(i, c64cave.width)
+        for i, (gobj, direction) in enumerate(cave.map):
+            y, x = divmod(i, cave.width)
             self.draw_single(gobj, x, y, initial_direction=direction)
-        self.gfxwindow.create_colored_tiles(c64cave.bgcolor1, c64cave.bgcolor2, c64cave.fgcolor, c64cave.screencolor)
-        self.gfxwindow.set_screen_colors(c64cave.bordercolor, c64cave.screencolor)
+        self.gfxwindow.create_colored_tiles(cave.bgcolor1, cave.bgcolor2, cave.fgcolor, cave.screencolor)
+        self.gfxwindow.set_screen_colors(cave.bordercolor, cave.screencolor)
         self.gfxwindow.tilesheet.all_dirty()
         if level_intro_popup and self.level_description:
             audio.play_sample("diamond2")
@@ -729,7 +733,7 @@ class GameState:
     def draw_single_cell(self, cell: Cell, obj: GameObject, initial_direction: Direction=Direction.NOWHERE) -> None:
         cell.obj = obj
         cell.direction = initial_direction
-        cell.frame = self.frame
+        cell.frame = self.frame   # make sure the new cell is not immediately scanned
         cell.anim_start_gfx_frame = self.graphics_frame_counter
         cell.falling = False
         if obj is Objects.MAGICWALL:
@@ -771,7 +775,7 @@ class GameState:
         self.movement.pushing = True
         return cell
 
-    def domagic(self, cell: Cell) -> None:
+    def do_magic(self, cell: Cell) -> None:
         # something (diamond, boulder) is falling on a magic wall
         if self.magicwall["time"] > 0:
             if not self.magicwall["active"]:
@@ -791,6 +795,16 @@ class GameState:
         else:
             # magic wall is disabled, stuff falling on it just disappears (a sound is already played)
             self.clear_cell(cell)
+
+    def do_slime(self, cell: Cell) -> None:
+        # something (diamond, boulder) is falling on a slime
+        if random.random() < self.slime_permeability:
+            cell_under_wall = self.get(self.get(cell, Direction.DOWN), Direction.DOWN)
+            if cell_under_wall.isempty():
+                audio.play_sample("slime")
+                obj = cell.obj
+                self.clear_cell(cell)
+                self.draw_single_cell(cell_under_wall, obj)
 
     def cells_with_animations(self) -> List[Cell]:
         return [cell for cell in self.cave if cell.obj.sframes]
@@ -977,7 +991,9 @@ class GameState:
         elif cellbelow.isexplodable():
             self.explode(cell, Direction.DOWN)
         elif cellbelow.ismagic():
-            self.domagic(cell)
+            self.do_magic(cell)
+        elif cellbelow.isslime():
+            self.do_slime(cell)
         elif cellbelow.isrounded() and self.get(cell, Direction.LEFT).isempty() and self.get(cell, Direction.LEFTDOWN).isempty():
             self.move(cell, Direction.LEFT)
         elif cellbelow.isrounded() and self.get(cell, Direction.RIGHT).isempty() and self.get(cell, Direction.RIGHTDOWN).isempty():

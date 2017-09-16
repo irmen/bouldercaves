@@ -47,14 +47,14 @@ class BdcffParser:
             self.diamondvalue_extra = int(dve)
             self.amoebatime = int(self.properties.pop("amoebatime", 200))
             self.magicwalltime = int(self.properties.pop("magicwalltime", 0))
-            self.slimepermeability = float(self.properties.pop("slimepermeability", 0))  # @todo implement slime
+            self.slimepermeability = float(self.properties.pop("slimepermeability", 0))
             c64colors = ["black", "white", "red", "cyan", "purple", "green", "blue", "yellow",
                          "orange", "brown", "lightred", "gray1", "gray2", "lightgreen", "lightblue", "gray3"]
             colors = [c64colors.index(c.lower()) for c in self.properties.pop("colors").split()]
             self.color_border = 0
             self.color_screen = 0
-            self.color_amoeba = 0   # @todo extra color ???
-            self.color_slime = 0    # @todo extra color ???
+            self.color_amoeba = 0   # not supported
+            self.color_slime = 0    # not supported
             if len(colors) == 3:
                 self.color_fg1, self.color_fg2, self.color_fg3 = colors
             elif len(colors) == 5:

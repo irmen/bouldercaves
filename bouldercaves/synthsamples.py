@@ -11,7 +11,7 @@ import random
 import itertools
 import collections
 from typing import Callable, Generator, Iterator, Union
-from .synth import FastTriangle, WhiteNoise, Linear, Triangle, SquareH, EnvelopeFilter, AmpModulationFilter
+from .synth import FastTriangle, WhiteNoise, Linear, Triangle, Sine, SquareH, EnvelopeFilter, AmpModulationFilter
 from . import audio
 
 
@@ -275,7 +275,7 @@ class Explosion(audio.Sample):
 class CollectDiamond(audio.Sample):
     def __init__(self) -> None:
         super().__init__("collect_diamond", pcmdata=b"")
-        osc = FastTriangle(0x1478 * _sidfreq, amplitude=0.99, samplerate=audio.norm_samplerate)
+        osc = FastTriangle(0x1478 * _sidfreq, amplitude=0.8, samplerate=audio.norm_samplerate)
         filtered = EnvelopeFilter(osc, 0.002, 0.006, 0.0, 0.7, 0.65, stop_at_end=True)
         self.append(sample_from_osc(filtered.generator()))
 
@@ -327,9 +327,24 @@ class Timeout(audio.Sample):
         self.append(sample_from_osc(filtered.generator()))
 
 
+class Slime(audio.Sample):  # XXX
+    def __init__(self) -> None:
+        super().__init__("slime", pcmdata=b"")
+        fm = FastTriangle(5, 0.5, samplerate=audio.norm_samplerate)
+        osc = Sine(261.62556, 0.25, fm_lfo=fm, samplerate=audio.norm_samplerate)
+        filtered = EnvelopeFilter(osc, 0, 0, 0,1, 0.41, stop_at_end=True)
+        self.append(sample_from_osc(filtered.generator()))
+
+
 def demo():
     audio.norm_samplerate = 22050
     api = audio.best_api()
+
+    # ----- slime
+    print("Slime")
+    sample = Slime()
+    api.play(sample)
+    time.sleep(max(1, sample.duration + 0.5))
 
     # ------ explosion
     print("Explosion")
