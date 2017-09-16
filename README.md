@@ -50,9 +50,9 @@ You control the game via the keyboard:
 - ESC: lose a life and restart the level. When game over, returns to title screen.
 - Space: pause/continue the game.
 - F1: start a new game, or skip popup screen wait.
-- F5: cheat and add an extra life.
-- F6: cheat and add 10 seconds extra time.
-- F7: cheat and skip to the next level.
+- F5: cheat and add an extra life.  No highscore will be recorded if you use this.
+- F6: cheat and add 10 seconds extra time.   No highscore will be recorded if you use this.
+- F7: cheat and skip to the next level.   No highscore will be recorded if you use this.
 - F8: randomize colors (only when using Commodore-64 colors)
 - F9: replay prerecorded demo (from title screen)
 

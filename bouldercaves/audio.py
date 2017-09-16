@@ -30,7 +30,7 @@ import tempfile
 import threading
 import time
 import wave
-from typing import BinaryIO, ByteString, Callable, Generator, List, Union, Dict
+from typing import BinaryIO, ByteString, Callable, Generator, List, Union, Dict, Tuple, Any
 from . import user_data_dir
 
 
@@ -237,11 +237,12 @@ class AudioApi:
     def chunksize(self) -> int:
         return int(self.samplerate * self.samplewidth * self.nchannels * self.chunkduration)
 
-    def play(self, sample: Sample, repeat: bool=False) -> None:
+    def play(self, sample: Sample, repeat: bool=False) -> int:
         job = {"sample": sample, "repeat": repeat}
-        job["id"] = id(job)
+        job_id = id(job)
+        job["id"] = job_id
         self.samp_queue.put(job)
-        return job["id"]
+        return job_id
 
     def silence(self) -> None:
         self.samp_queue.put("silence")

@@ -29,7 +29,7 @@ except ImportError:
     raise SystemExit
 from .game import GameState, GameObject, Objects, Direction, GameStatus, HighScores
 from .caves import colorpalette
-from . import audio, synthsamples, bdcff
+from . import audio, synthsamples
 
 __version__ = "2.2"
 
@@ -256,6 +256,7 @@ class BoulderWindow(tkinter.Tk):
                     self.gamestate.level = 0
                     self.gamestate.load_next_level()
         elif event.keysym == "F5":
+            # @todo prevent highscore recording when cheating (extra life/time/levelskip)
             self.gamestate.add_extra_life()
         elif event.keysym == "F6":
             self.gamestate.add_extra_time(10)
@@ -620,7 +621,7 @@ def start(sargs: Sequence[str]=None) -> None:
         sargs = sys.argv[1:]
     import argparse
     ap = argparse.ArgumentParser(description="Boulder Caves - a Boulder Dash (tm) clone")
-    ap.add_argument("-g", "--game", help="specify cave data file to play instead of built-in caves"),
+    ap.add_argument("-g", "--game", help="specify cave data file to play, leave empty to play original built-in BD1 caves"),
     ap.add_argument("-f", "--fps", type=int, help="frames per second (default=%(default)d)", default=30)
     ap.add_argument("-s", "--size", type=int, help="graphics size (default=%(default)d)", default=3, choices=(1, 2, 3, 4, 5))
     ap.add_argument("-c", "--c64colors", help="use Commodore-64 colors", action="store_true")
@@ -662,11 +663,6 @@ def start(sargs: Sequence[str]=None) -> None:
     else:
         print("Using multicolor replacement graphics.")
         print("You can use the '-c' or '--c64colors' argument to get the original C-64 colors.")
-
-    # load alternate cave game file if specified
-    if args.game:
-        game = bdcff.BdcffParser(args.game)
-        game.dump()  # XXX
 
     # initialize the audio system
     audio.norm_samplerate = 22050
@@ -752,6 +748,10 @@ def start(sargs: Sequence[str]=None) -> None:
     title = "Boulder Caves {version:s} {sound:s} - created by Irmen de Jong - irmen@razorvine.net"\
         .format(version=__version__, sound="[using synthesizer]" if args.synth else "")
     window = BoulderWindow(title, args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
+    if args.game:
+        window.gamestate.use_bdcff(args.game)
+    cs = window.gamestate.caveset
+    print("Playing caveset '{name}' (by {author}, {date})".format(name=cs.name, author=cs.author, date=cs.date))
     window.start()
     window.mainloop()
 

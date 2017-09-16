@@ -12,7 +12,7 @@ License: MIT open-source.
 """
 
 import sys
-from .game import Objects, Direction
+from typing import Dict, List, Any
 
 
 class BdcffFormatError(Exception):
@@ -47,93 +47,46 @@ class BdcffParser:
             self.diamondvalue_extra = int(dve)
             self.amoebatime = int(self.properties.pop("amoebatime", 0))
             self.magicwalltime = int(self.properties.pop("magicwalltime", 0))
+            self.slimepermeability = float(self.properties.pop("slimepermeability", 0))  # @todo implement slime
             c64colors = ["black", "white", "red", "cyan", "purple", "green", "blue", "yellow",
                          "orange", "brown", "lightred", "gray1", "gray2", "lightgreen", "lightblue", "gray3"]
             colors = [c64colors.index(c.lower()) for c in self.properties.pop("colors").split()]
-            self.color_border = 0
+            self.color_border = 0   # @todo option to set border and screen background colors
             self.color_screen = 0
-            self.color_amoeba = 0
-            self.color_slime = 0
+            self.color_amoeba = 0   # @todo extra color ???
+            self.color_slime = 0    # @todo extra color ???
             if len(colors) == 3:
                 self.color_fg1, self.color_fg2, self.color_fg3 = colors
             elif len(colors) == 5:
                 self.color_border, self.color_screen, self.color_fg1, self.color_fg2, self.color_fg3 = colors
             elif len(colors) == 7:
-                self.color_border, self.color_screen, self.color_fg1, self.color_fg2, self.color_fg3, self.color_amoeba, self.color_slime = colors
+                self.color_border, self.color_screen, self.color_fg1, self.color_fg2, self.color_fg3,\
+                    self.color_amoeba, self.color_slime = colors
             else:
-                raise BdcffFormatError("invalid color spec: "+str(colors))
-
+                raise BdcffFormatError("invalid color spec: " + str(colors))
             self.intermission = self.properties.pop("intermission", "false") == "true"
             if self.properties:
                 raise BdcffFormatError("unrecognised cave properties:" + str(self.properties))
             self.map.postprocess()
-
-        def __str__(self):
-            return "Cave name: {name}\n" \
-                   "  intermission?: {interm}\n" \
-                   "  delay: {delay}\n" \
-                   "  time: {time}\n" \
-                   "  amoeba time: {amoebat}\n" \
-                   "  magic wall time: {magict}\n" \
-                   "  diamonds required: {required}\n" \
-                   "  diamond values: {normal} {extra}\n" \
-                   "  colors: {colors}\n" \
-                   "{map}\n".format(name=self.name,
-                                    interm=self.intermission,
-                                    delay=self.cavedelay,
-                                    time=self.cavetime,
-                                    amoebat=self.amoebatime,
-                                    magict=self.magicwalltime,
-                                    required=self.diamonds_required,
-                                    normal=self.diamondvalue_normal,
-                                    extra=self.diamondvalue_extra,
-                                    colors=(self.color_border, self.color_screen, self.color_fg1, self.color_fg2, self.color_fg3,
-                                            self.color_amoeba, self.color_slime),
-                                    map=str(self.map))
+            self.height = self.map.height
+            self.width = self.map.width
+            del self.properties
 
     class Map:
-        CODES = {
-            '.': (Objects.DIRT, Direction.NOWHERE),
-            ' ': (Objects.EMPTY, Direction.NOWHERE),
-            'w': (Objects.BRICK, Direction.NOWHERE),
-            'M': (Objects.MAGICWALL, Direction.NOWHERE),
-            'X': (Objects.OUTBOXCLOSED, Direction.NOWHERE),
-            'W': (Objects.STEEL, Direction.NOWHERE),
-            'Q': (Objects.FIREFLY, Direction.LEFT),
-            'q': (Objects.FIREFLY, Direction.RIGHT),
-            'O': (Objects.FIREFLY, Direction.UP),
-            'o': (Objects.FIREFLY, Direction.DOWN),
-            'c': (Objects.BUTTERFLY, Direction.DOWN),
-            'C': (Objects.BUTTERFLY, Direction.LEFT),
-            'b': (Objects.BUTTERFLY, Direction.UP),
-            'B': (Objects.BUTTERFLY, Direction.RIGHT),
-            'r': (Objects.BOULDER, Direction.NOWHERE),
-            'd': (Objects.DIAMOND, Direction.NOWHERE),
-            'P': (Objects.INBOXBLINKING, Direction.NOWHERE),
-            'a': (Objects.AMOEBA, Direction.NOWHERE),
-        }
-
         def __init__(self):
             self.maplines = []
-            self.convertedmap = None
-
-        def __str__(self):
-            return "  " + "\n  ".join(self.maplines)
+            self.width = self.height = 0
 
         def postprocess(self):
-            self.convertedmap = []
-            for line in self.maplines:
-                convertedline = []
-                self.convertedmap.append(convertedline)
-                for x in line:
-                    convertedline.append(self.CODES[x])
+            self.height = len(self.maplines)
+            self.width = len(self.maplines[0])
 
-    def __init__(self, filename):
+    def __init__(self, filename: str) -> None:
         self.state = 0
         self.bdcff_version = ""
-        self.game_properties = {}
-        self.caves = []
-        self.current_cave = None
+        self.game_properties = {}   # type: Dict[str, Any]
+        self.caves = []     # type: List[BdcffParser.Cave]
+        self.current_cave = None    # type: BdcffParser.Cave
         with open(filename, "rt") as f:
             for line in f:
                 line = line.strip()
@@ -142,31 +95,31 @@ class BdcffParser:
         self.postprocess()
         self.validate()
 
-    def postprocess(self):
+    def postprocess(self) -> None:
         self.game_properties["levels"] = int(self.game_properties["levels"])
         self.game_properties["caves"] = int(self.game_properties["caves"])
         for cave in self.caves:
             cave.postprocess()
+        del self.current_cave
+        del self.state
 
-    def validate(self):
+    def validate(self) -> None:
         if self.game_properties["charset"] != "Original" or \
-                        self.game_properties["fontset"] != "Original" or \
-                        self.game_properties["levels"] != 1 or \
-                        self.game_properties["caves"] != len(self.caves):
+                self.game_properties["fontset"] != "Original" or \
+                self.game_properties["levels"] != 1 or \
+                self.game_properties["caves"] != len(self.caves):
             raise BdcffFormatError("invalid or unsupported cave data")
 
-    def dump(self):
+    def dump(self) -> None:
         print("BDCFF Cave set")
         print("version:", self.bdcff_version)
         print("name: ", self.game_properties["name"])
         print("author: ", self.game_properties["author"])
         print("www: ", self.game_properties["www"])
         print("date: ", self.game_properties["date"])
-        print("caves ({:d}):".format(len(self.caves)))
-        for cave in self.caves:
-            print(cave)
+        print("caves: {:d}".format(len(self.caves)))
 
-    def parse(self, line):
+    def parse(self, line: str) -> None:
         if line == '[BDCFF]' and self.state == 0:
             self.state = self.SECT_BDCFF
         elif line == '[game]' and self.state == self.SECT_BDCFF:
@@ -188,11 +141,11 @@ class BdcffParser:
         elif line == '[/BDCFF]' and self.state == self.SECT_BDCFF:
             pass
         elif line.startswith('[') and line.endswith(']'):
-            raise BdcffFormatError("invalid tag: "+line)
+            raise BdcffFormatError("invalid tag: " + line)
         else:
             self.process_line(line)
 
-    def process_line(self, line):
+    def process_line(self, line: str) -> None:
         if self.state == self.SECT_BDCFF:
             if line.startswith("Version="):
                 self.bdcff_version = line.split("=")[1]
@@ -213,4 +166,3 @@ class BdcffParser:
 if __name__ == "__main__":
     cave = BdcffParser(sys.argv[1])
     cave.dump()
-

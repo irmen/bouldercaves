@@ -242,6 +242,7 @@ class Objects:      # namespace for the game objects in the tilesheet
 class HighScores:
     # high score table is 8 entries, name len=7 max, score max=999999
     # table starts with score then the name, for easy sorting
+    # @todo highscore table per caveset (name)
     max_namelen = 7
 
     def __init__(self) -> None:
@@ -476,6 +477,7 @@ class GameState:
             Direction.LEFTDOWN: self.width - 1,
             Direction.RIGHTDOWN: self.width + 1
         }
+        self.caveset = caves.CaveSet()
         self.cave = []   # type: List[GameState.Cell]
         for y in range(self.height):
             for x in range(self.width):
@@ -577,10 +579,14 @@ class GameState:
         self.draw_single(Objects.DIRTSLOPEDUPRIGHT, self.width - 4, self.height - 3)
         self.draw_single(Objects.DIRTSLOPEDUPRIGHT, self.width - 3, self.height - 2)
 
-    def load_c64level(self, levelnumber: int, level_intro_popup: bool=True) -> None:
+    def use_bdcff(self, filename):
+        self.caveset = caves.CaveSet(filename)
+
+    def load_level(self, levelnumber: int, level_intro_popup: bool=True) -> None:
         audio.silence_audio()
-        c64cave = caves.Cave.decode_from_lvl(levelnumber)
+        c64cave = self.caveset.cave(levelnumber)
         assert c64cave.width == self.width and c64cave.height == self.height
+        # @todo fix handling of non-default sizes (intermissions)
         self.level_name = c64cave.name
         self.level_description = c64cave.description
         self.intermission = c64cave.intermission
@@ -613,39 +619,12 @@ class GameState:
             "dead": None,
             "sound_active": False
         }
-        # convert the c64 cave map
-        # @todo move this to level supplier class
-        conversion = {
-            0x00: (Objects.EMPTY, Direction.NOWHERE),
-            0x01: (Objects.DIRT, Direction.NOWHERE),
-            0x02: (Objects.BRICK, Direction.NOWHERE),
-            0x03: (Objects.MAGICWALL, Direction.NOWHERE),
-            0x04: (Objects.OUTBOXCLOSED, Direction.NOWHERE),
-            0x05: (Objects.OUTBOXBLINKING, Direction.NOWHERE),
-            0x07: (Objects.STEEL, Direction.NOWHERE),
-            0x08: (Objects.FIREFLY, Direction.LEFT),
-            0x09: (Objects.FIREFLY, Direction.UP),
-            0x0a: (Objects.FIREFLY, Direction.RIGHT),
-            0x0b: (Objects.FIREFLY, Direction.DOWN),
-            0x10: (Objects.BOULDER, Direction.NOWHERE),
-            0x12: (Objects.BOULDER, Direction.NOWHERE),
-            0x14: (Objects.DIAMOND, Direction.NOWHERE),
-            0x16: (Objects.DIAMOND, Direction.NOWHERE),
-            0x25: (Objects.INBOXBLINKING, Direction.NOWHERE),
-            0x30: (Objects.BUTTERFLY, Direction.DOWN),
-            0x31: (Objects.BUTTERFLY, Direction.LEFT),
-            0x32: (Objects.BUTTERFLY, Direction.UP),
-            0x33: (Objects.BUTTERFLY, Direction.RIGHT),
-            0x38: (Objects.ROCKFORD, Direction.NOWHERE),
-            0x3a: (Objects.AMOEBA, Direction.NOWHERE)
-        }
-        for i, obj in enumerate(c64cave.map):
+        for i, (gobj, direction) in enumerate(c64cave.map):
             y, x = divmod(i, self.width)
-            gobj, direction = conversion[obj]
             self.draw_single(gobj, x, y, initial_direction=direction)
         self.gfxwindow.create_colored_tiles(c64cave.bgcolor1, c64cave.bgcolor2, c64cave.fgcolor)
         self.gfxwindow.tilesheet.all_dirty()
-        if level_intro_popup:
+        if level_intro_popup and self.level_description:
             audio.play_sample("diamond2")
             fmt = "{:s}\n\n{:s}" if self.intermission else "Cave {:s}\n\n{:s}"
             self.gfxwindow.popup(fmt.format(self.level_name, self.level_description))
@@ -660,10 +639,11 @@ class GameState:
 
     def start_demo(self):
         if self.game_status == GameStatus.WAITING:
-            self.level = 0
-            self.load_next_level(intro_popup=False)
-            self.movement = self.DemoMovementInfo(caves.CAVE_A_DEMO)  # is reset to regular handling when demo ends/new level loads
-            self.game_status = GameStatus.DEMO
+            if self.caveset.cave_demo is not None:
+                self.level = 0
+                self.load_next_level(intro_popup=False)
+                self.movement = self.DemoMovementInfo(self.caveset.cave_demo)  # is reset to regular handling when demo ends/new level
+                self.game_status = GameStatus.DEMO
 
     def show_highscores(self):
         def reset_game_status():
@@ -698,7 +678,7 @@ class GameState:
 
     def cheat_skip_level(self) -> None:
         if self.game_status in (GameStatus.PLAYING, GameStatus.PAUSED):
-            self.load_c64level(self.level % len(caves.CAVES) + 1)
+            self.load_level(self.level % self.caveset.num_caves + 1)
 
     def draw_rectangle(self, obj: GameObject, x1: int, y1: int, width: int, height: int, fillobject: GameObject=None) -> None:
         self.draw_line(obj, x1, y1, width, Direction.RIGHT)
@@ -910,7 +890,7 @@ class GameState:
             return
         self.lives = max(0, self.lives - 1)
         if self.lives > 0:
-            self.load_c64level(self.level)  # retry current level
+            self.load_level(self.level)  # retry current level
         else:
             self.stop_game(GameStatus.LOST)
 
@@ -940,11 +920,11 @@ class GameState:
 
     def load_next_level(self, intro_popup: bool=True) -> None:
         level = self.level + 1
-        if level > len(caves.CAVES):
+        if level > self.caveset.num_caves:
             self.stop_game(GameStatus.WON)
         else:
             audio.silence_audio()
-            self.load_c64level(level, level_intro_popup=intro_popup)
+            self.load_level(level, level_intro_popup=intro_popup)
 
     def update_canfall(self, cell: Cell) -> None:
         # if the cell below this one is empty, the object starts to fall

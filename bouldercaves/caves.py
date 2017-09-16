@@ -1,5 +1,6 @@
 """
-These are the (encoded) caves from Boulderdash I  on the Commodore-64.
+Cave decoding/conversion logic.
+Included here are the (encoded) caves from Boulderdash I  on the Commodore-64.
 More info including the decoding algorithm:
 https://www.elmerproductions.com/sp/peterb/rawCaveData.html#rawCaveDataFormat
 
@@ -7,10 +8,10 @@ Written by Irmen de Jong (irmen@razorvine.net)
 License: MIT open-source.
 """
 
-from typing import Sequence, List
+from typing import Sequence, List, Tuple
 
 
-CAVES = [
+BD1CAVES = [
     ("A - Intro",
      "Pick up jewels and exit before time is up.",
      [0x01, 0x14, 0x0A, 0x0F, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x96, 0x6E, 0x46, 0x28, 0x1E, 0x08, 0x0B, 0x09,
@@ -222,25 +223,26 @@ class Cave:
         self.intermission = False
         self.width = width
         self.height = height
-        self.map = bytearray(self.width * self.height)
-        self.magicwall_millingtime = self.amoeba_slowgrowthtime = 0
+        self.map = []       # type: List[Tuple]
+        self.magicwall_millingtime = 0
+        self.amoeba_slowgrowthtime = 0
         self.diamondvalue_initial = 0
         self.diamondvalue_extra = 0
-        self.randomseed = 0
         self.diamonds_needed = 0
         self.amoebamaxsize = 0
         self.time = 0
         self.bgcolor1 = 0
         self.bgcolor2 = 0
         self.fgcolor = 0
-        self.random_objects = (0, 0, 0, 0)
-        self.random_probabilities = (0, 0, 0, 0)
 
+
+class C64Cave(Cave):
     @classmethod
-    def decode_from_lvl(cls, levelnumber: int) -> 'Cave':
-        assert 0 < levelnumber <= len(CAVES)
-        name, description, data = CAVES[levelnumber - 1]
+    def decode_from_lvl(cls, levelnumber: int) -> 'C64Cave':
+        assert 0 < levelnumber <= len(BD1CAVES)
+        name, description, data = BD1CAVES[levelnumber - 1]
         cave = cls(data[0], name, description, 40, 22)   # size hardcoded
+        cave.codemap = bytearray(cave.width * cave.height)
         cave.intermission = name.lower().startswith("intermission")
         cave.magicwall_millingtime = cave.amoeba_slowgrowthtime = data[0x01]
         cave.diamondvalue_initial = data[0x02]
@@ -319,6 +321,35 @@ class Cave:
             else:
                 raise ValueError("invalid cave instruction encountered")
 
+        # convert the c64 cave map codes to objects we recognise
+        from .game import Objects, Direction
+        conversion = {
+            0x00: (Objects.EMPTY, Direction.NOWHERE),
+            0x01: (Objects.DIRT, Direction.NOWHERE),
+            0x02: (Objects.BRICK, Direction.NOWHERE),
+            0x03: (Objects.MAGICWALL, Direction.NOWHERE),
+            0x04: (Objects.OUTBOXCLOSED, Direction.NOWHERE),
+            0x05: (Objects.OUTBOXBLINKING, Direction.NOWHERE),
+            0x07: (Objects.STEEL, Direction.NOWHERE),
+            0x08: (Objects.FIREFLY, Direction.LEFT),
+            0x09: (Objects.FIREFLY, Direction.UP),
+            0x0a: (Objects.FIREFLY, Direction.RIGHT),
+            0x0b: (Objects.FIREFLY, Direction.DOWN),
+            0x10: (Objects.BOULDER, Direction.NOWHERE),
+            0x12: (Objects.BOULDER, Direction.NOWHERE),
+            0x14: (Objects.DIAMOND, Direction.NOWHERE),
+            0x16: (Objects.DIAMOND, Direction.NOWHERE),
+            0x25: (Objects.INBOXBLINKING, Direction.NOWHERE),
+            0x30: (Objects.BUTTERFLY, Direction.DOWN),
+            0x31: (Objects.BUTTERFLY, Direction.LEFT),
+            0x32: (Objects.BUTTERFLY, Direction.UP),
+            0x33: (Objects.BUTTERFLY, Direction.RIGHT),
+            0x38: (Objects.ROCKFORD, Direction.NOWHERE),
+            0x3a: (Objects.AMOEBA, Direction.NOWHERE)
+        }
+        self.map = [conversion[code] for code in self.codemap]
+        del self.codemap
+
     def draw_rectangle(self, obj: int, x1: int, y1: int, width: int, height: int, fillobject: int=None) -> None:
         self.draw_line(obj, x1, y1, width, 2)
         self.draw_line(obj, x1, y1 + height - 1, width, 2)
@@ -344,4 +375,73 @@ class Cave:
             y += dy
 
     def draw_single(self, obj: int, x: int, y: int) -> None:
-        self.map[x + y * self.width] = obj
+        self.codemap[x + y * self.width] = obj
+
+
+class CaveSet:
+    def __init__(self, external_bdcff_file: str=None) -> None:
+        if external_bdcff_file:
+            from . import bdcff
+            self.mode = "bdcff"
+            self.caves = bdcff.BdcffParser(external_bdcff_file)
+            self.name = self.caves.game_properties["name"]
+            self.author = self.caves.game_properties["author"]
+            self.date= self.caves.game_properties["date"]
+            self.author_info = self.caves.game_properties
+            self.cave_demo = None
+            self.num_caves = len(self.caves.caves)
+        else:
+            self.mode = "builtin"
+            self.name = "Boulder Dash I"
+            self.author = "Peter Liepa"
+            self.date = "1984"
+            self.author_info = None
+            self.caves = BD1CAVES
+            self.cave_demo = CAVE_A_DEMO
+            self.num_caves = len(BD1CAVES)
+
+    def cave(self, levelnumber: int) -> Cave:
+        if self.mode == "builtin":
+            return C64Cave.decode_from_lvl(levelnumber)
+        elif self.mode == "bdcff":
+            return self.cave_from_bdcff(levelnumber, self.caves.caves[levelnumber - 1])
+        raise ValueError("invalid caveset mode")
+
+    def cave_from_bdcff(self, levelnumber: int, bdcff) -> Cave:
+        cave = Cave(levelnumber, bdcff.name, None, bdcff.width, bdcff.height)
+        print(cave.name, cave.width, cave.height)  # XXX
+        cave.intermission = bdcff.intermission
+        cave.magicwall_millingtime = bdcff.magicwalltime
+        cave.amoeba_slowgrowthtime = bdcff.amoebatime
+        cave.diamondvalue_initial = bdcff.diamondvalue_normal
+        cave.diamondvalue_extra = bdcff.diamondvalue_extra
+        cave.diamonds_needed = bdcff.diamonds_required
+        cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)
+        cave.time = bdcff.cavetime
+        cave.bgcolor1 = colorpalette[bdcff.color_fg1]
+        cave.bgcolor2 = colorpalette[bdcff.color_fg2]
+        cave.fgcolor = colorpalette[bdcff.color_fg3]
+        # convert the bdcff map
+        from .game import Objects, Direction
+        conversion = {
+            '.': (Objects.DIRT, Direction.NOWHERE),
+            ' ': (Objects.EMPTY, Direction.NOWHERE),
+            'w': (Objects.BRICK, Direction.NOWHERE),
+            'M': (Objects.MAGICWALL, Direction.NOWHERE),
+            'X': (Objects.OUTBOXCLOSED, Direction.NOWHERE),
+            'W': (Objects.STEEL, Direction.NOWHERE),
+            'Q': (Objects.FIREFLY, Direction.LEFT),
+            'q': (Objects.FIREFLY, Direction.RIGHT),
+            'O': (Objects.FIREFLY, Direction.UP),
+            'o': (Objects.FIREFLY, Direction.DOWN),
+            'c': (Objects.BUTTERFLY, Direction.DOWN),
+            'C': (Objects.BUTTERFLY, Direction.LEFT),
+            'b': (Objects.BUTTERFLY, Direction.UP),
+            'B': (Objects.BUTTERFLY, Direction.RIGHT),
+            'r': (Objects.BOULDER, Direction.NOWHERE),
+            'd': (Objects.DIAMOND, Direction.NOWHERE),
+            'P': (Objects.INBOXBLINKING, Direction.NOWHERE),
+            'a': (Objects.AMOEBA, Direction.NOWHERE),
+        }
+        cave.map = [conversion[x] for line in bdcff.map.maplines for x in line]
+        return cave
