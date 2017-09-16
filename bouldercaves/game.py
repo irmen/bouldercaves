@@ -88,7 +88,7 @@ class Objects:      # namespace for the game objects in the tilesheet
     STEEL = g("STEEL", False, False, False, 4, 0)
     BRICK = g("BRICK", True, False, True, 5, 0)
     BLADDERSPENDER = g("BLADDERSPENDER", False, False, False, 6, 0)
-    VOODOO = g("VOODOO", True, False, True, 7, 0)       # @todo implement behavior see http://www.boulder-dash.nl/forum/viewtopic.php?t=260&sid=1cbed23a91d0c489d3f2721be5881886
+    VOODOO = g("VOODOO", True, True, True, 7, 0)
     # row 1
     SWEET = g("SWEET", True, False, True, 0, 1)
     GRAVESTONE = g("GRAVESTONE", True, False, False, 1, 1)
@@ -167,7 +167,7 @@ class Objects:      # namespace for the game objects in the tilesheet
     # row 24
     AMOEBA = g("AMOEBA", False, False, True, 0, 24, sframes=8, sfps=20)
     # row 25
-    SLIME = g("SLIME", False, False, True, 0, 25, sframes=8, sfps=20)       # @todo implement behavior
+    SLIME = g("SLIME", False, False, True, 0, 25, sframes=8, sfps=20)       # @todo implement behavior see http://www.boulder-dash.nl/forum/viewtopic.php?t=260&sid=1cbed23a91d0c489d3f2721be5881886
     # row 26 - 30
     ROCKFORD.blink = (0, 26, 8, 20)
     ROCKFORD.tap = (0, 27, 8, 20)
@@ -517,6 +517,7 @@ class GameState:
         self.intermission = False
         self.score = self.extralife_score = 0
         self.cheat_used = False
+        self.death_by_voodoo = False
         self.diamondvalue_initial = self.diamondvalue_extra = 0
         self.diamonds = self.diamonds_needed = 0
         self.lives = 3
@@ -613,6 +614,7 @@ class GameState:
         self.timeremaining = datetime.timedelta(seconds=c64cave.time)
         self.frame = 0
         self.bonusbg_frame = 0
+        self.death_by_voodoo = False
         self.timelimit = None   # will be set as soon as Rockford spawned
         self.idle["blink"] = self.idle["tap"] = False
         self.idle["uncover"] = True
@@ -969,6 +971,9 @@ class GameState:
             cell = self.move(cell, Direction.DOWN)
             if not self.get(cell, Direction.DOWN).isempty():
                 self.fall_sound(cell)  # play a sound as soon as we hit something.
+        elif cellbelow.obj is Objects.VOODOO and cell.obj is Objects.DIAMOND:
+            self.clear_cell(cell)
+            self.collect_diamond()  # voodoo doll catches falling diamond
         elif cellbelow.isexplodable():
             self.explode(cell, Direction.DOWN)
         elif cellbelow.ismagic():
@@ -991,6 +996,10 @@ class GameState:
         elif self.get(cell, Direction.UP).isamoeba() or self.get(cell, Direction.DOWN).isamoeba() \
                 or self.get(cell, Direction.LEFT).isamoeba() or self.get(cell, Direction.RIGHT).isamoeba():
             self.explode(cell)
+        elif self.get(cell, Direction.UP).obj is Objects.VOODOO or self.get(cell, Direction.DOWN).obj is Objects.VOODOO \
+                or self.get(cell, Direction.LEFT).obj is Objects.VOODOO or self.get(cell, Direction.RIGHT).obj is Objects.VOODOO:
+            self.explode(cell)
+            self.death_by_voodoo = True
         elif self.get(cell, newdir).isempty():
             self.move(cell, newdir).direction = newdir
         elif self.get(cell, cell.direction).isempty():
@@ -1007,6 +1016,10 @@ class GameState:
         elif self.get(cell, Direction.UP).isamoeba() or self.get(cell, Direction.DOWN).isamoeba() \
                 or self.get(cell, Direction.LEFT).isamoeba() or self.get(cell, Direction.RIGHT).isamoeba():
             self.explode(cell)
+        elif self.get(cell, Direction.UP).obj is Objects.VOODOO or self.get(cell, Direction.DOWN).obj is Objects.VOODOO \
+                or self.get(cell, Direction.LEFT).obj is Objects.VOODOO or self.get(cell, Direction.RIGHT).obj is Objects.VOODOO:
+            self.explode(cell)
+            self.death_by_voodoo = True
         elif self.get(cell, newdir).isempty():
             self.move(cell, newdir).direction = newdir
         elif self.get(cell, cell.direction).isempty():
@@ -1048,7 +1061,7 @@ class GameState:
         self.rockford_found_frame = self.frame
         if self.level_won:
             return
-        if self.timeremaining.seconds <= 0:
+        if self.timeremaining.seconds <= 0 or self.death_by_voodoo:
             self.explode(cell)
         elif self.movement.moving:
             targetcell = self.get(cell, self.movement.direction)
@@ -1157,18 +1170,16 @@ class GameState:
         audio.play_sample("explosion")
         explosioncell = self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
         if explosioncell.isbutterfly():
-            obj = Objects.DIAMONDBIRTH
+            explode_obj = Objects.DIAMONDBIRTH
         else:
-            obj = Objects.EXPLOSION
-        self.draw_single_cell(explosioncell, obj)
-        for direction in Direction:
-            if direction is Direction.NOWHERE:
-                continue
+            explode_obj = Objects.EXPLOSION
+        self.draw_single_cell(explosioncell, Objects.GRAVESTONE if explosioncell.obj is Objects.VOODOO else explode_obj)
+        for direction in set(Direction) - {Direction.NOWHERE}:
             cell = self.cave[explosioncell.x + explosioncell.y * self.width + self._dirxy[direction]]
             if cell.isexplodable():
                 self.explode(cell, Direction.NOWHERE)
             elif cell.isconsumable():
-                self.draw_single_cell(cell, obj)
+                self.draw_single_cell(cell, Objects.GRAVESTONE if cell.obj is Objects.VOODOO else explode_obj)
 
     def update_scorebar(self) -> None:
         # draw the score bar.

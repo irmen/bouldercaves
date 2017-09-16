@@ -45,7 +45,7 @@ class BdcffParser:
                 dv = dve = dvalue
             self.diamondvalue_normal = int(dv)
             self.diamondvalue_extra = int(dve)
-            self.amoebatime = int(self.properties.pop("amoebatime", 0))
+            self.amoebatime = int(self.properties.pop("amoebatime", 200))
             self.magicwalltime = int(self.properties.pop("magicwalltime", 0))
             self.slimepermeability = float(self.properties.pop("slimepermeability", 0))  # @todo implement slime
             c64colors = ["black", "white", "red", "cyan", "purple", "green", "blue", "yellow",
