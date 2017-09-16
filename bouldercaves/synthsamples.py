@@ -344,7 +344,7 @@ class Slime(audio.Sample):
         super().__init__("slime", pcmdata=b"")
         fm = FastTriangle(5, 0.5, samplerate=audio.norm_samplerate)
         osc = Sine(261.62556, 0.25, fm_lfo=fm, samplerate=audio.norm_samplerate)
-        filtered = EnvelopeFilter(osc, 0, 0, 0,1, 0.41, stop_at_end=True)
+        filtered = EnvelopeFilter(osc, 0, 0, 0, 1, 0.41, stop_at_end=True)
         self.append(sample_from_osc(filtered.generator()))
 
 

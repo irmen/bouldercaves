@@ -111,7 +111,7 @@ class BdcffParser:
             raise BdcffFormatError("invalid or unsupported cave data")
         for cave in self.caves:
             if cave.color_slime != 0 or cave.color_amoeba != 0:
-                raise BdcffFormatError("unsupported cave slime/amoeba color(s) in cave "+str(cave.name))
+                raise BdcffFormatError("unsupported cave slime/amoeba color(s) in cave " + str(cave.name))
 
     def dump(self) -> None:
         print("BDCFF Cave set")

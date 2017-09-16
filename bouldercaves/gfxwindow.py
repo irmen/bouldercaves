@@ -189,6 +189,7 @@ class BoulderWindow(tkinter.Tk):
         self.graphics_update_dt = 0.0
         self.graphics_frame = 0
         self.popup_frame = 0
+        self.last_demo_or_highscore_frame = 0
         self.gamestate = GameState(self)
 
     def destroy(self) -> None:
@@ -201,6 +202,12 @@ class BoulderWindow(tkinter.Tk):
         self.game_update_dt = 0.0
         self.graphics_update_dt = 0.0
         self.graphics_frame = 0
+        cs = self.gamestate.caveset
+        if self.smallwindow:
+            fmt = "Playing caveset:\n\n{name}\n\nby {author}\n\n({date})"
+        else:
+            fmt = "Playing caveset:\n\n\x0f\x0f`{name}'\n\n\x0f\x0fby {author}\n\n\x0f\x0f\x0f\x0f({date})"
+        self.popup(fmt.format(name=cs.name, author=cs.author, date=cs.date), duration=4)
         self.tick_loop()
 
     def tick_loop(self) -> None:
@@ -505,8 +512,9 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.update(self.graphics_frame)
         self.gamestate.update_scorebar()
         if self.gamestate.game_status == GameStatus.WAITING and \
-                self.update_timestep * self.graphics_frame >= max(15, audio.samples["music"].duration):
+                self.last_demo_or_highscore_frame + self.update_fps * max(15, audio.samples["music"].duration) < self.graphics_frame:
             self.gamestate.tile_music_ended()
+            self.last_demo_or_highscore_frame = self.graphics_frame
 
     def scroll_focuscell_into_view(self, immediate: bool=False) -> None:
         focus_cell = self.gamestate.focus_cell()
@@ -540,6 +548,7 @@ class BoulderWindow(tkinter.Tk):
         return [self.font_tiles_startindex + ord(c) for c in text]
 
     def popup(self, text: str, duration: float=5.0, on_close: Callable=None) -> None:
+        self.popup_close()
         self.scroll_focuscell_into_view(immediate=True)   # snap the view to the focus cell otherwise popup may appear off-screen
         lines = []
         width = self.visible_columns - 4 if self.smallwindow else int(self.visible_columns * 0.6)
@@ -559,16 +568,18 @@ class BoulderWindow(tkinter.Tk):
             bchar = ""
             x = y = 0
             popupwidth = width + 4
-            popupheight = len(lines) + 4
+            popupheight = len(lines) + 3
         else:
             bchar = "\x0e"
             popupwidth = width + 6
             popupheight = len(lines) + 6
-        x, y = (self.visible_columns - popupwidth) // 2, (self.visible_rows - popupheight) // 2 + 1
+        x, y = (self.visible_columns - popupwidth) // 2, int((self.visible_rows - popupheight + 1) / 2)
 
         # move the popup inside the currently viewable portion of the playfield
         x += self.view_x // 16
         y += self.view_y // 16
+        x = min(x, self.playfield_columns - popupwidth)
+        y = min(y, self.playfield_rows - popupheight)
 
         self.popup_tiles_save = (
             x, y, popupwidth, popupheight,

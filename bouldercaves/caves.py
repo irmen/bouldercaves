@@ -392,8 +392,7 @@ class CaveSet:
             self.caves = bdcff.BdcffParser(external_bdcff_file)
             self.name = self.caves.game_properties["name"]
             self.author = self.caves.game_properties["author"]
-            self.date= self.caves.game_properties["date"]
-            self.author_info = self.caves.game_properties
+            self.date = self.caves.game_properties["date"]
             self.cave_demo = None
             self.num_caves = len(self.caves.caves)
         else:
@@ -401,7 +400,6 @@ class CaveSet:
             self.name = "Boulder Dash I"
             self.author = "Peter Liepa"
             self.date = "1984"
-            self.author_info = None
             self.caves = BD1CAVES
             self.cave_demo = CAVE_A_DEMO
             self.num_caves = len(BD1CAVES)

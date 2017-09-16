@@ -499,7 +499,6 @@ class GameState:
         Objects.ROCKFORDBIRTH.anim_end_callback = self.end_rockfordbirth
         Objects.EXPLOSION.anim_end_callback = self.end_explosion
         Objects.DIAMONDBIRTH.anim_end_callback = self.end_diamondbirth
-        self.demo_or_highscore = True
         self.highscores = HighScores(self.caveset.name)
         # and start the game on the title screen.
         self.restart()
@@ -510,7 +509,8 @@ class GameState:
     def restart(self) -> None:
         audio.silence_audio()
         audio.play_sample("music", repeat=True)
-        self.gfxwindow.graphics_frame = self.frame = 0
+        self.frame = 0
+        self.demo_or_highscore = True
         self.gfxwindow.set_screen_colors(0, 0)
         self.bonusbg_frame = 0    # till what frame should the bg be the bonus sparkly things instead of spaces
         self.level = -1
@@ -659,7 +659,7 @@ class GameState:
 
     def tile_music_ended(self):
         # do one of two things: play the demo, or show the highscore list for a short time
-        self.demo_or_highscore = not self.demo_or_highscore
+        self.demo_or_highscore = (not self.demo_or_highscore) and self.caveset.cave_demo
         if self.demo_or_highscore:
             self.start_demo()
         else:
@@ -667,11 +667,13 @@ class GameState:
 
     def start_demo(self):
         if self.game_status == GameStatus.WAITING:
-            if self.caveset.cave_demo is not None:
+            if self.caveset.cave_demo:
                 self.level = 0
                 self.load_next_level(intro_popup=False)
                 self.movement = self.DemoMovementInfo(self.caveset.cave_demo)  # is reset to regular handling when demo ends/new level
                 self.game_status = GameStatus.DEMO
+            else:
+                self.gfxwindow.popup("This cave set doesn't have a demo.", duration=3)
 
     def show_highscores(self):
         def reset_game_status():
@@ -687,7 +689,7 @@ class GameState:
                 txt = ["\x05 " + self.caveset.name + " \x05", "\n\x0e\x0e\x0e High Scores \x0e\x0e\x0e\n-------------------\n"]
                 for pos, (score, name) in enumerate(self.highscores, start=1):
                     txt.append("\x0f{:d}\x0f {:\x0f<7s}\x0f {:_>6d}".format(pos, name, score))
-            self.gfxwindow.popup("\n".join(txt), 10, on_close=reset_game_status)
+            self.gfxwindow.popup("\n".join(txt), 12, on_close=reset_game_status)
 
     def pause(self):
         if self.game_status == GameStatus.PLAYING:
