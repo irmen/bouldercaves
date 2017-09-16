@@ -33,7 +33,7 @@ class BdcffParser:
 
         def postprocess(self):
             self.name = self.properties.pop("name")
-            if self.name.startswith("Cave "):
+            if self.name.startswith(("Cave ", "Intermission ")):
                 self.name = self.name.split(" ", maxsplit=1)[1]
             self.cavedelay = int(self.properties.pop("cavedelay"))
             self.cavetime = int(self.properties.pop("cavetime"))

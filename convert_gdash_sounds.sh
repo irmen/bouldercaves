@@ -2,7 +2,7 @@
 
 # This script downloads the sampled sound files from GDash and converts
 # them to a smaller version (half sample rate), and copies those
-# into the sounds directory inside our package. Format: Ogg
+# into the sounds folder inside our package. Format: Ogg
 # Usually you don't have to run this script because the converted
 # sample files are included in the bouldercaves repository already.
 # GDash is here:  https://bitbucket.org/czirkoszoltan/gdash.git

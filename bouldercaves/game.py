@@ -87,10 +87,8 @@ class Objects:      # namespace for the game objects in the tilesheet
     DIRT2 = g("DIRT2", False, False, True, 3, 0)
     STEEL = g("STEEL", False, False, False, 4, 0)
     BRICK = g("BRICK", True, False, True, 5, 0)
-    HEXPANDINGWALL = g("HEXPANDINGWALL", False, False, True, 5, 0)   # @todo implement behavior see http://www.boulder-dash.nl/forum/viewtopic.php?t=260&sid=1cbed23a91d0c489d3f2721be5881886
-    VEXPANDINGWALL = g("VEXPANDINGWALL", False, False, True, 5, 0)   # @todo implement behavior
     BLADDERSPENDER = g("BLADDERSPENDER", False, False, False, 6, 0)
-    VOODOO = g("VOODOO", True, False, True, 7, 0)       # @todo implement behavior
+    VOODOO = g("VOODOO", True, False, True, 7, 0)       # @todo implement behavior see http://www.boulder-dash.nl/forum/viewtopic.php?t=260&sid=1cbed23a91d0c489d3f2721be5881886
     # row 1
     SWEET = g("SWEET", True, False, True, 0, 1)
     GRAVESTONE = g("GRAVESTONE", True, False, False, 1, 1)
@@ -118,8 +116,8 @@ class Objects:      # namespace for the game objects in the tilesheet
     ROCKFORD = g("ROCKFORD", False, True, True, 3, 4)  # standing still
     BOULDERBIRTH = g("BOULDERBIRTH", False, False, False, 4, 4, sframes=4, sfps=10)
     # row 5
-    EXPANDINGWALLSWITCHHORIZ = g("EXPANDINGWALLSWITCHHORIZ", False, False, False, 0, 5)
-    EXPANDINGWALLSWITCHVERT = g("EXPANDINGWALLSWITCHVERT", False, False, False, 1, 5)
+    HEXPANDINGWALL = g("HEXPANDINGWALL", False, False, False, 0, 5)
+    VEXPANDINGWALL = g("VEXPANDINGWALL", False, False, False, 1, 5)
     ROCKFORD.bomb = (2, 5, 0, 0)
     EXPLOSION = g("EXPLOSION", False, False, False, 3, 5, sframes=5, sfps=10)
     # row 6
@@ -338,6 +336,14 @@ class GameState:
 
         def isboulder(self) -> bool:
             return self.obj in {Objects.BOULDER, Objects.MEGABOULDER, Objects.CHASINGBOULDER, Objects.FLYINGBOULDER}
+
+        def iswall(self) -> bool:
+            return self.obj in {Objects.HEXPANDINGWALL, Objects.VEXPANDINGWALL, Objects.BRICK,
+                                Objects.MAGICWALL, Objects.STEEL, Objects.STEELWALLBIRTH,
+                                Objects.BRICKSLOPEDDOWNRIGHT, Objects.BRICKSLOPEDDOWNLEFT,
+                                Objects.BRICKSLOPEDUPRIGHT, Objects.BRICKSLOPEDUPLEFT,
+                                Objects.STEELSLOPEDDOWNLEFT, Objects.STEELSLOPEDDOWNRIGHT,
+                                Objects.STEELSLOPEDUPLEFT, Objects.STEELSLOPEDUPRIGHT}
 
         def isoutbox(self) -> bool:
             return self.obj is Objects.OUTBOXBLINKING
@@ -631,7 +637,7 @@ class GameState:
         self.gfxwindow.tilesheet.all_dirty()
         if level_intro_popup and self.level_description:
             audio.play_sample("diamond2")
-            fmt = "{:s}\n\n{:s}" if self.intermission else "Cave {:s}\n\n{:s}"
+            fmt = "Intermission {:s}\n\n{:s}" if self.intermission else "Cave {:s}\n\n{:s}"
             self.gfxwindow.popup(fmt.format(self.level_name, self.level_description))
 
     def tile_music_ended(self):
@@ -810,6 +816,8 @@ class GameState:
                     elif cell.obj is Objects.BONUSBG:
                         if self.bonusbg_frame < self.frame:
                             self.draw_single_cell(cell, Objects.EMPTY)
+                    elif cell.obj in (Objects.HEXPANDINGWALL, Objects.VEXPANDINGWALL):
+                        self.update_expandingwall(cell)
         self.frame_end()
 
     def frame_start(self) -> None:
@@ -1066,8 +1074,29 @@ class GameState:
             self.movement.move_done()
         self.rockford_cell = cell
 
+    def update_expandingwall(self, cell: Cell) -> None:
+        # cell is an expanding wall (horizontally or vertically)
+        if cell.obj is Objects.HEXPANDINGWALL:
+            left = self.get(cell, Direction.LEFT)
+            right = self.get(cell, Direction.RIGHT)
+            if left.isempty():
+                self.draw_single_cell(left, Objects.HEXPANDINGWALL)
+                self.fall_sound(cell, pushing=True)
+            if right.isempty():
+                self.draw_single_cell(right, Objects.HEXPANDINGWALL)
+                self.fall_sound(cell, pushing=True)
+        elif cell.obj is Objects.VEXPANDINGWALL:
+            up = self.get(cell, Direction.UP)
+            down = self.get(cell, Direction.DOWN)
+            if up.isempty():
+                self.draw_single_cell(up, Objects.VEXPANDINGWALL)
+                self.fall_sound(cell, pushing=True)
+            if down.isempty():
+                self.draw_single_cell(down, Objects.VEXPANDINGWALL)
+                self.fall_sound(cell, pushing=True)
+
     def fall_sound(self, cell: Cell, pushing: bool=False) -> None:
-        if cell.isboulder():
+        if cell.isboulder() or cell.iswall():
             if pushing:
                 self.fall_sound_to_play = "box_push"
             else:
@@ -1183,6 +1212,6 @@ class GameState:
         elif self.game_status == GameStatus.PAUSED:
             tiles = self.gfxwindow.text2tiles("\x08  P A U S E D  \x08".center(self.width))
         else:
-            fmt = "{:s}" if self.intermission else "Cave {:s}"
+            fmt = "Intermission {:s}" if self.intermission else "Cave {:s}"
             tiles = self.gfxwindow.text2tiles(fmt.format(self.level_name).center(self.width))
         self.gfxwindow.tilesheet_score.set_tiles(0, 1, tiles[:40])

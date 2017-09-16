@@ -89,6 +89,11 @@ while the larger one uses sampled sounds.
 If you run the game from a command prompt, you are able to tweak some command line settings.
 To see what is available just use the ``-h`` (help) argument.
 
+The original BD1 levels are built-in. With the ``-g`` (game) command line argument you can 
+load external level files in BDCFF format. Hundreds of these can be found on 
+https://www.boulder-dash.nl/  on the BDCFF format page.  A couple of them are included
+in the 'caves' folder.
+
 
 **Windows**
 

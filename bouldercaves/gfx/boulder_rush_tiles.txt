@@ -6,7 +6,7 @@ These tiles are from the MIT-licensed GDASH (https://bitbucket.org/czirkoszoltan
  2:		clock   chasingboulder   creatureswitch   creatureswitchon   acid   sokobanbox   outboxclosed   outboxopen
  3:		steelwallbirth0   steelwallbirth1   steelwallbirth2   steelwallbirth3   clockbirth0   clockbirth1   clockbirth2   clockbirth3
  4:		rockfordbirth0   rockfordbirth1   rockfordbirth2   rockfordbirth3   boulderbirth0   boulderbirth1   boulderbirth2   boulderbirth4
- 5:		expandingwallswitchhoriz   expandingwallswitchvert   rockfordbomb   explosion0   explosion1   explosion2   explosion3   explosion4
+ 5:		hexpandingwall   vexpandingwall   rockfordbomb   explosion0   explosion1   explosion2   explosion3   explosion4
  6:     bomb   ignitedbomb0   ignitedbomb1   ignitedbomb2   ignitedbomb3   ignitedbomb4   ignitedbomb5   ignitedbomb6
  7:		diamondbirth0   diamondbirth1   diamondbirth2   diamondbirth3   diamondbirth4	teleporter	hammer   pot
  8:		door1   door2   door3   key1   key2   key3   questionmark	eatable

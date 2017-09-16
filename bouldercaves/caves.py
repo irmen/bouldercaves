@@ -243,7 +243,10 @@ class C64Cave(Cave):
     def decode_from_lvl(cls, levelnumber: int) -> 'C64Cave':
         assert 0 < levelnumber <= len(BD1CAVES)
         name, description, data = BD1CAVES[levelnumber - 1]
-        cave = cls(data[0], name, description, 40, 22)   # size is hardcoded, also for intermissions
+        stripped_name = name
+        if stripped_name.startswith(("Cave ", "Intermission ")):
+            stripped_name = stripped_name.split(" ", maxsplit=1)[1]
+        cave = cls(data[0], stripped_name, description, 40, 22)   # size is hardcoded, also for intermissions
         cave.codemap = bytearray(cave.width * cave.height)
         cave.intermission = name.lower().startswith("intermission")
         cave.magicwall_millingtime = cave.amoeba_slowgrowthtime = data[0x01]
@@ -432,7 +435,9 @@ class CaveSet:
             'w': (Objects.BRICK, Direction.NOWHERE),
             'M': (Objects.MAGICWALL, Direction.NOWHERE),
             'x': (Objects.HEXPANDINGWALL, Direction.NOWHERE),
+            'v': (Objects.VEXPANDINGWALL, Direction.NOWHERE),
             'X': (Objects.OUTBOXCLOSED, Direction.NOWHERE),
+            'H': (Objects.OUTBOXCLOSED, Direction.NOWHERE),    # should be a 'hidden' outbox officially
             'W': (Objects.STEEL, Direction.NOWHERE),
             'Q': (Objects.FIREFLY, Direction.LEFT),
             'q': (Objects.FIREFLY, Direction.RIGHT),
