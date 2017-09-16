@@ -234,6 +234,8 @@ class Cave:
         self.bgcolor1 = 0
         self.bgcolor2 = 0
         self.fgcolor = 0
+        self.bordercolor = 0
+        self.screencolor = 0
 
 
 class C64Cave(Cave):
@@ -418,6 +420,8 @@ class CaveSet:
         cave.diamonds_needed = bdcff.diamonds_required
         cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)
         cave.time = bdcff.cavetime
+        cave.bordercolor = colorpalette[bdcff.color_border]
+        cave.screencolor = colorpalette[bdcff.color_screen]
         cave.bgcolor1 = colorpalette[bdcff.color_fg1]
         cave.bgcolor2 = colorpalette[bdcff.color_fg2]
         cave.fgcolor = colorpalette[bdcff.color_fg3]

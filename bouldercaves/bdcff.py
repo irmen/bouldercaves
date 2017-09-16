@@ -51,7 +51,7 @@ class BdcffParser:
             c64colors = ["black", "white", "red", "cyan", "purple", "green", "blue", "yellow",
                          "orange", "brown", "lightred", "gray1", "gray2", "lightgreen", "lightblue", "gray3"]
             colors = [c64colors.index(c.lower()) for c in self.properties.pop("colors").split()]
-            self.color_border = 0   # @todo option to set border and screen background colors
+            self.color_border = 0
             self.color_screen = 0
             self.color_amoeba = 0   # @todo extra color ???
             self.color_slime = 0    # @todo extra color ???
@@ -109,6 +109,9 @@ class BdcffParser:
                 self.game_properties["levels"] != 1 or \
                 self.game_properties["caves"] != len(self.caves):
             raise BdcffFormatError("invalid or unsupported cave data")
+        for cave in self.caves:
+            if cave.color_slime != 0 or cave.color_amoeba != 0:
+                raise BdcffFormatError("unsupported cave slime/amoeba color(s) in cave "+str(cave.name))
 
     def dump(self) -> None:
         print("BDCFF Cave set")

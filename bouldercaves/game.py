@@ -498,6 +498,7 @@ class GameState:
         audio.silence_audio()
         audio.play_sample("music", repeat=True)
         self.gfxwindow.graphics_frame = self.frame = 0
+        self.gfxwindow.set_screen_colors(0, 0)
         self.bonusbg_frame = 0    # till what frame should the bg be the bonus sparkly things instead of spaces
         self.level = -1
         self.level_name = self.level_description = "???"
@@ -623,7 +624,8 @@ class GameState:
         for i, (gobj, direction) in enumerate(c64cave.map):
             y, x = divmod(i, self.width)
             self.draw_single(gobj, x, y, initial_direction=direction)
-        self.gfxwindow.create_colored_tiles(c64cave.bgcolor1, c64cave.bgcolor2, c64cave.fgcolor)
+        self.gfxwindow.create_colored_tiles(c64cave.bgcolor1, c64cave.bgcolor2, c64cave.fgcolor, c64cave.screencolor)
+        self.gfxwindow.set_screen_colors(c64cave.bordercolor, c64cave.screencolor)
         self.gfxwindow.tilesheet.all_dirty()
         if level_intro_popup and self.level_description:
             audio.play_sample("diamond2")
