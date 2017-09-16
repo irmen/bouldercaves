@@ -359,7 +359,8 @@ class GameState:
             self.direction = Direction.NOWHERE
             self.lastXdir = Direction.NOWHERE
             self.up = self.down = self.left = self.right = False
-            self.grab = False
+            self.grab = False           # is rockford grabbing something?
+            self.pushing = False        # is rockford pushing something?
 
         @property
         def moving(self) -> bool:
@@ -762,6 +763,7 @@ class GameState:
                 self.fall_sound(targetcell, pushing=True)
                 if not self.movement.grab:
                     cell = self.move(cell, direction)
+        self.movement.pushing = True
         return cell
 
     def domagic(self, cell: Cell) -> None:
@@ -823,6 +825,7 @@ class GameState:
     def frame_start(self) -> None:
         # called at beginning of every game logic update
         self.frame += 1
+        self.movement.pushing = False
         if not self.movement.moving:
             if random.randint(1, 4) == 1:
                 self.idle["blink"] = not self.idle["blink"]

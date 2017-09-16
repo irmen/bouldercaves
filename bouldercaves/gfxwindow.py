@@ -342,11 +342,17 @@ class BoulderWindow(tkinter.Tk):
                 if self.gamestate.movement.direction == Direction.LEFT or \
                         (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
                          self.gamestate.movement.lastXdir == Direction.LEFT):
-                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.left
+                    if self.gamestate.movement.pushing:
+                        spritex, spritey, sframes, sfps = Objects.ROCKFORD.pushleft
+                    else:
+                        spritex, spritey, sframes, sfps = Objects.ROCKFORD.left
                 elif self.gamestate.movement.direction == Direction.RIGHT or \
                         (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
                          self.gamestate.movement.lastXdir == Direction.RIGHT):
-                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.right
+                    if self.gamestate.movement.pushing:
+                        spritex, spritey, sframes, sfps = Objects.ROCKFORD.pushright
+                    else:
+                        spritex, spritey, sframes, sfps = Objects.ROCKFORD.right
                 # handle rockford idle state/animation
                 elif self.gamestate.idle["tap"] and self.gamestate.idle["blink"]:
                     spritex, spritey, sframes, sfps = Objects.ROCKFORD.tapblink
