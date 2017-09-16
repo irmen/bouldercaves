@@ -116,8 +116,8 @@ class Objects:      # namespace for the game objects in the tilesheet
     ROCKFORD = g("ROCKFORD", False, True, True, 3, 4)  # standing still
     BOULDERBIRTH = g("BOULDERBIRTH", False, False, False, 4, 4, sframes=4, sfps=10)
     # row 5
-    HEXPANDINGWALL = g("HEXPANDINGWALL", False, False, False, 0, 5)
-    VEXPANDINGWALL = g("VEXPANDINGWALL", False, False, False, 1, 5)
+    HEXPANDINGWALL = g("HEXPANDINGWALL", False, False, True, 0, 5)
+    VEXPANDINGWALL = g("VEXPANDINGWALL", False, False, True, 1, 5)
     ROCKFORD.bomb = (2, 5, 0, 0)
     EXPLOSION = g("EXPLOSION", False, False, False, 3, 5, sframes=5, sfps=10)
     # row 6
