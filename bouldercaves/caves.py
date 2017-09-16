@@ -243,7 +243,7 @@ class C64Cave(Cave):
     def decode_from_lvl(cls, levelnumber: int) -> 'C64Cave':
         assert 0 < levelnumber <= len(BD1CAVES)
         name, description, data = BD1CAVES[levelnumber - 1]
-        cave = cls(data[0], name, description, 40, 22)   # size hardcoded
+        cave = cls(data[0], name, description, 40, 22)   # size is hardcoded, also for intermissions
         cave.codemap = bytearray(cave.width * cave.height)
         cave.intermission = name.lower().startswith("intermission")
         cave.magicwall_millingtime = cave.amoeba_slowgrowthtime = data[0x01]
@@ -411,7 +411,6 @@ class CaveSet:
 
     def cave_from_bdcff(self, levelnumber: int, bdcff) -> Cave:
         cave = Cave(levelnumber, bdcff.name, None, bdcff.width, bdcff.height)
-        print(cave.name, cave.width, cave.height)  # XXX
         cave.intermission = bdcff.intermission
         cave.magicwall_millingtime = bdcff.magicwalltime
         cave.amoeba_slowgrowthtime = bdcff.amoebatime
@@ -432,6 +431,7 @@ class CaveSet:
             ' ': (Objects.EMPTY, Direction.NOWHERE),
             'w': (Objects.BRICK, Direction.NOWHERE),
             'M': (Objects.MAGICWALL, Direction.NOWHERE),
+            'x': (Objects.HEXPANDINGWALL, Direction.NOWHERE),
             'X': (Objects.OUTBOXCLOSED, Direction.NOWHERE),
             'W': (Objects.STEEL, Direction.NOWHERE),
             'Q': (Objects.FIREFLY, Direction.LEFT),
@@ -446,6 +446,8 @@ class CaveSet:
             'd': (Objects.DIAMOND, Direction.NOWHERE),
             'P': (Objects.INBOXBLINKING, Direction.NOWHERE),
             'a': (Objects.AMOEBA, Direction.NOWHERE),
+            'F': (Objects.VOODOO, Direction.NOWHERE),
+            's': (Objects.SLIME, Direction.NOWHERE)
         }
         cave.map = [conversion[x] for line in bdcff.map.maplines for x in line]
         return cave

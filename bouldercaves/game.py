@@ -87,8 +87,10 @@ class Objects:      # namespace for the game objects in the tilesheet
     DIRT2 = g("DIRT2", False, False, True, 3, 0)
     STEEL = g("STEEL", False, False, False, 4, 0)
     BRICK = g("BRICK", True, False, True, 5, 0)
+    HEXPANDINGWALL = g("HEXPANDINGWALL", False, False, True, 5, 0)   # @todo implement behavior see http://www.boulder-dash.nl/forum/viewtopic.php?t=260&sid=1cbed23a91d0c489d3f2721be5881886
+    VEXPANDINGWALL = g("VEXPANDINGWALL", False, False, True, 5, 0)   # @todo implement behavior
     BLADDERSPENDER = g("BLADDERSPENDER", False, False, False, 6, 0)
-    VOODOO = g("VOODOO", True, False, True, 7, 0)
+    VOODOO = g("VOODOO", True, False, True, 7, 0)       # @todo implement behavior
     # row 1
     SWEET = g("SWEET", True, False, True, 0, 1)
     GRAVESTONE = g("GRAVESTONE", True, False, False, 1, 1)
@@ -167,7 +169,7 @@ class Objects:      # namespace for the game objects in the tilesheet
     # row 24
     AMOEBA = g("AMOEBA", False, False, True, 0, 24, sframes=8, sfps=20)
     # row 25
-    SLIME = g("SLIME", False, False, True, 0, 25, sframes=8, sfps=20)
+    SLIME = g("SLIME", False, False, True, 0, 25, sframes=8, sfps=20)       # @todo implement behavior
     # row 26 - 30
     ROCKFORD.blink = (0, 26, 8, 20)
     ROCKFORD.tap = (0, 27, 8, 20)
@@ -587,8 +589,6 @@ class GameState:
     def load_level(self, levelnumber: int, level_intro_popup: bool=True) -> None:
         audio.silence_audio()
         c64cave = self.caveset.cave(levelnumber)
-        assert c64cave.width == self.width and c64cave.height == self.height
-        # @todo fix handling of non-default sizes (intermissions)
         self.level_name = c64cave.name
         self.level_description = c64cave.description
         self.intermission = c64cave.intermission
@@ -621,8 +621,10 @@ class GameState:
             "dead": None,
             "sound_active": False
         }
+        # clear the previous cave data and replace with data from new cave
+        self.draw_rectangle(Objects.STEEL, 0, 0, self.width, self.height, Objects.STEEL)
         for i, (gobj, direction) in enumerate(c64cave.map):
-            y, x = divmod(i, self.width)
+            y, x = divmod(i, c64cave.width)
             self.draw_single(gobj, x, y, initial_direction=direction)
         self.gfxwindow.create_colored_tiles(c64cave.bgcolor1, c64cave.bgcolor2, c64cave.fgcolor, c64cave.screencolor)
         self.gfxwindow.set_screen_colors(c64cave.bordercolor, c64cave.screencolor)
