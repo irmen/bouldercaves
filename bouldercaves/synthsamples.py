@@ -11,7 +11,7 @@ import random
 import itertools
 import collections
 from typing import Callable, Generator, Iterator, Union
-from .synth import FastTriangle, WhiteNoise, Linear, Triangle, Sine, SquareH, EnvelopeFilter, AmpModulationFilter
+from .synth import FastTriangle, WhiteNoise, Linear, Triangle, Sine, SquareH, EnvelopeFilter, AmpModulationFilter, MixingFilter
 from . import audio
 
 
@@ -272,6 +272,18 @@ class Explosion(audio.Sample):
         self.append(sample_from_osc(filtered.generator()))
 
 
+class VoodooExplosion(audio.Sample):
+    def __init__(self) -> None:
+        super().__init__("voodoo_explosion", pcmdata=b"")
+        osc5 = WhiteNoise(1200, amplitude=0.4, samplerate=audio.norm_samplerate)
+        fm = Sine(5, 0.49, bias=0.5, samplerate=audio.norm_samplerate)
+        osc4 = Sine(146.83238, 0.7, fm_lfo=fm, samplerate=audio.norm_samplerate)
+        f1 = EnvelopeFilter(osc5, 0.02, 0.02, 0, 0.72, 1.5, stop_at_end=True)
+        f2 = EnvelopeFilter(osc4, 0.18, 0.16, 0, 0.48, 1.2, stop_at_end=True)
+        filtered = MixingFilter(f1, f2)
+        self.append(sample_from_osc(filtered.generator()))
+
+
 class CollectDiamond(audio.Sample):
     def __init__(self) -> None:
         super().__init__("collect_diamond", pcmdata=b"")
@@ -344,11 +356,17 @@ def demo():
     print("Slime")
     sample = Slime()
     api.play(sample)
-    time.sleep(max(1, sample.duration + 0.5))
+    time.sleep(sample.duration + 0.1)
 
     # ------ explosion
     print("Explosion")
     sample = Explosion()
+    api.play(sample)
+    time.sleep(sample.duration + 0.1)
+
+    # ------ voodoo explosion
+    print("Voodoo Explosion")
+    sample = VoodooExplosion()
     api.play(sample)
     time.sleep(sample.duration + 0.1)
 

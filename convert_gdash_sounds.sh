@@ -40,6 +40,7 @@ ffmpeg -i ${GDASH}cover.ogg ${FFMPEG_OPTS} ${OUT}cover.${OEXT}
 ffmpeg -i ${GDASH}crack.ogg ${FFMPEG_OPTS} ${OUT}crack.${OEXT}
 ffmpeg -i ${GDASH}slime.ogg ${FFMPEG_OPTS} ${OUT}slime.${OEXT}
 ffmpeg -i ${GDASH}explosion.ogg ${FFMPEG_OPTS} ${OUT}explosion.${OEXT}
+ffmpeg -i ${GDASH}voodoo_explosion.ogg ${FFMPEG_OPTS} ${OUT}voodoo_explosion.${OEXT}
 ffmpeg -i ${GDASH}finished.ogg ${FFMPEG_OPTS} ${OUT}finished.${OEXT}
 ffmpeg -i ${GDASH}walk_empty.ogg ${FFMPEG_OPTS} ${OUT}walk_empty.${OEXT}
 ffmpeg -i ${GDASH}walk_earth.ogg ${FFMPEG_OPTS} ${OUT}walk_dirt.${OEXT}

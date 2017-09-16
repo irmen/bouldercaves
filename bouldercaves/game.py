@@ -1183,19 +1183,28 @@ class GameState:
         self.draw_single_cell(cell, Objects.DIAMOND)
 
     def explode(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> None:
-        audio.play_sample("explosion")
+        explosion_sample = "explosion"
         explosioncell = self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
         if explosioncell.isbutterfly():
             explode_obj = Objects.DIAMONDBIRTH
         else:
             explode_obj = Objects.EXPLOSION
-        self.draw_single_cell(explosioncell, Objects.GRAVESTONE if explosioncell.obj is Objects.VOODOO else explode_obj)
+        if explosioncell.obj is Objects.VOODOO:
+            explosion_sample = "voodoo_explosion"
+            self.draw_single_cell(explosioncell, Objects.GRAVESTONE)
+        else:
+            self.draw_single_cell(explosioncell, explode_obj)
         for direction in set(Direction) - {Direction.NOWHERE}:
             cell = self.cave[explosioncell.x + explosioncell.y * self.width + self._dirxy[direction]]
             if cell.isexplodable():
                 self.explode(cell, Direction.NOWHERE)
             elif cell.isconsumable():
-                self.draw_single_cell(cell, Objects.GRAVESTONE if cell.obj is Objects.VOODOO else explode_obj)
+                if cell.obj is Objects.VOODOO:
+                    explosion_sample = "voodoo_explosion"
+                    self.draw_single_cell(cell, Objects.GRAVESTONE)
+                else:
+                    self.draw_single_cell(cell, explode_obj)
+        audio.play_sample(explosion_sample)
 
     def update_scorebar(self) -> None:
         # draw the score bar.

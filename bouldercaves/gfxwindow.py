@@ -339,6 +339,7 @@ class BoulderWindow(tkinter.Tk):
         else:
             if self.gamestate.rockford_cell:
                 # moving left/right
+                # @todo moving left/right always resets anim frame to 0, fix this so that rockford actually walks
                 if self.gamestate.movement.direction == Direction.LEFT or \
                         (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
                          self.gamestate.movement.lastXdir == Direction.LEFT):
@@ -689,6 +690,7 @@ def start(sargs: Sequence[str]=None) -> None:
         "boulder": "boulder.ogg",
         "finished": "finished.ogg",
         "explosion": "explosion.ogg",
+        "voodoo_explosion": "voodoo_explosion.ogg",
         "extra_life": "bonus_life.ogg",
         "walk_empty": "walk_empty.ogg",
         "walk_dirt": "walk_dirt.ogg",
@@ -728,6 +730,7 @@ def start(sargs: Sequence[str]=None) -> None:
             "magic_wall": synthsamples.MagicWall(),
             "finished": synthsamples.Finished(),
             "explosion": synthsamples.Explosion(),
+            "voodoo_explosion": synthsamples.VoodooExplosion(),
             "collect_diamond": synthsamples.CollectDiamond(),
             "walk_empty": synthsamples.WalkEmpty(),
             "walk_dirt": synthsamples.WalkDirt(),
