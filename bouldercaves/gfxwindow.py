@@ -256,9 +256,10 @@ class BoulderWindow(tkinter.Tk):
                     self.gamestate.level = 0
                     self.gamestate.load_next_level()
         elif event.keysym == "F5":
-            # @todo prevent highscore recording when cheating (extra life/time/levelskip)
+            self.gamestate.cheat_used = True
             self.gamestate.add_extra_life()
         elif event.keysym == "F6":
+            self.gamestate.cheat_used = True
             self.gamestate.add_extra_time(10)
 
     def keyrelease(self, event) -> None:

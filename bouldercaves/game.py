@@ -505,6 +505,7 @@ class GameState:
         self.game_status = GameStatus.WAITING    # waiting / playing / lost / won
         self.intermission = False
         self.score = self.extralife_score = 0
+        self.cheat_used = False
         self.diamondvalue_initial = self.diamondvalue_extra = 0
         self.diamonds = self.diamonds_needed = 0
         self.lives = 3
@@ -678,6 +679,7 @@ class GameState:
 
     def cheat_skip_level(self) -> None:
         if self.game_status in (GameStatus.PLAYING, GameStatus.PAUSED):
+            self.cheat_used = True
             self.load_level(self.level % self.caveset.num_caves + 1)
 
     def draw_rectangle(self, obj: GameObject, x1: int, y1: int, width: int, height: int, fillobject: GameObject=None) -> None:
@@ -908,9 +910,13 @@ class GameState:
             popuptxt = "Congratulations, you finished the game!\n\nScore: {:d}".format(self.score)
         else:
             popuptxt = "??invalid status??"
-        score_pos = self.highscores.score_pos(self.score)
-        if score_pos:
-            popuptxt += "\n\nYou got a new #{:d} high score!".format(score_pos)
+        if self.cheat_used:
+            popuptxt += "\n\nYou cheated, so the score is not recorded."
+            score_pos = 0
+        else:
+            score_pos = self.highscores.score_pos(self.score)
+            if score_pos:
+                popuptxt += "\n\nYou got a new #{:d} high score!".format(score_pos)
 
         def ask_highscore_name(score_pos, score):
             if score_pos:
