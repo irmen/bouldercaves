@@ -339,7 +339,7 @@ class Timeout(audio.Sample):
         self.append(sample_from_osc(filtered.generator()))
 
 
-class Slime(audio.Sample):  # XXX
+class Slime(audio.Sample):
     def __init__(self) -> None:
         super().__init__("slime", pcmdata=b"")
         fm = FastTriangle(5, 0.5, samplerate=audio.norm_samplerate)

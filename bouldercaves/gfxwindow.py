@@ -31,7 +31,7 @@ from .game import GameState, GameObject, Objects, Direction, GameStatus, HighSco
 from .caves import colorpalette
 from . import audio, synthsamples
 
-__version__ = "2.2"
+__version__ = "2.5"
 
 
 class Tilesheet:
@@ -338,8 +338,7 @@ class BoulderWindow(tkinter.Tk):
                 self.tilesheet.all_dirty()
         else:
             if self.gamestate.rockford_cell:
-                # moving left/right
-                # @todo moving left/right always resets anim frame to 0, fix this so that rockford actually walks
+                # is rockford moving or pushing left/right?
                 if self.gamestate.movement.direction == Direction.LEFT or \
                         (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
                          self.gamestate.movement.lastXdir == Direction.LEFT):

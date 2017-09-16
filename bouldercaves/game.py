@@ -742,7 +742,7 @@ class GameState:
         cell.obj = obj
         cell.direction = initial_direction
         cell.frame = self.frame   # make sure the new cell is not immediately scanned
-        cell.anim_start_gfx_frame = self.graphics_frame_counter
+        cell.anim_start_gfx_frame = self.graphics_frame_counter   # default behavior is to start anims from the first frame
         cell.falling = False
         if obj is Objects.MAGICWALL:
             if not self.magicwall["active"]:
@@ -1115,6 +1115,9 @@ class GameState:
                 audio.play_sample("finished")
                 self.movement.stop_all()
             self.movement.move_done()
+        if cell is not self.rockford_cell:
+            # rockford has moved, tweak his walk animation so it keeps going and is not reset to the start frame
+            cell.anim_start_gfx_frame = 0
         self.rockford_cell = cell
 
     def update_expandingwall(self, cell: Cell) -> None:
