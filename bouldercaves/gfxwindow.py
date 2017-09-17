@@ -22,7 +22,7 @@ from .game import GameState, Objects, GameObject, Direction, GameStatus, HighSco
 from .caves import colorpalette
 from . import audio, synthsamples, tiles
 
-__version__ = "2.6"
+__version__ = "2.7"
 
 
 class BoulderWindow(tkinter.Tk):
@@ -30,8 +30,6 @@ class BoulderWindow(tkinter.Tk):
     update_timestep = 1 / update_fps
     visible_columns = 40
     visible_rows = 22
-    playfield_columns = 40
-    playfield_rows = 22
     scalexy = 2.0
 
     def __init__(self, title: str, fps: int=30, scale: float=2, c64colors: bool=False, smallwindow: bool=False) -> None:
@@ -47,8 +45,6 @@ class BoulderWindow(tkinter.Tk):
         self.update_timestep = 1 / fps
         self.scalexy = scale
         self.c64colors = c64colors
-        if self.playfield_columns <= 0 or self.playfield_columns > 128 or self.playfield_rows <= 0 or self.playfield_rows > 128:
-            raise ValueError("invalid playfield size")
         if self.visible_columns <= 0 or self.visible_columns > 128 or self.visible_rows <= 0 or self.visible_rows > 128:
             raise ValueError("invalid visible size")
         if self.scalexy not in (1, 1.5, 2, 2.5, 3):
@@ -63,7 +59,6 @@ class BoulderWindow(tkinter.Tk):
             import ctypes
             myappid = 'net.Razorvine.Tale.story'  # arbitrary string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-        self.tilesheet = tiles.Tilesheet(self.playfield_columns, self.playfield_rows, self.visible_columns, self.visible_rows)
         if smallwindow:
             self.tilesheet_score = tiles.Tilesheet(self.visible_columns * 2, 2, self.visible_columns * 2, 2)
             score_canvas_height = 16 * self.scalexy
@@ -88,7 +83,10 @@ class BoulderWindow(tkinter.Tk):
         self.canvas.view_y = self.view_y    # type: ignore
         self.sprites = tiles.Sprites(self.scalexy)
         self.tile_images = []  # type: List[tkinter.PhotoImage]
+        self.playfield_columns = 0
+        self.playfield_rows = 0
         self.create_tile_images()
+        self.create_canvas_playfield_and_tilesheet(40, 22)
         self.bind("<KeyPress>", self.keypress)
         self.bind("<KeyRelease>", self.keyrelease)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
@@ -237,6 +235,7 @@ class BoulderWindow(tkinter.Tk):
                 self.canvas.itemconfigure(self.c_tiles[index], image=self.tile_images[tile])
             return
         elif self.popup_tiles_save:
+            print("CLOSING POPUP!")   # XXX
             self.popup_close()
 
         if self.uncover_tiles:
@@ -323,13 +322,24 @@ class BoulderWindow(tkinter.Tk):
         self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
         source_images = self.sprites.load_font(self.smallwindow)
         self.tile_images.extend([tkinter.PhotoImage(data=image) for image in source_images])
+
+    def create_canvas_playfield_and_tilesheet(self, width: int, height: int) -> None:
         # create the images on the canvas for all tiles (fixed position):
+        if width == self.playfield_columns and height == self.playfield_rows:
+            return
+        self.playfield_columns = width
+        self.playfield_rows = height
+        self.canvas.delete(tkinter.ALL)
+        self.c_tiles.clear()
         for y in range(self.playfield_rows):
             for x in range(self.playfield_columns):
                 sx, sy = self.physcoor(*tiles.tile2pixels(x, y))
                 tile = self.canvas.create_image(sx, sy, image=self.tile_images[0], anchor=tkinter.NW, tags="tile")
                 self.c_tiles.append(tile)
+        print("CANVAS created ",len(self.c_tiles)," tiles w,h=",self.playfield_columns, self.playfield_rows)  # XXX
         # create the images on the score canvas for all tiles (fixed position):
+        self.scorecanvas.delete(tkinter.ALL)
+        self.cscore_tiles.clear()
         vcols = self.visible_columns if not self.smallwindow else 2 * self.visible_columns
         for y in range(2):
             for x in range(vcols):
@@ -340,6 +350,8 @@ class BoulderWindow(tkinter.Tk):
                 self.tilesheet_score[x, y] = 0
                 tile = self.scorecanvas.create_image(sx, sy, image=None, anchor=tkinter.NW, tags="tile")
                 self.cscore_tiles.append(tile)
+        self.tilesheet = tiles.Tilesheet(self.playfield_columns, self.playfield_rows, self.visible_columns, self.visible_rows)
+        print("TILESHEET created ",len(self.tilesheet.tiles), "w,h:", self.tilesheet.width, self.tilesheet.height, "vw,vh:", self.tilesheet.view_width, self.tilesheet.view_height)  # XXX
 
     def set_screen_colors(self, bordercolor: int, screencolor: int) -> None:
         self.configure(background="#{:06x}".format(bordercolor))
@@ -350,6 +362,9 @@ class BoulderWindow(tkinter.Tk):
 
     def set_scorebar_tiles(self, x: int, y: int, tiles: Sequence[int]) -> None:
         self.tilesheet_score.set_tiles(x, y, tiles)
+
+    def clear_tilesheet(self) ->  None:
+        self.tilesheet.set_tiles(0, 0, [self.sprites.sprite2tile(Objects.DIRT2)] * self.playfield_columns * self.playfield_rows)
 
     def physcoor(self, sx: int, sy: int) -> Tuple[int, int]:
         return int(sx * self.scalexy), int(sy * self.scalexy)

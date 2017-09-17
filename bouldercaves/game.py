@@ -477,25 +477,8 @@ class GameState:
         self.graphics_frame_counter = 0    # will be set via the update() method
         self.fps = 8      # game logic updates every 1/8 seconds
         self.update_timestep = 1 / self.fps
-        self.width = gfxwindow.tilesheet.width
-        self.height = gfxwindow.tilesheet.height
-        self._dirxy = {
-            Direction.NOWHERE: 0,
-            Direction.UP: -self.width,
-            Direction.DOWN: self.width,
-            Direction.LEFT: -1,
-            Direction.RIGHT: 1,
-            Direction.LEFTUP: -self.width - 1,
-            Direction.RIGHTUP: -self.width + 1,
-            Direction.LEFTDOWN: self.width - 1,
-            Direction.RIGHTDOWN: self.width + 1
-        }
         self.caveset = caves.CaveSet()
         self.start_level_number = 1
-        self.cave = []   # type: List[GameState.Cell]
-        for y in range(self.height):
-            for x in range(self.width):
-                self.cave.append(self.Cell(Objects.EMPTY, x, y))
         # set the anim end callbacks:
         Objects.ROCKFORDBIRTH.anim_end_callback = self.end_rockfordbirth
         Objects.EXPLOSION.anim_end_callback = self.end_explosion
@@ -556,6 +539,7 @@ class GameState:
         self.movement = self.MovementInfo()
         self.flash = 0
         # draw the 'title screen'
+        self._create_cave(40, 22)
         self.draw_rectangle(Objects.DIRT2, 0, 0, self.width, self.height, Objects.EMPTY)
         title = r"""
 /**\           *\     *
@@ -597,6 +581,26 @@ class GameState:
         self.draw_single(Objects.DIRTSLOPEDUPRIGHT, self.width - 4, self.height - 3)
         self.draw_single(Objects.DIRTSLOPEDUPRIGHT, self.width - 3, self.height - 2)
 
+    def _create_cave(self, width: int, height: int) -> None:
+        self.width = width
+        self.height = height
+        print("GAMESTATE created cave w,h:", self.width, self.height)   # XXX
+        self._dirxy = {
+            Direction.NOWHERE: 0,
+            Direction.UP: -self.width,
+            Direction.DOWN: self.width,
+            Direction.LEFT: -1,
+            Direction.RIGHT: 1,
+            Direction.LEFTUP: -self.width - 1,
+            Direction.RIGHTUP: -self.width + 1,
+            Direction.LEFTDOWN: self.width - 1,
+            Direction.RIGHTDOWN: self.width + 1
+        }
+        self.cave = []   # type: List[GameState.Cell]
+        for y in range(self.height):
+            for x in range(self.width):
+                self.cave.append(self.Cell(Objects.EMPTY, x, y))
+
     def use_bdcff(self, filename: str) -> None:
         self.caveset = caves.CaveSet(filename)
         self.highscores = HighScores(self.caveset.name)
@@ -612,6 +616,8 @@ class GameState:
         self.gfxwindow.popup_close()    # make sure any open popup won't restore the old tiles
         self.cheat_used |= self.start_level_number > 1
         cave = self.caveset.cave(levelnumber)
+        self._create_cave(cave.width, cave.height)
+        self.gfxwindow.create_canvas_playfield_and_tilesheet(cave.width, cave.height)
         self.level_name = cave.name
         self.level_description = cave.description
         self.intermission = cave.intermission
@@ -647,13 +653,14 @@ class GameState:
             "sound_active": False
         }
         # clear the previous cave data and replace with data from new cave
+        self.gfxwindow.clear_tilesheet()
         self.draw_rectangle(Objects.STEEL, 0, 0, self.width, self.height, Objects.STEEL)
         for i, (gobj, direction) in enumerate(cave.map):
             y, x = divmod(i, cave.width)
             self.draw_single(gobj, x, y, initial_direction=direction)
         self.gfxwindow.create_colored_tiles(cave.bgcolor1, cave.bgcolor2, cave.fgcolor, cave.screencolor)
         self.gfxwindow.set_screen_colors(cave.bordercolor, cave.screencolor)
-        self.gfxwindow.tilesheet.all_dirty()
+        # XXX self.gfxwindow.tilesheet.all_dirty()
         if level_intro_popup and self.level_description:
             audio.play_sample("diamond2")
             fmt = "Intermission {:s}\n\n{:s}" if self.intermission else "Cave {:s}\n\n{:s}"
@@ -1230,7 +1237,7 @@ class GameState:
         #     score=self.score,
         #     diamonds="\x0e {:02d}/{:02d}".format(self.diamonds, self.diamonds_needed),
         #     keys=self.keys["diamond"]
-        # )).ljust(self.width)
+        # )).ljust(width)
         # self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.sprites.text2tiles(text))
         # if self.keys["one"]:
         #     self.gfxwindow.tilesheet_score[9, 0] = Objects.KEY1.spritex + Objects.KEY1.spritey * self.gfxwindow.tile_image_numcolumns
@@ -1238,13 +1245,14 @@ class GameState:
         #     self.gfxwindow.tilesheet_score[10, 0] = Objects.KEY2.spritex + Objects.KEY2.spritey * self.gfxwindow.tile_image_numcolumns
         # if self.keys["three"]:
         #     self.gfxwindow.tilesheet_score[11, 0] = Objects.KEY3.spritex + Objects.KEY3.spritey * self.gfxwindow.tile_image_numcolumns
+        width = self.gfxwindow.visible_columns
         if self.level < 1:
             # level has not been loaded yet (we're still at the title screen)
             if self.gfxwindow.smallwindow and self.gfxwindow.c64colors:
-                self.gfxwindow.set_scorebar_tiles(0, 0, self.sprites.text2tiles("Welcome to Boulder Caves 'authentic'".center(self.width)))
+                self.gfxwindow.set_scorebar_tiles(0, 0, self.sprites.text2tiles("Welcome to Boulder Caves 'authentic'".center(width)))
             else:
-                self.gfxwindow.set_scorebar_tiles(0, 0, self.sprites.text2tiles("Welcome to Boulder Caves".center(self.width)))
-            self.gfxwindow.set_scorebar_tiles(0, 1, self.sprites.text2tiles("F1\x04New game! F4\x04Scores F9\x04Demo".center(self.width)))
+                self.gfxwindow.set_scorebar_tiles(0, 0, self.sprites.text2tiles("Welcome to Boulder Caves".center(width)))
+            self.gfxwindow.set_scorebar_tiles(0, 1, self.sprites.text2tiles("F1\x04New game! F4\x04Scores F9\x04Demo".center(width)))
             if not self.gfxwindow.smallwindow:
                 left = [self.sprites.sprite2tile(obj)
                         for obj in [Objects.MEGABOULDER, Objects.FLYINGDIAMOND, Objects.DIAMOND, Objects.ROCKFORD.pushleft]]
@@ -1252,8 +1260,8 @@ class GameState:
                         for obj in [Objects.ROCKFORD.pushright, Objects.DIAMOND, Objects.FLYINGDIAMOND, Objects.MEGABOULDER]]
                 self.gfxwindow.set_scorebar_tiles(0, 0, left)
                 self.gfxwindow.set_scorebar_tiles(0, 1, left)
-                self.gfxwindow.set_scorebar_tiles(self.width - len(right), 0, right)
-                self.gfxwindow.set_scorebar_tiles(self.width - len(right), 1, right)
+                self.gfxwindow.set_scorebar_tiles(width - len(right), 0, right)
+                self.gfxwindow.set_scorebar_tiles(width - len(right), 1, right)
             return
         text = ("\x08{lives:2d}   {normal:d}\x0e{extra:d}  {diamonds:<10s}  {time:s}  $ {score:06d}".format(
             lives=self.lives,
@@ -1262,17 +1270,17 @@ class GameState:
             normal=self.diamondvalue_initial,
             extra=self.diamondvalue_extra,
             diamonds="{:02d}/{:02d}".format(self.diamonds, self.diamonds_needed),
-        )).ljust(self.width)
+        )).ljust(width)
         self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.sprites.text2tiles(text))
         if self.game_status == GameStatus.WON:
-            tiles = self.sprites.text2tiles("\x0e  C O N G R A T U L A T I O N S  \x0e".center(self.width))
+            tiles = self.sprites.text2tiles("\x0e  C O N G R A T U L A T I O N S  \x0e".center(width))
         elif self.game_status == GameStatus.LOST:
-            tiles = self.sprites.text2tiles("\x0b  G A M E   O V E R  \x0b".center(self.width))
+            tiles = self.sprites.text2tiles("\x0b  G A M E   O V E R  \x0b".center(width))
         elif self.game_status == GameStatus.PAUSED:
-            tiles = self.sprites.text2tiles("\x08  P A U S E D  \x08".center(self.width))
+            tiles = self.sprites.text2tiles("\x08  P A U S E D  \x08".center(width))
         else:
             fmt = "Intermission {:s}" if self.intermission else "Cave {:s}"
             if self.game_status == GameStatus.DEMO:
                 fmt += " [Demo]"
-            tiles = self.sprites.text2tiles(fmt.format(self.level_name).center(self.width))
+            tiles = self.sprites.text2tiles(fmt.format(self.level_name).center(width))
         self.gfxwindow.set_scorebar_tiles(0, 1, tiles[:40])  # line 2
