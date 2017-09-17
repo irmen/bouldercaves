@@ -609,6 +609,7 @@ class GameState:
 
     def load_level(self, levelnumber: int, level_intro_popup: bool=True) -> None:
         audio.silence_audio()
+        self.gfxwindow.popup_close()    # make sure any open popup won't restore the old tiles
         self.cheat_used |= self.start_level_number > 1
         cave = self.caveset.cave(levelnumber)
         self.level_name = cave.name
@@ -1271,5 +1272,7 @@ class GameState:
             tiles = self.sprites.text2tiles("\x08  P A U S E D  \x08".center(self.width))
         else:
             fmt = "Intermission {:s}" if self.intermission else "Cave {:s}"
+            if self.game_status == GameStatus.DEMO:
+                fmt += " [Demo]"
             tiles = self.sprites.text2tiles(fmt.format(self.level_name).center(self.width))
         self.gfxwindow.set_scorebar_tiles(0, 1, tiles[:40])  # line 2
