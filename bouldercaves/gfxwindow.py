@@ -9,8 +9,6 @@ License: MIT open-source.
 """
 
 import random
-import array
-import io
 import sys
 import math
 import tkinter
@@ -19,99 +17,12 @@ import tkinter.simpledialog
 import pkgutil
 import time
 import getpass
-from typing import Tuple, Union, Sequence, List, Set, Iterable, Callable
-try:
-    from PIL import Image
-except ImportError:
-    r = tkinter.Tk()
-    r.withdraw()
-    tkinter.messagebox.showerror("missing Python library", "The 'pillow' or 'pil' python library is required.")
-    raise SystemExit
-from .game import GameState, GameObject, Objects, Direction, GameStatus, HighScores
+from typing import Tuple, Sequence, List, Set, Iterable, Callable
+from .game import GameState, Objects, GameObject, Direction, GameStatus, HighScores
 from .caves import colorpalette
-from . import audio, synthsamples
+from . import audio, synthsamples, tiles
 
-__version__ = "2.5"
-
-
-class Tilesheet:
-    def __init__(self, width: int, height: int, view_width: int, view_height: int) -> None:
-        self.tiles = array.array('H', [0] * width * height)
-        self.dirty_tiles = bytearray(width * height)
-        self._dirty_clean = bytearray(width * height)
-        self.width = width
-        self.height = height
-        self.view_width = view_width
-        self.view_height = view_height
-        self.view_x = 0
-        self.view_y = 0
-
-    def set_view(self, vx: int, vy: int) -> None:
-        new_vx = min(max(0, vx), self.width - self.view_width)
-        new_vy = min(max(0, vy), self.height - self.view_height)
-        if new_vx != self.view_x or new_vy != self.view_y:
-            # the viewport has been moved, mark all tiles as dirty
-            self.dirty_tiles[:] = b'\x01' * self.width * self.height
-        self.view_x = new_vx
-        self.view_y = new_vy
-
-    def __getitem__(self, xy: Tuple[int, int]) -> int:
-        x, y = xy
-        if x < 0 or x >= self.width or y < 0 or y >= self.height:
-            raise ValueError("tile xy out of bounds")
-        return self.tiles[x + self.width * y]
-
-    def __setitem__(self, xy: Tuple[int, int], tilenum: int) -> None:
-        x, y = xy
-        if x < 0 or x >= self.width or y < 0 or y >= self.height:
-            raise ValueError("tile xy out of bounds")
-        pos = x + self.width * y
-        old_value = self.tiles[pos]
-        if tilenum != old_value:
-            self.tiles[pos] = tilenum
-            self.dirty_tiles[pos] = 1
-
-    def set_tiles(self, x: int, y: int, tile_or_tiles: Union[int, Iterable[int]]) -> None:
-        if x < 0 or x >= self.width or y < 0 or y >= self.height:
-            raise ValueError("tile xy out of bounds")
-        if isinstance(tile_or_tiles, int):
-            enum_tiles = enumerate([tile_or_tiles], start=x + self.width * y)
-        else:
-            enum_tiles = enumerate(tile_or_tiles, start=x + self.width * y)
-        for i, t in enum_tiles:
-            old_value = self.tiles[i]
-            if t != old_value:
-                self.tiles[i] = t
-                self.dirty_tiles[i] = 1
-
-    def get_tiles(self, x: int, y: int, width: int, height: int) -> Sequence[Iterable[int]]:
-        if x < 0 or x >= self.width or y < 0 or y > self.height:
-            raise ValueError("tile xy out of bounds")
-        if width <= 0 or x + width > self.width or height <= 0 or y + height > self.height:
-            raise ValueError("width or height out of bounds")
-        offset = x + self.width * y
-        result = []
-        for dy in range(height):
-            result.append(self.tiles[offset + self.width * dy: offset + self.width * dy + width])
-        return result       # type: ignore
-
-    def all_dirty(self) -> None:
-        for i in range(self.width * self.height):
-            self.dirty_tiles[i] = True
-
-    def dirty(self) -> Sequence[Tuple[int, int]]:
-        # return only the dirty part of the viewable area of the tilesheet
-        # (including a border of 1 tile to allow smooth scroll into view)
-        tiles = self.tiles
-        dirty_tiles = self.dirty_tiles
-        diff = []
-        for y in range(max(self.view_y - 1, 0), min(self.view_y + self.view_height + 1, self.height)):
-            yy = self.width * y
-            for x in range(max(self.view_x - 1, 0), min(self.view_x + self.view_width + 1, self.width)):
-                if dirty_tiles[x + yy]:
-                    diff.append((x + yy, tiles[x + yy]))
-        self.dirty_tiles[:] = self._dirty_clean
-        return diff
+__version__ = "2.6"
 
 
 class BoulderWindow(tkinter.Tk):
@@ -152,12 +63,12 @@ class BoulderWindow(tkinter.Tk):
             import ctypes
             myappid = 'net.Razorvine.Tale.story'  # arbitrary string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-        self.tilesheet = Tilesheet(self.playfield_columns, self.playfield_rows, self.visible_columns, self.visible_rows)
+        self.tilesheet = tiles.Tilesheet(self.playfield_columns, self.playfield_rows, self.visible_columns, self.visible_rows)
         if smallwindow:
-            self.tilesheet_score = Tilesheet(self.visible_columns * 2, 2, self.visible_columns * 2, 2)
+            self.tilesheet_score = tiles.Tilesheet(self.visible_columns * 2, 2, self.visible_columns * 2, 2)
             score_canvas_height = 16 * self.scalexy
         else:
-            self.tilesheet_score = Tilesheet(self.visible_columns, 2, self.visible_columns, 2)
+            self.tilesheet_score = tiles.Tilesheet(self.visible_columns, 2, self.visible_columns, 2)
             score_canvas_height = 32 * self.scalexy
         self.popup_tiles_save = None   # type: Tuple[int, int, int, int, Sequence[Iterable[int]]]
         self.on_popup_closed = None   # type: Callable
@@ -168,17 +79,16 @@ class BoulderWindow(tkinter.Tk):
                                      height=self.visible_rows * 16 * self.scalexy,
                                      borderwidth=0, highlightthickness=0, background="black",
                                      xscrollincrement=self.scalexy, yscrollincrement=self.scalexy)
-        self.tile_images = []     # type: List[tkinter.PhotoImage]
         self.c_tiles = []         # type: List[str]
         self.cscore_tiles = []    # type: List[str]
         self.uncover_tiles = set()    # type: Set[int]
-        self.tile_image_numcolumns = 0
         self.view_x = 0
         self.view_y = 0
         self.canvas.view_x = self.view_x    # type: ignore
         self.canvas.view_y = self.view_y    # type: ignore
+        self.sprites = tiles.Sprites(self.scalexy)
+        self.tile_images = []  # type: List[tkinter.PhotoImage]
         self.create_tile_images()
-        self.font_tiles_startindex = self.create_font_tiles()
         self.bind("<KeyPress>", self.keypress)
         self.bind("<KeyRelease>", self.keyrelease)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
@@ -190,7 +100,7 @@ class BoulderWindow(tkinter.Tk):
         self.graphics_frame = 0
         self.popup_frame = 0
         self.last_demo_or_highscore_frame = 0
-        self.gamestate = GameState(self)
+        self.gamestate = GameState(self, self.sprites)
 
     def destroy(self) -> None:
         audio.shutdown_audio()
@@ -285,10 +195,15 @@ class BoulderWindow(tkinter.Tk):
         elif event.keysym == "F8":
             # choose a random color scheme (only works when using retro C-64 colors)
             c1 = random.randint(1, 15)
-            c2 = random.randint(1, 15)
-            c3 = random.randint(1, 15)
-            print("random colors:", c1, c2, c3)
-            self.create_colored_tiles(colorpalette[c1], colorpalette[c2], colorpalette[c3])
+            c2 = c3 = c1
+            while c2 == c1:
+                c2 = random.randint(1, 15)
+            while c3 == c1 or c3 == c2:
+                c3 = random.randint(1, 15)
+            c4 = 0
+            print("random colors:", c1, c2, c3, c4)
+            self.create_colored_tiles(colorpalette[c1], colorpalette[c2], colorpalette[c3], colorpalette[c4])
+            self.set_screen_colors(0, colorpalette[c4])
             self.tilesheet.all_dirty()
         elif event.keysym == "F4":
             self.gamestate.show_highscores()
@@ -300,7 +215,7 @@ class BoulderWindow(tkinter.Tk):
         self.scroll_focuscell_into_view()
         if self.smallwindow and self.gamestate.game_status == GameStatus.WAITING and self.popup_frame < self.graphics_frame:
             # move the waiting screen (title screen) around so you can see it all :)
-            wavew, waveh = self.tile2screencor(self.playfield_columns - self.visible_columns, self.playfield_rows - self.visible_rows)
+            wavew, waveh = tiles.tile2pixels(self.playfield_columns - self.visible_columns, self.playfield_rows - self.visible_rows)
             x = (1 + math.sin(1.5 * math.pi + self.graphics_frame / self.update_fps)) * wavew / 2
             y = (1 + math.cos(math.pi + self.graphics_frame / self.update_fps / 1.4)) * waveh / 2
             self.scrollxypixels(x, y)
@@ -336,7 +251,7 @@ class BoulderWindow(tkinter.Tk):
                 self.canvas.itemconfigure(self.c_tiles[reveal], image=self.tile_images[tile])
             covered = Objects.COVERED
             animframe = int(covered.sfps / self.update_fps * self.graphics_frame) % covered.sframes
-            tile = self.sprite2tile(covered, animframe)
+            tile = self.sprites.sprite2tile(covered, animframe)
             for index in self.uncover_tiles:
                 self.canvas.itemconfigure(self.c_tiles[index], image=self.tile_images[tile])
             if len(self.uncover_tiles) < self.playfield_columns * self.playfield_rows // 4:
@@ -376,7 +291,7 @@ class BoulderWindow(tkinter.Tk):
                 else:
                     animframe = 0
                 self.tilesheet[self.gamestate.rockford_cell.x, self.gamestate.rockford_cell.y] = \
-                    self.sprite2tile((spritex, spritey), animframe)
+                    self.sprites.sprite2tile((spritex, spritey), animframe)
             # other animations:
             for cell in self.gamestate.cells_with_animations():
                 obj = cell.obj
@@ -384,7 +299,7 @@ class BoulderWindow(tkinter.Tk):
                     if not self.gamestate.magicwall["active"]:
                         obj = Objects.BRICK
                 animframe = int(obj.sfps / self.update_fps * (self.graphics_frame - cell.anim_start_gfx_frame))
-                tile = self.sprite2tile(obj, animframe)
+                tile = self.sprites.sprite2tile(obj, animframe)
                 self.tilesheet[cell.x, cell.y] = tile
                 if animframe >= obj.sframes and obj.anim_end_callback:
                     # the animation reached the last frame
@@ -397,28 +312,28 @@ class BoulderWindow(tkinter.Tk):
             for index, tile in self.tilesheet.dirty():
                 self.canvas.itemconfigure(self.c_tiles[index], image=self.tile_images[tile])
 
-    def sprite2tile(self, gameobject_or_spritexy: Union[GameObject, Tuple[int, int]], animframe: int=0) -> int:
-        if isinstance(gameobject_or_spritexy, GameObject):
-            if gameobject_or_spritexy.sframes:
-                return gameobject_or_spritexy.spritex + self.tile_image_numcolumns * gameobject_or_spritexy.spritey +\
-                    animframe % gameobject_or_spritexy.sframes
-            return gameobject_or_spritexy.spritex + self.tile_image_numcolumns * gameobject_or_spritexy.spritey
-        return gameobject_or_spritexy[0] + self.tile_image_numcolumns * gameobject_or_spritexy[1] + animframe
+    def create_colored_tiles(self, color1: int, color2: int, color3: int, screencolor: int) -> None:
+        if self.c64colors:
+            source_images = self.sprites.load_sprites(self.c64colors, color1, color2, color3, screencolor)
+            for i, image in enumerate(source_images):
+                self.tile_images[i] = tkinter.PhotoImage(data=image)
 
     def create_tile_images(self) -> None:
-        self.tile_images = [None] * 432    # the number of tiles in the tile image(s)
-        self.create_colored_tiles(colorpalette[2], colorpalette[14], colorpalette[13])
+        source_images = self.sprites.load_sprites(self.c64colors, colorpalette[2], colorpalette[14], colorpalette[13], 0)
+        self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
+        source_images = self.sprites.load_font(self.smallwindow)
+        self.tile_images.extend([tkinter.PhotoImage(data=image) for image in source_images])
         # create the images on the canvas for all tiles (fixed position):
         for y in range(self.playfield_rows):
             for x in range(self.playfield_columns):
-                sx, sy = self.physcoor(*self.tile2screencor(x, y))
+                sx, sy = self.physcoor(*tiles.tile2pixels(x, y))
                 tile = self.canvas.create_image(sx, sy, image=self.tile_images[0], anchor=tkinter.NW, tags="tile")
                 self.c_tiles.append(tile)
         # create the images on the score canvas for all tiles (fixed position):
         vcols = self.visible_columns if not self.smallwindow else 2 * self.visible_columns
         for y in range(2):
             for x in range(vcols):
-                sx, sy = self.physcoor(*self.tile2screencor(x, y))
+                sx, sy = self.physcoor(*tiles.tile2pixels(x, y))
                 if self.smallwindow:
                     sx //= 2
                     sy //= 2
@@ -430,69 +345,8 @@ class BoulderWindow(tkinter.Tk):
         self.configure(background="#{:06x}".format(bordercolor))
         self.canvas.configure(background="#{:06x}".format(screencolor))
 
-    def create_colored_tiles(self, color1: int=0, color2: int=0, color3: int=0, bgcolor: int=0) -> None:
-        if self.tile_images[0] is not None and not self.c64colors:
-            # can only recolor tiles if the c64 colors tile image is used
-            return
-        tiles_filename = "c64_gfx.png" if self.c64colors else "boulder_rush.png"
-        with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/" + tiles_filename))) as tile_image:
-            num_tiles = tile_image.width * tile_image.height // 16 // 16
-            assert num_tiles == 432, "tile image should contain 432 tiles"
-            if self.c64colors:
-                tile_image = tile_image.copy().convert('P', 0)
-                palettevalues = tile_image.getpalette()
-                assert 768 - palettevalues.count(0) <= 16, "must be an image with <= 16 colors"
-                palette = [(r, g, b) for r, g, b in zip(palettevalues[0:16 * 3:3], palettevalues[1:16 * 3:3], palettevalues[2:16 * 3:3])]
-                pc1 = palette.index((255, 0, 255))
-                pc2 = palette.index((255, 0, 0))
-                pc3 = palette.index((255, 255, 0))
-                pc4 = palette.index((0, 255, 0))
-                pc_bg = palette.index((0, 0, 0))
-                palette[pc1] = (color2 >> 16, (color2 & 0xff00) >> 8, color2 & 0xff)
-                palette[pc2] = (color1 >> 16, (color1 & 0xff00) >> 8, color1 & 0xff)
-                if color3 < 0x808080:
-                    color3 = 0xffffff
-                palette[pc3] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)
-                palette[pc4] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)
-                palette[pc_bg] = (bgcolor >> 16, (bgcolor & 0xff00) >> 8, bgcolor & 0xff)
-                palettevalues = []
-                for rgb in palette:
-                    palettevalues.extend(rgb)
-                tile_image.putpalette(palettevalues)
-            tile_num = 0
-            self.tile_image_numcolumns = tile_image.width // 16      # the tileset image contains 16x16 pixel tiles
-            while True:
-                row, col = divmod(tile_num, self.tile_image_numcolumns)
-                if row * 16 >= tile_image.height:
-                    break
-                ci = tile_image.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16))
-                if self.scalexy != 1:
-                    ci = ci.resize((int(16 * self.scalexy), int(16 * self.scalexy)), Image.NONE)
-                out = io.BytesIO()
-                ci.save(out, "png")
-                img = tkinter.PhotoImage(data=out.getvalue())
-                self.tile_images[tile_num] = img
-                tile_num += 1
-
-    def create_font_tiles(self) -> int:
-        font_tiles_startindex = len(self.tile_images)
-        fontsize = 8 if self.smallwindow else 16
-        with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/font.png"))) as image:
-            for c in range(0, 128):
-                row, col = divmod(c, image.width // 8)       # the font image contains 8x8 pixel tiles
-                if row * 8 > image.height:
-                    break
-                ci = image.crop((col * 8, row * 8, col * 8 + 8, row * 8 + 8))
-                ci = ci.resize((int(fontsize * self.scalexy), int(fontsize * self.scalexy)), Image.NONE)
-                out = io.BytesIO()
-                ci.save(out, "png")
-                img = tkinter.PhotoImage(data=out.getvalue())
-                self.tile_images.append(img)
-        return font_tiles_startindex
-
-    @staticmethod
-    def tile2screencor(cx: int, cy: int) -> Tuple[int, int]:
-        return cx * 16, cy * 16     # a tile is 16x16 pixels
+    def set_tile(self, x: int, y: int, obj: GameObject) -> None:
+        self.tilesheet[x, y] = self.sprites.sprite2tile(obj)
 
     def physcoor(self, sx: int, sy: int) -> Tuple[int, int]:
         return int(sx * self.scalexy), int(sy * self.scalexy)
@@ -504,7 +358,7 @@ class BoulderWindow(tkinter.Tk):
         self.view_x, self.view_y = self.clamp_scroll_xy(x, y)
 
     def clamp_scroll_xy(self, x: float, y: float) -> Tuple[int, int]:
-        xlimit, ylimit = self.tile2screencor(self.playfield_columns - self.visible_columns, self.playfield_rows - self.visible_rows)
+        xlimit, ylimit = tiles.tile2pixels(self.playfield_columns - self.visible_columns, self.playfield_rows - self.visible_rows)
         return min(max(0, round(x)), xlimit), min(max(0, round(y)), ylimit)
 
     def update_game(self) -> None:
@@ -524,7 +378,7 @@ class BoulderWindow(tkinter.Tk):
             if not self.scrolling_into_view and abs(curx - x) < 6 and abs(cury - y) < 3:
                 return  # don't always keep it exactly in the center at all times, add some movement slack area
             # scroll the view to the focus cell
-            viewx, viewy = self.tile2screencor(x - self.visible_columns // 2, y - self.visible_rows // 2)
+            viewx, viewy = tiles.tile2pixels(x - self.visible_columns // 2, y - self.visible_rows // 2)
             viewx, viewy = self.clamp_scroll_xy(viewx, viewy)
             if immediate:
                 # directly jump to new scroll position (no interpolation)
@@ -543,9 +397,6 @@ class BoulderWindow(tkinter.Tk):
                     if dy:
                         viewy = int(self.view_y + math.copysign(max(1, abs(dy)), dy))
                     self.scrollxypixels(viewx, viewy)
-
-    def text2tiles(self, text: str) -> Sequence[int]:
-        return [self.font_tiles_startindex + ord(c) for c in text]
 
     def popup(self, text: str, duration: float=5.0, on_close: Callable=None) -> None:
         self.popup_close()
@@ -585,14 +436,14 @@ class BoulderWindow(tkinter.Tk):
             x, y, popupwidth, popupheight,
             self.tilesheet.get_tiles(x, y, popupwidth, popupheight)
         )
-        self.tilesheet.set_tiles(x, y, [self.sprite2tile(Objects.STEELSLOPEDUPLEFT)] +
-                                 [self.sprite2tile(Objects.STEEL)] * (popupwidth - 2) +
-                                 [self.sprite2tile(Objects.STEELSLOPEDUPRIGHT)])
+        self.tilesheet.set_tiles(x, y, [self.sprites.sprite2tile(Objects.STEELSLOPEDUPLEFT)] +
+                                 [self.sprites.sprite2tile(Objects.STEEL)] * (popupwidth - 2) +
+                                 [self.sprites.sprite2tile(Objects.STEELSLOPEDUPRIGHT)])
         y += 1
         if not self.smallwindow:
-            self.tilesheet.set_tiles(x + 1, y, self.text2tiles(bchar * (popupwidth - 2)))
-            self.tilesheet[x, y] = self.sprite2tile(Objects.STEEL)
-            self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(Objects.STEEL)
+            self.tilesheet.set_tiles(x + 1, y, self.sprites.text2tiles(bchar * (popupwidth - 2)))
+            self.tilesheet[x, y] = self.sprites.sprite2tile(Objects.STEEL)
+            self.tilesheet[x + popupwidth - 1, y] = self.sprites.sprite2tile(Objects.STEEL)
             y += 1
         lines.insert(0, "")
         if not self.smallwindow:
@@ -600,19 +451,19 @@ class BoulderWindow(tkinter.Tk):
         for line in lines:
             if not line:
                 line = " "
-            tiles = self.text2tiles(bchar + " " + line.ljust(width) + " " + bchar)
-            self.tilesheet[x, y] = self.sprite2tile(Objects.STEEL)
-            self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(Objects.STEEL)
+            tiles = self.sprites.text2tiles(bchar + " " + line.ljust(width) + " " + bchar)
+            self.tilesheet[x, y] = self.sprites.sprite2tile(Objects.STEEL)
+            self.tilesheet[x + popupwidth - 1, y] = self.sprites.sprite2tile(Objects.STEEL)
             self.tilesheet.set_tiles(x + 1, y, tiles)
             y += 1
         if not self.smallwindow:
-            self.tilesheet[x, y] = self.sprite2tile(Objects.STEEL)
-            self.tilesheet[x + popupwidth - 1, y] = self.sprite2tile(Objects.STEEL)
-            self.tilesheet.set_tiles(x + 1, y, self.text2tiles(bchar * (popupwidth - 2)))
+            self.tilesheet[x, y] = self.sprites.sprite2tile(Objects.STEEL)
+            self.tilesheet[x + popupwidth - 1, y] = self.sprites.sprite2tile(Objects.STEEL)
+            self.tilesheet.set_tiles(x + 1, y, self.sprites.text2tiles(bchar * (popupwidth - 2)))
             y += 1
-        self.tilesheet.set_tiles(x, y, [self.sprite2tile(Objects.STEELSLOPEDDOWNLEFT)] +
-                                 [self.sprite2tile(Objects.STEEL)] * (popupwidth - 2) +
-                                 [self.sprite2tile(Objects.STEELSLOPEDDOWNRIGHT)])
+        self.tilesheet.set_tiles(x, y, [self.sprites.sprite2tile(Objects.STEELSLOPEDDOWNLEFT)] +
+                                 [self.sprites.sprite2tile(Objects.STEEL)] * (popupwidth - 2) +
+                                 [self.sprites.sprite2tile(Objects.STEELSLOPEDDOWNRIGHT)])
         self.popup_frame = int(self.graphics_frame + self.update_fps * duration)
         self.on_popup_closed = on_close
 

@@ -471,8 +471,9 @@ class GameState:
                 for _ in range(step >> 4):
                     yield direction
 
-    def __init__(self, gfxwindow) -> None:
+    def __init__(self, gfxwindow, sprites) -> None:
         self.gfxwindow = gfxwindow
+        self.sprites = sprites
         self.graphics_frame_counter = 0    # will be set via the update() method
         self.fps = 8      # game logic updates every 1/8 seconds
         self.update_timestep = 1 / self.fps
@@ -749,7 +750,7 @@ class GameState:
         if obj is Objects.MAGICWALL:
             if not self.magicwall["active"]:
                 obj = Objects.BRICK
-        self.gfxwindow.tilesheet[cell.x, cell.y] = obj.spritex + self.gfxwindow.tile_image_numcolumns * obj.spritey
+        self.gfxwindow.set_tile(cell.x, cell.y, obj)
         # animation is handled by the graphics refresh
 
     def clear_cell(self, cell: Cell) -> None:
@@ -1220,6 +1221,7 @@ class GameState:
         audio.play_sample(explosion_sample)
 
     def update_scorebar(self) -> None:
+        # @todo don't draw directly into the gfxwindow's tile buffer
         # draw the score bar.
         # note: the following is a complex score bar including keys, but those are not used in the C64 boulderdash:
         # text = ("\x08{lives:2d}  \x0c {keys:02d}\x7f\x7f\x7f  {diamonds:<10s}  {time:s}  $ {score:06d}".format(
@@ -1229,7 +1231,7 @@ class GameState:
         #     diamonds="\x0e {:02d}/{:02d}".format(self.diamonds, self.diamonds_needed),
         #     keys=self.keys["diamond"]
         # )).ljust(self.width)
-        # self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.gfxwindow.text2tiles(text))
+        # self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.sprites.text2tiles(text))
         # if self.keys["one"]:
         #     self.gfxwindow.tilesheet_score[9, 0] = Objects.KEY1.spritex + Objects.KEY1.spritey * self.gfxwindow.tile_image_numcolumns
         # if self.keys["two"]:
@@ -1240,16 +1242,16 @@ class GameState:
             # level has not been loaded yet (we're still at the title screen)
             ts = self.gfxwindow.tilesheet_score
             if self.gfxwindow.smallwindow and self.gfxwindow.c64colors:
-                ts.set_tiles(0, 0, self.gfxwindow.text2tiles("Welcome to Boulder Caves 'authentic'".center(self.width)))
+                ts.set_tiles(0, 0, self.sprites.text2tiles("Welcome to Boulder Caves 'authentic'".center(self.width)))
             else:
-                ts.set_tiles(0, 0, self.gfxwindow.text2tiles("Welcome to Boulder Caves".center(self.width)))
-            ts.set_tiles(0, 1, self.gfxwindow.text2tiles("F1\x04New game! F4\x04Scores F9\x04Demo".center(self.width)))
+                ts.set_tiles(0, 0, self.sprites.text2tiles("Welcome to Boulder Caves".center(self.width)))
+            ts.set_tiles(0, 1, self.sprites.text2tiles("F1\x04New game! F4\x04Scores F9\x04Demo".center(self.width)))
             if not self.gfxwindow.smallwindow:
-                ts[0, 0] = ts[self.width - 1, 0] = ts[0, 1] = ts[self.width - 1, 1] = self.gfxwindow.sprite2tile(Objects.MEGABOULDER)
-                ts[1, 0] = ts[self.width - 2, 0] = ts[1, 1] = ts[self.width - 2, 1] = self.gfxwindow.sprite2tile(Objects.FLYINGDIAMOND)
-                ts[2, 0] = ts[self.width - 3, 0] = ts[2, 1] = ts[self.width - 3, 1] = self.gfxwindow.sprite2tile(Objects.DIAMOND)
-                ts[3, 0] = ts[3, 1] = self.gfxwindow.sprite2tile(Objects.ROCKFORD.pushleft)
-                ts[self.width - 4, 0] = ts[self.width - 4, 1] = self.gfxwindow.sprite2tile(Objects.ROCKFORD.pushright)
+                ts[0, 0] = ts[self.width - 1, 0] = ts[0, 1] = ts[self.width - 1, 1] = self.sprites.sprite2tile(Objects.MEGABOULDER)
+                ts[1, 0] = ts[self.width - 2, 0] = ts[1, 1] = ts[self.width - 2, 1] = self.sprites.sprite2tile(Objects.FLYINGDIAMOND)
+                ts[2, 0] = ts[self.width - 3, 0] = ts[2, 1] = ts[self.width - 3, 1] = self.sprites.sprite2tile(Objects.DIAMOND)
+                ts[3, 0] = ts[3, 1] = self.sprites.sprite2tile(Objects.ROCKFORD.pushleft)
+                ts[self.width - 4, 0] = ts[self.width - 4, 1] = self.sprites.sprite2tile(Objects.ROCKFORD.pushright)
             return
         text = ("\x08{lives:2d}   {normal:d}\x0e{extra:d}  {diamonds:<10s}  {time:s}  $ {score:06d}".format(
             lives=self.lives,
@@ -1259,14 +1261,14 @@ class GameState:
             extra=self.diamondvalue_extra,
             diamonds="{:02d}/{:02d}".format(self.diamonds, self.diamonds_needed),
         )).ljust(self.width)
-        self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.gfxwindow.text2tiles(text))
+        self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.sprites.text2tiles(text))
         if self.game_status == GameStatus.WON:
-            tiles = self.gfxwindow.text2tiles("\x0e  C O N G R A T U L A T I O N S  \x0e".center(self.width))
+            tiles = self.sprites.text2tiles("\x0e  C O N G R A T U L A T I O N S  \x0e".center(self.width))
         elif self.game_status == GameStatus.LOST:
-            tiles = self.gfxwindow.text2tiles("\x0b  G A M E   O V E R  \x0b".center(self.width))
+            tiles = self.sprites.text2tiles("\x0b  G A M E   O V E R  \x0b".center(self.width))
         elif self.game_status == GameStatus.PAUSED:
-            tiles = self.gfxwindow.text2tiles("\x08  P A U S E D  \x08".center(self.width))
+            tiles = self.sprites.text2tiles("\x08  P A U S E D  \x08".center(self.width))
         else:
             fmt = "Intermission {:s}" if self.intermission else "Cave {:s}"
-            tiles = self.gfxwindow.text2tiles(fmt.format(self.level_name).center(self.width))
+            tiles = self.sprites.text2tiles(fmt.format(self.level_name).center(self.width))
         self.gfxwindow.tilesheet_score.set_tiles(0, 1, tiles[:40])
