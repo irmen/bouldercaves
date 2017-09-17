@@ -1221,7 +1221,6 @@ class GameState:
         audio.play_sample(explosion_sample)
 
     def update_scorebar(self) -> None:
-        # @todo don't draw directly into the gfxwindow's tile buffer
         # draw the score bar.
         # note: the following is a complex score bar including keys, but those are not used in the C64 boulderdash:
         # text = ("\x08{lives:2d}  \x0c {keys:02d}\x7f\x7f\x7f  {diamonds:<10s}  {time:s}  $ {score:06d}".format(
@@ -1240,18 +1239,20 @@ class GameState:
         #     self.gfxwindow.tilesheet_score[11, 0] = Objects.KEY3.spritex + Objects.KEY3.spritey * self.gfxwindow.tile_image_numcolumns
         if self.level < 1:
             # level has not been loaded yet (we're still at the title screen)
-            ts = self.gfxwindow.tilesheet_score
             if self.gfxwindow.smallwindow and self.gfxwindow.c64colors:
-                ts.set_tiles(0, 0, self.sprites.text2tiles("Welcome to Boulder Caves 'authentic'".center(self.width)))
+                self.gfxwindow.set_scorebar_tiles(0, 0, self.sprites.text2tiles("Welcome to Boulder Caves 'authentic'".center(self.width)))
             else:
-                ts.set_tiles(0, 0, self.sprites.text2tiles("Welcome to Boulder Caves".center(self.width)))
-            ts.set_tiles(0, 1, self.sprites.text2tiles("F1\x04New game! F4\x04Scores F9\x04Demo".center(self.width)))
+                self.gfxwindow.set_scorebar_tiles(0, 0, self.sprites.text2tiles("Welcome to Boulder Caves".center(self.width)))
+            self.gfxwindow.set_scorebar_tiles(0, 1, self.sprites.text2tiles("F1\x04New game! F4\x04Scores F9\x04Demo".center(self.width)))
             if not self.gfxwindow.smallwindow:
-                ts[0, 0] = ts[self.width - 1, 0] = ts[0, 1] = ts[self.width - 1, 1] = self.sprites.sprite2tile(Objects.MEGABOULDER)
-                ts[1, 0] = ts[self.width - 2, 0] = ts[1, 1] = ts[self.width - 2, 1] = self.sprites.sprite2tile(Objects.FLYINGDIAMOND)
-                ts[2, 0] = ts[self.width - 3, 0] = ts[2, 1] = ts[self.width - 3, 1] = self.sprites.sprite2tile(Objects.DIAMOND)
-                ts[3, 0] = ts[3, 1] = self.sprites.sprite2tile(Objects.ROCKFORD.pushleft)
-                ts[self.width - 4, 0] = ts[self.width - 4, 1] = self.sprites.sprite2tile(Objects.ROCKFORD.pushright)
+                left = [self.sprites.sprite2tile(obj)
+                        for obj in [Objects.MEGABOULDER, Objects.FLYINGDIAMOND, Objects.DIAMOND, Objects.ROCKFORD.pushleft]]
+                right = [self.sprites.sprite2tile(obj)
+                        for obj in [Objects.ROCKFORD.pushright, Objects.DIAMOND, Objects.FLYINGDIAMOND, Objects.MEGABOULDER]]
+                self.gfxwindow.set_scorebar_tiles(0, 0, left)
+                self.gfxwindow.set_scorebar_tiles(0, 1, left)
+                self.gfxwindow.set_scorebar_tiles(self.width - len(right), 0, right)
+                self.gfxwindow.set_scorebar_tiles(self.width - len(right), 1, right)
             return
         text = ("\x08{lives:2d}   {normal:d}\x0e{extra:d}  {diamonds:<10s}  {time:s}  $ {score:06d}".format(
             lives=self.lives,
@@ -1271,4 +1272,4 @@ class GameState:
         else:
             fmt = "Intermission {:s}" if self.intermission else "Cave {:s}"
             tiles = self.sprites.text2tiles(fmt.format(self.level_name).center(self.width))
-        self.gfxwindow.tilesheet_score.set_tiles(0, 1, tiles[:40])
+        self.gfxwindow.set_scorebar_tiles(0, 1, tiles[:40])  # line 2

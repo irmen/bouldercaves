@@ -348,6 +348,9 @@ class BoulderWindow(tkinter.Tk):
     def set_tile(self, x: int, y: int, obj: GameObject) -> None:
         self.tilesheet[x, y] = self.sprites.sprite2tile(obj)
 
+    def set_scorebar_tiles(self, x: int, y: int, tiles: Sequence[int]) -> None:
+        self.tilesheet_score.set_tiles(x, y, tiles)
+
     def physcoor(self, sx: int, sy: int) -> Tuple[int, int]:
         return int(sx * self.scalexy), int(sy * self.scalexy)
 
