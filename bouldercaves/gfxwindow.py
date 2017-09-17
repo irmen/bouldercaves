@@ -17,7 +17,7 @@ import tkinter.simpledialog
 import pkgutil
 import time
 import getpass
-from typing import Tuple, Sequence, List, Set, Iterable, Callable
+from typing import Tuple, Sequence, List, Iterable, Callable
 from .game import GameState, Objects, GameObject, Direction, GameStatus, HighScores
 from .caves import colorpalette
 from . import audio, synthsamples, tiles
@@ -151,20 +151,20 @@ class BoulderWindow(tkinter.Tk):
         elif event.keysym == "Escape":
             self.popup_close()
             if self.gamestate.game_status in (GameStatus.LOST, GameStatus.WON):
-                self.gamestate.restart()
+                self.restart()
             elif self.gamestate.game_status == GameStatus.PLAYING:
                 self.gamestate.suicide()
             elif self.gamestate.game_status in (GameStatus.DEMO, GameStatus.HIGHSCORE):
-                self.gamestate.restart()
+                self.restart()
         elif event.keysym == "F1":
             self.popup_close()
             if self.gamestate.game_status in (GameStatus.LOST, GameStatus.WON):
-                self.gamestate.restart()
+                self.restart()
             elif self.gamestate.game_status in (GameStatus.DEMO, GameStatus.HIGHSCORE):
-                self.gamestate.restart()
+                self.restart()
             else:
                 if self.gamestate.lives < 0:
-                    self.gamestate.restart()
+                    self.restart()
                 if self.gamestate.level < 1:
                     self.gamestate.level = self.gamestate.start_level_number - 1
                     self.gamestate.load_next_level()
@@ -174,6 +174,11 @@ class BoulderWindow(tkinter.Tk):
         elif event.keysym == "F6":
             self.gamestate.cheat_used = True
             self.gamestate.add_extra_time(10)
+
+    def restart(self):
+        self.create_canvas_playfield_and_tilesheet(40, 22)
+        self.scrollxypixels(0, 0)
+        self.gamestate.restart()
 
     def keyrelease(self, event) -> None:
         if event.keysym.startswith("Shift") or not (event.state & 1):
@@ -307,6 +312,8 @@ class BoulderWindow(tkinter.Tk):
         # create the images on the canvas for all tiles (fixed position):
         if width == self.playfield_columns and height == self.playfield_rows:
             return
+        if width < 4 or width > 200 or height < 4 or height > 200:
+            raise ValueError("invalid playfield/cave width or height")
         self.playfield_columns = width
         self.playfield_rows = height
         self.canvas.delete(tkinter.ALL)
@@ -316,7 +323,6 @@ class BoulderWindow(tkinter.Tk):
                 sx, sy = self.physcoor(*tiles.tile2pixels(x, y))
                 tile = self.canvas.create_image(sx, sy, image=self.tile_images[0], anchor=tkinter.NW, tags="tile")
                 self.c_tiles.append(tile)
-        print("CANVAS created ",len(self.c_tiles)," tiles w,h=",self.playfield_columns, self.playfield_rows)  # XXX
         # create the images on the score canvas for all tiles (fixed position):
         self.scorecanvas.delete(tkinter.ALL)
         self.cscore_tiles.clear()
@@ -331,7 +337,6 @@ class BoulderWindow(tkinter.Tk):
                 tile = self.scorecanvas.create_image(sx, sy, image=None, anchor=tkinter.NW, tags="tile")
                 self.cscore_tiles.append(tile)
         self.tilesheet = tiles.Tilesheet(self.playfield_columns, self.playfield_rows, self.visible_columns, self.visible_rows)
-        print("TILESHEET created ",len(self.tilesheet.tiles), "w,h:", self.tilesheet.width, self.tilesheet.height, "vw,vh:", self.tilesheet.view_width, self.tilesheet.view_height)  # XXX
 
     def set_screen_colors(self, bordercolor: int, screencolor: int) -> None:
         self.configure(background="#{:06x}".format(bordercolor))
@@ -343,7 +348,7 @@ class BoulderWindow(tkinter.Tk):
     def set_scorebar_tiles(self, x: int, y: int, tiles: Sequence[int]) -> None:
         self.tilesheet_score.set_tiles(x, y, tiles)
 
-    def clear_tilesheet(self) ->  None:
+    def clear_tilesheet(self) -> None:
         self.tilesheet.set_tiles(0, 0, [self.sprites.sprite2tile(Objects.DIRT2)] * self.playfield_columns * self.playfield_rows)
 
     def prepare_reveal(self) -> None:
@@ -519,7 +524,7 @@ def start(sargs: Sequence[str]=None) -> None:
         sargs = sys.argv[1:]
     import argparse
     ap = argparse.ArgumentParser(description="Boulder Caves - a Boulder Dash (tm) clone")
-    ap.add_argument("-g", "--game", help="specify cave data file to play, leave empty to play original built-in BD1 caves"),
+    ap.add_argument("-g", "--game", help="specify cave data file to play, leave empty to play original built-in BD1 caves")
     ap.add_argument("-f", "--fps", type=int, help="frames per second (default=%(default)d)", default=30)
     ap.add_argument("-s", "--size", type=int, help="graphics size (default=%(default)d)", default=3, choices=(1, 2, 3, 4, 5))
     ap.add_argument("-c", "--c64colors", help="use Commodore-64 colors", action="store_true")

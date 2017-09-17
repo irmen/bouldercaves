@@ -586,7 +586,6 @@ class GameState:
     def _create_cave(self, width: int, height: int) -> None:
         self.width = width
         self.height = height
-        print("GAMESTATE created cave w,h:", self.width, self.height)   # XXX
         self._dirxy = {
             Direction.NOWHERE: 0,
             Direction.UP: -self.width,
@@ -1200,7 +1199,7 @@ class GameState:
                 left = [self.sprites.sprite2tile(obj)
                         for obj in [Objects.MEGABOULDER, Objects.FLYINGDIAMOND, Objects.DIAMOND, Objects.ROCKFORD.pushleft]]
                 right = [self.sprites.sprite2tile(obj)
-                        for obj in [Objects.ROCKFORD.pushright, Objects.DIAMOND, Objects.FLYINGDIAMOND, Objects.MEGABOULDER]]
+                         for obj in [Objects.ROCKFORD.pushright, Objects.DIAMOND, Objects.FLYINGDIAMOND, Objects.MEGABOULDER]]
                 self.gfxwindow.set_scorebar_tiles(0, 0, left)
                 self.gfxwindow.set_scorebar_tiles(0, 1, left)
                 self.gfxwindow.set_scorebar_tiles(width - len(right), 0, right)
