@@ -76,7 +76,6 @@ class BoulderWindow(tkinter.Tk):
                                      xscrollincrement=self.scalexy, yscrollincrement=self.scalexy)
         self.c_tiles = []         # type: List[str]
         self.cscore_tiles = []    # type: List[str]
-        self.uncover_tiles = set()    # type: Set[int]
         self.view_x = 0
         self.view_y = 0
         self.canvas.view_x = self.view_x    # type: ignore
@@ -115,7 +114,7 @@ class BoulderWindow(tkinter.Tk):
             fmt = "Playing caveset:\n\n{name}\n\nby {author}\n\n({date})"
         else:
             fmt = "Playing caveset:\n\n\x0f\x0f`{name}'\n\n\x0f\x0fby {author}\n\n\x0f\x0f\x0f\x0f({date})"
-        self.popup(fmt.format(name=cs.name, author=cs.author, date=cs.date), duration=4)
+        self.popup(fmt.format(name=cs.name, author=cs.author, date=cs.date), duration=3)
         self.tick_loop()
 
     def tick_loop(self) -> None:
@@ -126,13 +125,12 @@ class BoulderWindow(tkinter.Tk):
             self.game_update_dt -= self.gamestate.update_timestep
             self.update_game()
         self.graphics_update_dt += dt
+        if self.gamestate.game_status in (GameStatus.REVEALING_DEMO, GameStatus.REVEALING_PLAY) and not self.popup_tiles_save:
+            self.do_reveal()
         if self.graphics_update_dt > self.update_timestep:
             self.graphics_update_dt -= self.update_timestep
             if self.graphics_update_dt >= self.update_timestep:
                 print("Gfx update too slow to reach {:d} fps!".format(self.update_fps))
-            if self.gamestate.idle["uncover"]:
-                self.uncover_tiles = set(range(self.playfield_rows * self.playfield_columns))
-                self.gamestate.idle["uncover"] = False
             self.repaint()
         self.gfxupdate_starttime = now
         self.after(1000 // 120, self.tick_loop)
@@ -154,7 +152,7 @@ class BoulderWindow(tkinter.Tk):
             self.popup_close()
             if self.gamestate.game_status in (GameStatus.LOST, GameStatus.WON):
                 self.gamestate.restart()
-            elif self.gamestate.game_status == GameStatus.PLAYING and not self.uncover_tiles:
+            elif self.gamestate.game_status == GameStatus.PLAYING:
                 self.gamestate.suicide()
             elif self.gamestate.game_status in (GameStatus.DEMO, GameStatus.HIGHSCORE):
                 self.gamestate.restart()
@@ -165,7 +163,7 @@ class BoulderWindow(tkinter.Tk):
             elif self.gamestate.game_status in (GameStatus.DEMO, GameStatus.HIGHSCORE):
                 self.gamestate.restart()
             else:
-                if not self.uncover_tiles and self.gamestate.lives < 0:
+                if self.gamestate.lives < 0:
                     self.gamestate.restart()
                 if self.gamestate.level < 1:
                     self.gamestate.level = self.gamestate.start_level_number - 1
@@ -235,81 +233,63 @@ class BoulderWindow(tkinter.Tk):
                 self.canvas.itemconfigure(self.c_tiles[index], image=self.tile_images[tile])
             return
         elif self.popup_tiles_save:
-            print("CLOSING POPUP!")   # XXX
             self.popup_close()
 
-        if self.uncover_tiles:
-            # perform random uncover animation before the level starts
-            if len(self.uncover_tiles) == self.playfield_rows * self.playfield_columns:
-                audio.play_sample("cover", repeat=True)
-            for _ in range(int(30 * 30 / self.update_fps)):
-                reveal = random.randrange(1 + self.playfield_columns, self.playfield_columns * (self.playfield_rows - 1))
-                revealy, revealx = divmod(reveal, self.playfield_columns)
-                self.uncover_tiles.discard(reveal)
-                tile = self.tilesheet[revealx, revealy]
-                self.canvas.itemconfigure(self.c_tiles[reveal], image=self.tile_images[tile])
-            covered = Objects.COVERED
-            animframe = int(covered.sfps / self.update_fps * self.graphics_frame) % covered.sframes
-            tile = self.sprites.sprite2tile(covered, animframe)
-            for index in self.uncover_tiles:
-                self.canvas.itemconfigure(self.c_tiles[index], image=self.tile_images[tile])
-            if len(self.uncover_tiles) < self.playfield_columns * self.playfield_rows // 4:
-                self.uncover_tiles = set()   # this ends the uncover animation and starts the level
-                audio.silence_audio("cover")
-                self.tilesheet.all_dirty()
-        else:
-            if self.gamestate.rockford_cell:
-                # is rockford moving or pushing left/right?
-                if self.gamestate.movement.direction == Direction.LEFT or \
-                        (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
-                         self.gamestate.movement.lastXdir == Direction.LEFT):
-                    if self.gamestate.movement.pushing:
-                        spritex, spritey, sframes, sfps = Objects.ROCKFORD.pushleft
-                    else:
-                        spritex, spritey, sframes, sfps = Objects.ROCKFORD.left
-                elif self.gamestate.movement.direction == Direction.RIGHT or \
-                        (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
-                         self.gamestate.movement.lastXdir == Direction.RIGHT):
-                    if self.gamestate.movement.pushing:
-                        spritex, spritey, sframes, sfps = Objects.ROCKFORD.pushright
-                    else:
-                        spritex, spritey, sframes, sfps = Objects.ROCKFORD.right
-                # handle rockford idle state/animation
-                elif self.gamestate.idle["tap"] and self.gamestate.idle["blink"]:
-                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.tapblink
-                elif self.gamestate.idle["tap"]:
-                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.tap
-                elif self.gamestate.idle["blink"]:
-                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.blink
+        if self.gamestate.game_status in (GameStatus.REVEALING_PLAY, GameStatus.REVEALING_DEMO):
+            return
+
+        if self.gamestate.rockford_cell:
+            # is rockford moving or pushing left/right?
+            if self.gamestate.movement.direction == Direction.LEFT or \
+                    (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
+                     self.gamestate.movement.lastXdir == Direction.LEFT):
+                if self.gamestate.movement.pushing:
+                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.pushleft
                 else:
-                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.spritex, Objects.ROCKFORD.spritey, \
-                        Objects.ROCKFORD.sframes, Objects.ROCKFORD.sfps
-                if sframes:
-                    animframe = int(sfps / self.update_fps *
-                                    (self.graphics_frame - self.gamestate.rockford_cell.anim_start_gfx_frame)) % sframes
+                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.left
+            elif self.gamestate.movement.direction == Direction.RIGHT or \
+                    (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
+                     self.gamestate.movement.lastXdir == Direction.RIGHT):
+                if self.gamestate.movement.pushing:
+                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.pushright
                 else:
-                    animframe = 0
-                self.tilesheet[self.gamestate.rockford_cell.x, self.gamestate.rockford_cell.y] = \
-                    self.sprites.sprite2tile((spritex, spritey), animframe)
-            # other animations:
-            for cell in self.gamestate.cells_with_animations():
-                obj = cell.obj
-                if obj is Objects.MAGICWALL:
-                    if not self.gamestate.magicwall["active"]:
-                        obj = Objects.BRICK
-                animframe = int(obj.sfps / self.update_fps * (self.graphics_frame - cell.anim_start_gfx_frame))
-                tile = self.sprites.sprite2tile(obj, animframe)
-                self.tilesheet[cell.x, cell.y] = tile
-                if animframe >= obj.sframes and obj.anim_end_callback:
-                    # the animation reached the last frame
-                    obj.anim_end_callback(cell)
-            # flash
-            if self.gamestate.flash > self.gamestate.frame:
-                self.configure(background=self.tkcolor(15) if self.graphics_frame % 2 else self.tkcolor(0))
-            elif self.gamestate.flash > 0:
-                self.configure(background="black")
-            for index, tile in self.tilesheet.dirty():
-                self.canvas.itemconfigure(self.c_tiles[index], image=self.tile_images[tile])
+                    spritex, spritey, sframes, sfps = Objects.ROCKFORD.right
+            # handle rockford idle state/animation
+            elif self.gamestate.idle["tap"] and self.gamestate.idle["blink"]:
+                spritex, spritey, sframes, sfps = Objects.ROCKFORD.tapblink
+            elif self.gamestate.idle["tap"]:
+                spritex, spritey, sframes, sfps = Objects.ROCKFORD.tap
+            elif self.gamestate.idle["blink"]:
+                spritex, spritey, sframes, sfps = Objects.ROCKFORD.blink
+            else:
+                spritex, spritey, sframes, sfps = Objects.ROCKFORD.spritex, Objects.ROCKFORD.spritey, \
+                    Objects.ROCKFORD.sframes, Objects.ROCKFORD.sfps
+            if sframes:
+                animframe = int(sfps / self.update_fps *
+                                (self.graphics_frame - self.gamestate.rockford_cell.anim_start_gfx_frame)) % sframes
+            else:
+                animframe = 0
+            self.tilesheet[self.gamestate.rockford_cell.x, self.gamestate.rockford_cell.y] = \
+                self.sprites.sprite2tile((spritex, spritey), animframe)
+        # other animations:
+        for cell in self.gamestate.cells_with_animations():
+            obj = cell.obj
+            if obj is Objects.MAGICWALL:
+                if not self.gamestate.magicwall["active"]:
+                    obj = Objects.BRICK
+            animframe = int(obj.sfps / self.update_fps * (self.graphics_frame - cell.anim_start_gfx_frame))
+            tile = self.sprites.sprite2tile(obj, animframe)
+            self.tilesheet[cell.x, cell.y] = tile
+            if animframe >= obj.sframes and obj.anim_end_callback:
+                # the animation reached the last frame
+                obj.anim_end_callback(cell)
+        # flash
+        if self.gamestate.flash > self.gamestate.frame:
+            self.configure(background=self.tkcolor(15) if self.graphics_frame % 2 else self.tkcolor(0))
+        elif self.gamestate.flash > 0:
+            self.configure(background="black")
+        for index, tile in self.tilesheet.dirty():
+            self.canvas.itemconfigure(self.c_tiles[index], image=self.tile_images[tile])
 
     def create_colored_tiles(self, color1: int, color2: int, color3: int, screencolor: int) -> None:
         if self.c64colors:
@@ -366,6 +346,30 @@ class BoulderWindow(tkinter.Tk):
     def clear_tilesheet(self) ->  None:
         self.tilesheet.set_tiles(0, 0, [self.sprites.sprite2tile(Objects.DIRT2)] * self.playfield_columns * self.playfield_rows)
 
+    def prepare_reveal(self) -> None:
+        c = self.sprites.sprite2tile(Objects.COVERED)
+        for c_tile in self.c_tiles:
+            self.canvas.itemconfigure(c_tile, image=self.tile_images[c])
+        self.tiles_revealed = bytearray(len(self.c_tiles))
+
+    def do_reveal(self) -> None:
+        # reveal tiles during the reveal period
+        if self.graphics_frame % 2 == 0:
+            return
+        times = 1 if self.playfield_columns < 44 else 2
+        for _ in range(0, times):
+            for y in range(0, self.playfield_rows):
+                x = random.randrange(0, self.playfield_columns)
+                tile = self.tilesheet[x, y]
+                idx = x + self.playfield_columns * y
+                self.tiles_revealed[idx] = 1
+                self.canvas.itemconfigure(self.c_tiles[idx], image=self.tile_images[tile])
+        # animate the cover-tiles
+        cover_tile = self.sprites.sprite2tile(Objects.COVERED, self.graphics_frame)
+        for i, c_tile in enumerate(self.c_tiles):
+            if self.tiles_revealed[i] == 0:
+                self.canvas.itemconfigure(c_tile, image=self.tile_images[cover_tile])
+
     def physcoor(self, sx: int, sy: int) -> Tuple[int, int]:
         return int(sx * self.scalexy), int(sy * self.scalexy)
 
@@ -380,7 +384,7 @@ class BoulderWindow(tkinter.Tk):
         return min(max(0, round(x)), xlimit), min(max(0, round(y)), ylimit)
 
     def update_game(self) -> None:
-        if not self.uncover_tiles and self.popup_frame < self.graphics_frame:
+        if self.popup_frame < self.graphics_frame:
             self.gamestate.update(self.graphics_frame)
         self.gamestate.update_scorebar()
         if self.gamestate.game_status == GameStatus.WAITING and \
