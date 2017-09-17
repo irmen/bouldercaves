@@ -57,7 +57,7 @@ class BoulderWindow(tkinter.Tk):
         if sys.platform == "win32":
             # tell windows to use a new toolbar icon
             import ctypes
-            myappid = 'net.Razorvine.Tale.story'  # arbitrary string
+            myappid = 'net.Razorvine.Bouldercaves.game'  # arbitrary string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         if smallwindow:
             self.tilesheet_score = tiles.Tilesheet(self.visible_columns * 2, 2, self.visible_columns * 2, 2)
@@ -444,7 +444,6 @@ class BoulderWindow(tkinter.Tk):
                 lines.append(None)
         if self.smallwindow:
             bchar = ""
-            x = y = 0
             popupwidth = width + 4
             popupheight = len(lines) + 3
         else:

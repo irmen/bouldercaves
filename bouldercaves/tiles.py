@@ -154,7 +154,7 @@ class Sprites:
                 if self.scalexy != 1:
                     ci = ci.resize((int(16 * self.scalexy), int(16 * self.scalexy)), Image.NONE)
                 out = io.BytesIO()
-                ci.save(out, "png")
+                ci.save(out, "png", compress_level=0)
                 sprite_src_images.append(out.getvalue())
                 tile_num += 1
         if len(sprite_src_images) != self.num_sprites:

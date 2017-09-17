@@ -137,6 +137,17 @@ class Objects:      # namespace for the game objects in the tilesheet
     KEY1 = g("KEY1", False, False, False, 3, 8)
     KEY2 = g("KEY2", False, False, False, 4, 8)
     KEY3 = g("KEY3", False, False, False, 5, 8)
+    EDIT_QUESTION = g("E_QUESTION", False, False, False, 6, 8)
+    EDIT_EAT = g("E_EAT", False, False, False, 7, 8)
+    # row 9
+    STEELWALLDESTRUCTABLE = g("STEELWALLDESTRUCTABLE", False, False, True, 0, 9)
+    EDIT_DOWN_ARROW = g("E_DOWNARROW", False, False, False, 1, 9)
+    EDIT_LEFTRIGHT_ARROW = g("E_LEFTRIGHTARROW", False, False, False, 2, 9)
+    EDIT_EVERYDIR_ARROW = g("E_EVERYDIRARROW", False, False, False, 3, 9)
+    EDIT_LOCKED = g("E_LOCKED", False, False, False, 4, 9)
+    EDIT_OUT = g("E_OUIT", False, False, False, 5, 9)
+    EDIT_EXCLAM = g("E_EXCLAM", False, False, False, 6, 9)
+    EDIT_CROSS = g("E_CROSS", False, False, False, 7, 9)
     # row 10
     GHOSTEXPLODE = g("GHOSTEXPLODE", False, False, False, 0, 10, sframes=4, sfps=10)
     BOMBEXPLODE = g("BOMBEXPLODE", False, False, False, 4, 10, sframes=4, sfps=10)
