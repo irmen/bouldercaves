@@ -13,7 +13,7 @@ import tkinter.messagebox
 import tkinter.simpledialog
 import tkinter.ttk
 import pkgutil
-from typing import Tuple, Optional, List, Dict
+from typing import Tuple, List, Dict
 from ..gfxwindow import __version__
 from ..caves import colorpalette
 from ..game import Objects, GameObject
@@ -21,7 +21,7 @@ from .. import tiles
 
 
 class ScrollableImageSelector(tkinter.Frame):
-    def __init__(self, master, listener):
+    def __init__(self, master: tkinter.Widget, listener: 'Editor') -> None:
         super().__init__(master)
         self.treeview = tkinter.ttk.Treeview(self, columns=("tile",), displaycolumns=("tile",), height="5")
         self.treeview.heading("tile", text="Tile")
@@ -33,45 +33,99 @@ class ScrollableImageSelector(tkinter.Frame):
         self.treeview["yscrollcommand"] = sy.set
         self.treeview.pack(expand=1, fill=tkinter.Y)
         self.treeview.bind("<<TreeviewSelect>>", self.on_selected)
-        self.selected_object = None
+        self.treeview.bind("<Double-Button-1>", self.on_selected_doubleclick)
+        self.selected_object = Objects.BOULDER
+        self.selected_tile = Objects.BOULDER.tile()
+        self.selected_erase_object = Objects.EMPTY
+        self.selected_erase_tile = Objects.EMPTY.tile()
         self.listener = listener
 
-    def on_selected(self, event):
+    def on_selected_doubleclick(self, event) -> None:
         item = self.treeview.focus()
         item = self.treeview.item(item)
         selected_name = item["values"][0].lower()
-        self.selected_object = None
-        for obj in SUPPORTED_OBJECTS:
+        self.selected_erase_object = Objects.EMPTY
+        self.selected_erase_tile = Objects.EMPTY.tile()
+        for obj, displaytile in EDITOR_OBJECTS.items():
             if obj.name.lower() == selected_name:
-                self.selected_object = obj
-                self.listener.tile_selection_changed(self.selected_object)
+                self.selected_erase_object = obj
+                self.selected_erase_tile = displaytile
+                self.listener.tile_erase_selection_changed(obj, displaytile)
                 break
 
-    def populate(self, rows):
+    def on_selected(self, event) -> None:
+        item = self.treeview.focus()
+        item = self.treeview.item(item)
+        selected_name = item["values"][0].lower()
+        self.selected_object = Objects.BOULDER
+        self.selected_tile = Objects.BOULDER.tile()
+        for obj, displaytile in EDITOR_OBJECTS.items():
+            if obj.name.lower() == selected_name:
+                self.selected_object = obj
+                self.selected_tile = displaytile
+                self.listener.tile_selection_changed(obj, displaytile)
+                break
+
+    def populate(self, rows: List) -> None:
         for row in self.treeview.get_children():
             self.treeview.delete(row)
         for image, name in rows:
-            print(self.treeview.insert("", tkinter.END, image=image, values=(name,)))
+            self.treeview.insert("", tkinter.END, image=image, values=(name,))
         self.treeview.configure(height=min(16, len(rows)))
 
 
-SUPPORTED_OBJECTS = {
-    Objects.AMOEBA,
-    Objects.BOULDER,
-    Objects.BRICK,
-    Objects.BUTTERFLY,
-    Objects.DIAMOND,
-    Objects.DIRT,
-    Objects.EMPTY,
-    Objects.FIREFLY,
-    Objects.HEXPANDINGWALL,
-    Objects.INBOXBLINKING,
-    Objects.MAGICWALL,
-    Objects.OUTBOXBLINKING,
-    Objects.SLIME,
-    Objects.STEEL,
-    Objects.VEXPANDINGWALL,
-    Objects.VOODOO
+class Cave:
+    def __init__(self, width: int, height: int, editor: 'Editor') -> None:
+        self.width = width
+        self.height = height
+        self.cells = [(Objects.EMPTY, Objects.EMPTY.tile())] * width * height
+        self.cells_snapshot = []
+        self.editor = editor
+
+    def __setitem__(self, xy: Tuple[int, int], thing: Tuple[GameObject, int]) -> None:
+        x, y = xy
+        obj, displaytile = thing
+        self.cells[x + self.width * y] = (obj, displaytile)
+        self.editor.set_tile(x, y, displaytile)
+
+    def __getitem__(self, xy: Tuple[int, int]) -> Tuple[GameObject, int]:
+        x, y = xy
+        return self.cells[x + self.width * y]
+
+    def horiz_line(self, x: int, y: int, length: int, thing: Tuple[GameObject, int]) -> None:
+        for xx in range(x, x + length):
+            self[xx, y] = thing
+
+    def vert_line(self, x: int, y: int, length: int, thing: Tuple[GameObject, int]) -> None:
+        for yy in range(y, y + length):
+            self[x, yy] = thing
+
+    def snapshot(self) -> None:
+        self.cells_snapshot = self.cells.copy()
+
+    def restore(self) -> None:
+        for y in range(self.height):
+            for x in range(self.width):
+                self[x, y] = self.cells_snapshot[x + self.width * y]
+
+
+EDITOR_OBJECTS = {
+    Objects.AMOEBA: Objects.AMOEBA.tile(),
+    Objects.BOULDER: Objects.BOULDER.tile(),
+    Objects.BRICK: Objects.BRICK.tile(),
+    Objects.BUTTERFLY: Objects.BUTTERFLY.tile(2),
+    Objects.DIAMOND: Objects.DIAMOND.tile(),
+    Objects.DIRT: Objects.DIRT2.tile(),
+    Objects.EMPTY: Objects.EMPTY.tile(),
+    Objects.FIREFLY: Objects.FIREFLY.tile(1),
+    Objects.HEXPANDINGWALL: Objects.HEXPANDINGWALL.tile(),
+    Objects.INBOXBLINKING: Objects.ROCKFORD.tile(),
+    Objects.MAGICWALL: Objects.MAGICWALL.tile(),
+    Objects.OUTBOXBLINKING: Objects.OUTBOXBLINKING.tile(1),
+    Objects.SLIME: Objects.SLIME.tile(1),
+    Objects.STEEL: Objects.STEEL.tile(),
+    Objects.VEXPANDINGWALL: Objects.VEXPANDINGWALL.tile(),
+    Objects.VOODOO: Objects.VOODOO.tile()
 }
 
 
@@ -105,16 +159,28 @@ class EditorWindow(tkinter.Tk):
         sy.grid(row=0, column=1, sticky=tkinter.N + tkinter.S)
         sx.grid(row=1, column=0, sticky=tkinter.E + tkinter.W)
         cf.pack(side=tkinter.RIGHT, padx=4, pady=4, fill=tkinter.BOTH, expand=1)
-        f = tkinter.Frame(self)
-        lf = tkinter.LabelFrame(f, text="text")
-        b = tkinter.Button(lf, text="sdfsdf")
+        buttonsframe = tkinter.Frame(self)
+        lf = tkinter.LabelFrame(buttonsframe, text="Select object")
         self.imageselector = ScrollableImageSelector(lf, self)
         self.imageselector.pack()
-        b.pack()
+        f = tkinter.Frame(lf)
+        tkinter.Label(f, text=" Draw: \n(Lmb)").grid(row=0, column=0)
+        self.draw_label = tkinter.Label(f, text="???")
+        self.draw_label.grid(row=0, column=1)
+        tkinter.Label(f, text=" Erase: \n(Rmb)").grid(row=0, column=2)
+        self.erase_label = tkinter.Label(f, text="???")
+        self.erase_label.grid(row=0, column=3)
+        tkinter.Label(f, text="Select for draw,\ndoubleclick to set erase.").grid(row=1, column=0, columnspan=4)
+        f.pack(pady=4)
         lf.pack(expand=1, fill=tkinter.Y)
-        f.pack(side=tkinter.LEFT, anchor=tkinter.N, expand=1, fill=tkinter.Y)
-        self.canvas.bind("<KeyPress>", self.keypress)
-        self.canvas.bind("<KeyRelease>", self.keyrelease)
+        lf = tkinter.LabelFrame(buttonsframe, text="Keyboard commands")
+        tkinter.Label(lf, text="F - flood fill").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="S - make snapshot").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="R - restore snapshot").pack(anchor=tkinter.W, padx=4)
+        lf.pack(expand=1, fill=tkinter.Y)
+        buttonsframe.pack(side=tkinter.LEFT, anchor=tkinter.N)
+        self.bind("<KeyPress>", self.keypress)
+        self.bind("<KeyRelease>", self.keyrelease)
         self.canvas.bind("<Button-1>", self.mousebutton_left)
         self.canvas.bind("<Button-2>", self.mousebutton_middle)
         self.canvas.bind("<Button-3>", self.mousebutton_right)
@@ -131,61 +197,73 @@ class EditorWindow(tkinter.Tk):
         self.canvas.configure(scrollregion=(0, 0, w * 2, h * 2))
         self.canvas.xview_moveto(0)
         self.canvas.yview_moveto(0)
+        self.init_new_cave()
         self.populate_imageselector()
+        self.draw_label.configure(image=self.tile_images[self.imageselector.selected_tile])
+        self.erase_label.configure(image=self.tile_images[self.imageselector.selected_erase_tile])
+        self.snapshot()
+
+    def init_new_cave(self):
+        self.cave = Cave(self.playfield_columns, self.playfield_rows, self)
+        steel = (Objects.STEEL, Objects.STEEL.tile())
+        self.cave.horiz_line(0, 0, self.playfield_columns, steel)
+        self.cave.horiz_line(0, self.playfield_rows - 1, self.playfield_columns, steel)
+        self.cave.vert_line(0, 1, self.playfield_rows - 2, steel)
+        self.cave.vert_line(self.playfield_columns - 1, 1, self.playfield_rows - 2, steel)
+        self.flood_fill(2, 2, (Objects.DIRT, EDITOR_OBJECTS[Objects.DIRT]))
 
     def populate_imageselector(self):
         rows = []
-        for obj in sorted(SUPPORTED_OBJECTS, key=lambda o: o.name):
-            rows.append((self.tile_images_small[obj.tile()], obj.name.title()))
+        for obj, displaytile in sorted(EDITOR_OBJECTS.items(), key=lambda t: t[0].name):
+            rows.append((self.tile_images_small[displaytile], obj.name.title()))
         self.imageselector.populate(rows)
 
     def destroy(self) -> None:
         super().destroy()
 
     def keypress(self, event) -> None:
-        print("keypress", event)  # XXX
+        if event.char == 'f':
+            current = self.canvas.find_withtag(tkinter.CURRENT)
+            if current:
+                tx, ty = self.canvas_tag_to_tilexy[current[0]]
+                self.flood_fill(tx, ty, (self.imageselector.selected_object, self.imageselector.selected_tile))
+        elif event.char == 's':
+            self.snapshot()
+        elif event.char == 'r':
+            self.restore()
 
     def keyrelease(self, event) -> None:
         print("keyrelease", event)  # XXX
 
     def mousebutton_left(self, event) -> None:
-        print("mouse left", event)  # XXX
         self.canvas.focus_set()
         current = self.canvas.find_withtag(tkinter.CURRENT)
         if current:
-            current = current[0]
-            if self.canvas_tag_to_tilexy:
-                print("tilexy:", self.canvas_tag_to_tilexy[current])   # XXX
             if self.imageselector.selected_object:
-                self.canvas.itemconfigure(current, image=self.tile_images[self.imageselector.selected_object.tile()])
+                x, y = self.canvas_tag_to_tilexy[current[0]]
+                self.cave[x, y] = (self.imageselector.selected_object, self.imageselector.selected_tile)
 
     def mousebutton_middle(self, event) -> None:
         print("mouse middle", event)  # XXX
 
     def mousebutton_right(self, event) -> None:
-        print("mouse right", event)  # XXX
         current = self.canvas.find_withtag(tkinter.CURRENT)
         if current:
-            current = current[0]
-            if self.canvas_tag_to_tilexy:
-                print("tilexy:", self.canvas_tag_to_tilexy[current])   # XXX
-            self.canvas.itemconfigure(current, image=self.tile_images[Objects.EMPTY.tile()])
+            x, y = self.canvas_tag_to_tilexy[current[0]]
+            self.cave[x, y] = (self.imageselector.selected_erase_object, self.imageselector.selected_erase_tile)
 
     def mouse_motion(self, event) -> None:
         cx = self.canvas.canvasx(event.x)
         cy = self.canvas.canvasy(event.y)
         current = self.canvas.find_closest(cx, cy)
         if current:
-            current = current[0]
-            if self.canvas_tag_to_tilexy:
-                print("tilexy:", self.canvas_tag_to_tilexy[current])   # XXX
-        if event.state & 0x100:
-            # left mouse button drag
-            if self.imageselector.selected_object:
-                self.canvas.itemconfigure(current, image=self.tile_images[self.imageselector.selected_object.tile()])
-        if event.state & 0x400 or event.state & 0x200:
-            # right mouse button drag
-            self.canvas.itemconfigure(current, image=self.tile_images[Objects.EMPTY.tile()])
+            x, y = self.canvas_tag_to_tilexy[current[0]]
+            if event.state & 0x100:
+                # left mouse button drag
+                self.cave[x, y] = (self.imageselector.selected_object, self.imageselector.selected_tile)
+            elif event.state & 0x600:
+                # right / middle mouse button drag
+                self.cave[x, y] = (self.imageselector.selected_erase_object, self.imageselector.selected_erase_tile)
 
     def create_tile_images(self) -> None:
         source_images = tiles.load_sprites(self.c64colors, colorpalette[2], colorpalette[14], colorpalette[13], 0, scale=2)
@@ -205,28 +283,49 @@ class EditorWindow(tkinter.Tk):
         self.c_tiles.clear()
         self.canvas_tag_to_tilexy.clear()
         boulder_tile = Objects.DIRT2.tile()
-        selected_tile = (self.imageselector.selected_object or Objects.EDIT_CROSS).tile()
         for y in range(self.playfield_rows):
             for x in range(self.playfield_columns):
                 sx, sy = tiles.tile2pixels(x, y)
                 tile = self.canvas.create_image(sx * 2, sy * 2, image=self.tile_images[boulder_tile],
-                                                activeimage=self.tile_images[selected_tile],
+                                                activeimage=self.tile_images[self.imageselector.selected_tile],
                                                 anchor=tkinter.NW, tags="tile")
                 self.c_tiles.append(tile)
                 self.canvas_tag_to_tilexy[tile] = (x, y)
 
-    def get_selected_object(self, fallback: GameObject=None) -> Optional[GameObject]:
-        if not self.imageselector.selected_tile:
-            return fallback
-        for obj in SUPPORTED_OBJECTS:
-            if obj.name == self.imageselector.selected_tile:
-                return obj
-        return fallback
-
-    def tile_selection_changed(self, selected: GameObject) -> None:
-        image = self.tile_images[selected.tile()]
+    def tile_selection_changed(self, object: GameObject, tile: int) -> None:
+        image = self.tile_images[tile]
+        self.draw_label.configure(image=image)
         for c_tile in self.c_tiles:
             self.canvas.itemconfigure(c_tile, activeimage=image)
+
+    def tile_erase_selection_changed(self, object: GameObject, tile: int) -> None:
+        image = self.tile_images[tile]
+        self.erase_label.configure(image=image)
+
+    def set_tile(self, x: int, y: int, tile: int) -> None:
+        c_tile = self.canvas.find_closest(x * 32, y * 32)
+        self.canvas.itemconfigure(c_tile, image=self.tile_images[tile])
+
+    def flood_fill(self, x: int, y: int, thing: Tuple[GameObject, int]) -> None:
+        target = self.cave[x, y][0]
+        if target == thing[0]:
+            return
+        def flood(x, y):
+            t = self.cave[x, y][0]
+            if t != target:
+                return
+            self.cave[x, y] = thing
+            flood(x - 1, y)
+            flood(x + 1, y)
+            flood(x, y - 1)
+            flood(x, y + 1)
+        flood(x, y)
+
+    def snapshot(self) -> None:
+        self.cave.snapshot()
+
+    def restore(self) -> None:
+        self.cave.restore()
 
 
 def start() -> None:
