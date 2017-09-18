@@ -13,7 +13,7 @@ import tkinter.messagebox
 import tkinter.simpledialog
 import tkinter.ttk
 import pkgutil
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List, Dict
 from ..gfxwindow import __version__
 from ..caves import colorpalette
 from ..game import Objects, GameObject
@@ -23,30 +23,36 @@ from .. import tiles
 class ScrollableImageSelector(tkinter.Frame):
     def __init__(self, master, listener):
         super().__init__(master)
-        self.treeview = tkinter.ttk.Treeview(self, columns=("tile",), displaycolumns=("tile",))
+        self.treeview = tkinter.ttk.Treeview(self, columns=("tile",), displaycolumns=("tile",), height="5")
         self.treeview.heading("tile", text="Tile")
-        self.treeview.column("#0", stretch=False, minwidth=50, width=50, anchor=tkinter.W)
+        self.treeview.column("#0", stretch=False, minwidth=40, width=40)
         self.treeview.column("tile", stretch=True, width=120)
-        tkinter.ttk.Style(self).configure("Treeview", rowheight=36, background="#201000", foreground="#e0e0e0")
+        tkinter.ttk.Style(self).configure("Treeview", rowheight=24, background="#201000", foreground="#e0e0e0")
         sy = tkinter.Scrollbar(self, orient=tkinter.VERTICAL, command=self.treeview.yview)
         sy.pack(side=tkinter.RIGHT, expand=1, fill=tkinter.Y)
         self.treeview["yscrollcommand"] = sy.set
         self.treeview.pack(expand=1, fill=tkinter.Y)
         self.treeview.bind("<<TreeviewSelect>>", self.on_selected)
-        self.selected_tile = None
+        self.selected_object = None
         self.listener = listener
 
     def on_selected(self, event):
         item = self.treeview.focus()
         item = self.treeview.item(item)
-        self.selected_tile = item["values"][0]
-        self.listener.tile_selection_changed(self.selected_tile)
+        selected_name = item["values"][0].lower()
+        self.selected_object = None
+        for obj in SUPPORTED_OBJECTS:
+            if obj.name.lower() == selected_name:
+                self.selected_object = obj
+                self.listener.tile_selection_changed(self.selected_object)
+                break
 
     def populate(self, rows):
         for row in self.treeview.get_children():
             self.treeview.delete(row)
         for image, name in rows:
             print(self.treeview.insert("", tkinter.END, image=image, values=(name,)))
+        self.treeview.configure(height=min(16, len(rows)))
 
 
 SUPPORTED_OBJECTS = {
@@ -74,7 +80,6 @@ class EditorWindow(tkinter.Tk):
     visible_rows = 22
     max_columns = 200
     max_rows = 200
-    scalexy = 2.0
 
     def __init__(self) -> None:
         super().__init__()
@@ -89,8 +94,9 @@ class EditorWindow(tkinter.Tk):
             myappid = 'net.Razorvine.Bouldercaves.editor'  # arbitrary string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         cf = tkinter.Frame(self)
-        w, h = self.physcoor(*tiles.tile2pixels(self.visible_columns, self.visible_rows))
-        self.canvas = tkinter.Canvas(cf, width=w, height=h, borderwidth=8, highlightthickness=6, background="red", highlightcolor="#206040")
+        w, h = tiles.tile2pixels(self.visible_columns, self.visible_rows)
+        self.canvas = tkinter.Canvas(cf, width=w * 2, height=h * 2, borderwidth=8,
+                                     highlightthickness=6, background="red", highlightcolor="#206040")
         self.canvas.grid(row=0, column=0)
         sy = tkinter.Scrollbar(cf, orient=tkinter.VERTICAL, command=self.canvas.yview)
         sx = tkinter.Scrollbar(cf, orient=tkinter.HORIZONTAL, command=self.canvas.xview)
@@ -103,7 +109,7 @@ class EditorWindow(tkinter.Tk):
         lf = tkinter.LabelFrame(f, text="text")
         b = tkinter.Button(lf, text="sdfsdf")
         self.imageselector = ScrollableImageSelector(lf, self)
-        self.imageselector.pack(expand=1, fill=tkinter.Y)
+        self.imageselector.pack()
         b.pack()
         lf.pack(expand=1, fill=tkinter.Y)
         f.pack(side=tkinter.LEFT, anchor=tkinter.N, expand=1, fill=tkinter.Y)
@@ -117,13 +123,12 @@ class EditorWindow(tkinter.Tk):
         self.c_tiles = []      # type: List[str]
         self.tile_images = []  # type: List[tkinter.PhotoImage]
         self.c64colors = False
-        self.sprites = tiles.Sprites(self.scalexy)
         self.playfield_rows = self.playfield_columns = 0
-        self.canvas_tag_to_tilexy = {}
+        self.canvas_tag_to_tilexy = {}      # type: Dict[int, Tuple[int, int]]
         self.create_tile_images()
-        self.create_canvas_playfield_and_tilesheet(40, 22)
-        w, h = self.physcoor(*tiles.tile2pixels(self.playfield_columns, self.playfield_rows))
-        self.canvas.configure(scrollregion=(0, 0, w, h))
+        self.create_canvas_playfield(40, 22)
+        w, h = tiles.tile2pixels(self.playfield_columns, self.playfield_rows)
+        self.canvas.configure(scrollregion=(0, 0, w * 2, h * 2))
         self.canvas.xview_moveto(0)
         self.canvas.yview_moveto(0)
         self.populate_imageselector()
@@ -131,8 +136,7 @@ class EditorWindow(tkinter.Tk):
     def populate_imageselector(self):
         rows = []
         for obj in sorted(SUPPORTED_OBJECTS, key=lambda o: o.name):
-            tile = self.sprites.sprite2tile(obj)
-            rows.append((self.tile_images[tile], obj.name))
+            rows.append((self.tile_images_small[obj.tile()], obj.name.title()))
         self.imageselector.populate(rows)
 
     def destroy(self) -> None:
@@ -152,9 +156,8 @@ class EditorWindow(tkinter.Tk):
             current = current[0]
             if self.canvas_tag_to_tilexy:
                 print("tilexy:", self.canvas_tag_to_tilexy[current])   # XXX
-            selected_object, selected_tile = self.get_selected_tile()
-            if selected_object:
-                self.canvas.itemconfigure(current, image=self.tile_images[selected_tile])
+            if self.imageselector.selected_object:
+                self.canvas.itemconfigure(current, image=self.tile_images[self.imageselector.selected_object.tile()])
 
     def mousebutton_middle(self, event) -> None:
         print("mouse middle", event)  # XXX
@@ -166,7 +169,7 @@ class EditorWindow(tkinter.Tk):
             current = current[0]
             if self.canvas_tag_to_tilexy:
                 print("tilexy:", self.canvas_tag_to_tilexy[current])   # XXX
-            self.canvas.itemconfigure(current, image=self.tile_images[self.sprites.sprite2tile(Objects.EMPTY)])
+            self.canvas.itemconfigure(current, image=self.tile_images[Objects.EMPTY.tile()])
 
     def mouse_motion(self, event) -> None:
         cx = self.canvas.canvasx(event.x)
@@ -178,24 +181,19 @@ class EditorWindow(tkinter.Tk):
                 print("tilexy:", self.canvas_tag_to_tilexy[current])   # XXX
         if event.state & 0x100:
             # left mouse button drag
-            selected_object, selected_tile = self.get_selected_tile()
-            if selected_object:
-                self.canvas.itemconfigure(current, image=self.tile_images[selected_tile])
-        if event.state & 0x400:
+            if self.imageselector.selected_object:
+                self.canvas.itemconfigure(current, image=self.tile_images[self.imageselector.selected_object.tile()])
+        if event.state & 0x400 or event.state & 0x200:
             # right mouse button drag
-            self.canvas.itemconfigure(current, image=self.tile_images[self.sprites.sprite2tile(Objects.EMPTY)])
-
-    def physcoor(self, sx: int, sy: int) -> Tuple[int, int]:
-        return int(sx * self.scalexy), int(sy * self.scalexy)
+            self.canvas.itemconfigure(current, image=self.tile_images[Objects.EMPTY.tile()])
 
     def create_tile_images(self) -> None:
-        source_images = self.sprites.load_sprites(self.c64colors, colorpalette[2], colorpalette[14], colorpalette[13], 0)
+        source_images = tiles.load_sprites(self.c64colors, colorpalette[2], colorpalette[14], colorpalette[13], 0, scale=2)
         self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
-        print(vars(self.tile_images[0]))
-        source_images = self.sprites.load_font(False)
-        self.tile_images.extend([tkinter.PhotoImage(data=image) for image in source_images])
+        source_images = tiles.load_sprites(self.c64colors, colorpalette[2], colorpalette[14], colorpalette[13], 0, scale=1)
+        self.tile_images_small = [tkinter.PhotoImage(data=image) for image in source_images]
 
-    def create_canvas_playfield_and_tilesheet(self, width: int, height: int) -> None:
+    def create_canvas_playfield(self, width: int, height: int) -> None:
         # create the images on the canvas for all tiles (fixed position):
         if width == self.playfield_columns and height == self.playfield_rows:
             return
@@ -206,36 +204,29 @@ class EditorWindow(tkinter.Tk):
         self.canvas.delete(tkinter.ALL)
         self.c_tiles.clear()
         self.canvas_tag_to_tilexy.clear()
-        boulder_tile = self.sprites.sprite2tile(Objects.DIRT2)
-        selected_object, selected_tile = self.get_selected_tile(Objects.EDIT_CROSS)
+        boulder_tile = Objects.DIRT2.tile()
+        selected_tile = (self.imageselector.selected_object or Objects.EDIT_CROSS).tile()
         for y in range(self.playfield_rows):
             for x in range(self.playfield_columns):
-                sx, sy = self.physcoor(*tiles.tile2pixels(x, y))
-                tile = self.canvas.create_image(sx, sy, image=self.tile_images[boulder_tile], activeimage=self.tile_images[selected_tile],
+                sx, sy = tiles.tile2pixels(x, y)
+                tile = self.canvas.create_image(sx * 2, sy * 2, image=self.tile_images[boulder_tile],
+                                                activeimage=self.tile_images[selected_tile],
                                                 anchor=tkinter.NW, tags="tile")
                 self.c_tiles.append(tile)
                 self.canvas_tag_to_tilexy[tile] = (x, y)
-        print(self.canvas_tag_to_tilexy)
-        self.tilesheet = tiles.Tilesheet(self.playfield_columns, self.playfield_rows, self.visible_columns, self.visible_rows)
 
-    def get_selected_tile(self, fallback: GameObject=None) -> Tuple[GameObject, Optional[int]]:
+    def get_selected_object(self, fallback: GameObject=None) -> Optional[GameObject]:
         if not self.imageselector.selected_tile:
-            if fallback:
-                fallback_tile = self.sprites.sprite2tile(fallback)
-                return fallback, fallback_tile
-            return None, None
+            return fallback
         for obj in SUPPORTED_OBJECTS:
             if obj.name == self.imageselector.selected_tile:
-                return obj, self.sprites.sprite2tile(obj)
-        if fallback:
-            fallback_tile = self.sprites.sprite2tile(fallback)
-            return fallback, fallback_tile
-        return None, None
+                return obj
+        return fallback
 
-    def tile_selection_changed(self, selected: str) -> None:
-        selected_object, selected_tile = self.get_selected_tile(Objects.EDIT_CROSS)
+    def tile_selection_changed(self, selected: GameObject) -> None:
+        image = self.tile_images[selected.tile()]
         for c_tile in self.c_tiles:
-            self.canvas.itemconfigure(c_tile, activeimage=self.tile_images[selected_tile])
+            self.canvas.itemconfigure(c_tile, activeimage=image)
 
 
 def start() -> None:

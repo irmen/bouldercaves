@@ -1,9 +1,17 @@
+"""
+Boulder Caves - a Boulder Dash (tm) clone.
+
+Sprite loading and Tile sheet logic.
+
+Written by Irmen de Jong (irmen@razorvine.net)
+License: MIT open-source.
+"""
+
 import array
 import io
 import pkgutil
 from typing import Tuple, Union, Iterable, Sequence
 from PIL import Image
-from .game import GameObject
 
 
 class Tilesheet:
@@ -101,77 +109,69 @@ def tile2pixels(tx: int, ty: int) -> Tuple[int, int]:
     return tx * 16, ty * 16
 
 
-class Sprites:
-    num_sprites = 432
+# sprite image is 432 sprites of 16*16 pixels, 8 per row.
+num_sprites = 432   # after these, the font tiles are placed
 
-    def __init__(self, scalexy: float=1.0) -> None:
-        self.scalexy = scalexy
-        self.tile_image_numcolumns = 0   # set after loading sprites
 
-    def sprite2tile(self, gameobject_or_spritexy: Union[GameObject, Tuple[int, int]], animframe: int=0) -> int:
-        if isinstance(gameobject_or_spritexy, GameObject):
-            if gameobject_or_spritexy.sframes:
-                return gameobject_or_spritexy.spritex + self.tile_image_numcolumns * gameobject_or_spritexy.spritey +\
-                    animframe % gameobject_or_spritexy.sframes
-            return gameobject_or_spritexy.spritex + self.tile_image_numcolumns * gameobject_or_spritexy.spritey
-        return gameobject_or_spritexy[0] + self.tile_image_numcolumns * gameobject_or_spritexy[1] + animframe
+def text2tiles(text: str) -> Sequence[int]:
+    return [num_sprites + ord(c) for c in text]
 
-    def text2tiles(self, text: str) -> Sequence[int]:
-        return [self.num_sprites + ord(c) for c in text]
 
-    def load_sprites(self, c64colors=False, color1: int=0, color2: int=0, color3: int=0, bgcolor: int=0) -> Sequence[bytes]:
-        tiles_filename = "c64_gfx.png" if c64colors else "boulder_rush.png"
-        sprite_src_images = []
-        with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/" + tiles_filename))) as tile_image:
-            if c64colors:
-                tile_image = tile_image.copy().convert('P', 0)
-                palettevalues = tile_image.getpalette()
-                assert 768 - palettevalues.count(0) <= 16, "must be an image with <= 16 colors"
-                palette = [(r, g, b) for r, g, b in zip(palettevalues[0:16 * 3:3], palettevalues[1:16 * 3:3], palettevalues[2:16 * 3:3])]
-                pc1 = palette.index((255, 0, 255))
-                pc2 = palette.index((255, 0, 0))
-                pc3 = palette.index((255, 255, 0))
-                pc4 = palette.index((0, 255, 0))
-                pc_bg = palette.index((0, 0, 0))
-                palette[pc1] = (color2 >> 16, (color2 & 0xff00) >> 8, color2 & 0xff)
-                palette[pc2] = (color1 >> 16, (color1 & 0xff00) >> 8, color1 & 0xff)
-                if color3 < 0x808080:
-                    color3 = 0xffffff
-                palette[pc3] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)
-                palette[pc4] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)
-                palette[pc_bg] = (bgcolor >> 16, (bgcolor & 0xff00) >> 8, bgcolor & 0xff)
-                palettevalues = []
-                for rgb in palette:
-                    palettevalues.extend(rgb)
-                tile_image.putpalette(palettevalues)
-            tile_num = 0
-            self.tile_image_numcolumns = tile_image.width // 16
-            while True:
-                row, col = divmod(tile_num, self.tile_image_numcolumns)
-                if row * 16 >= tile_image.height:
-                    break
-                ci = tile_image.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16))
-                if self.scalexy != 1:
-                    ci = ci.resize((int(16 * self.scalexy), int(16 * self.scalexy)), Image.NONE)
-                out = io.BytesIO()
-                ci.save(out, "png", compress_level=0)
-                sprite_src_images.append(out.getvalue())
-                tile_num += 1
-        if len(sprite_src_images) != self.num_sprites:
-            raise IOError("sprite sheet image should contain {:d} tiles of 16*16 pixels".format(self.num_sprites))
-        return sprite_src_images
+def load_sprites(c64colors=False, color1: int=0, color2: int=0, color3: int=0, bgcolor: int=0, scale: float=1.0) -> Sequence[bytes]:
+    tiles_filename = "c64_gfx.png" if c64colors else "boulder_rush.png"
+    sprite_src_images = []
+    with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/" + tiles_filename))) as tile_image:
+        if c64colors:
+            tile_image = tile_image.copy().convert('P', 0)
+            palettevalues = tile_image.getpalette()
+            assert 768 - palettevalues.count(0) <= 16, "must be an image with <= 16 colors"
+            palette = [(r, g, b) for r, g, b in zip(palettevalues[0:16 * 3:3], palettevalues[1:16 * 3:3], palettevalues[2:16 * 3:3])]
+            pc1 = palette.index((255, 0, 255))
+            pc2 = palette.index((255, 0, 0))
+            pc3 = palette.index((255, 255, 0))
+            pc4 = palette.index((0, 255, 0))
+            pc_bg = palette.index((0, 0, 0))
+            palette[pc1] = (color2 >> 16, (color2 & 0xff00) >> 8, color2 & 0xff)
+            palette[pc2] = (color1 >> 16, (color1 & 0xff00) >> 8, color1 & 0xff)
+            if color3 < 0x808080:
+                color3 = 0xffffff
+            palette[pc3] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)
+            palette[pc4] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)
+            palette[pc_bg] = (bgcolor >> 16, (bgcolor & 0xff00) >> 8, bgcolor & 0xff)
+            palettevalues = []
+            for rgb in palette:
+                palettevalues.extend(rgb)
+            tile_image.putpalette(palettevalues)
+        tile_num = 0
+        if tile_image.width != 128:
+            raise IOError("sprites image width should be 8 sprites of 16 pixels = 128 pixels")
+        while True:
+            row, col = divmod(tile_num, 8)
+            if row * 16 >= tile_image.height:
+                break
+            ci = tile_image.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16))
+            if scale != 1:
+                ci = ci.resize((int(16 * scale), int(16 * scale)), Image.NONE)
+            out = io.BytesIO()
+            ci.save(out, "png", compress_level=0)
+            sprite_src_images.append(out.getvalue())
+            tile_num += 1
+    if len(sprite_src_images) != num_sprites:
+        raise IOError("sprite sheet image should contain {:d} tiles of 16*16 pixels".format(num_sprites))
+    return sprite_src_images
 
-    def load_font(self, small: bool=False) -> Sequence[bytes]:
-        size = 8 if small else 16
-        font_src_images = []
-        with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/font.png"))) as image:
-            for c in range(0, 128):
-                row, col = divmod(c, image.width // 8)       # the font image contains 8x8 pixel tiles
-                if row * 8 > image.height:
-                    break
-                ci = image.crop((col * 8, row * 8, col * 8 + 8, row * 8 + 8))
-                ci = ci.resize((int(size * self.scalexy), int(size * self.scalexy)), Image.NONE)
-                out = io.BytesIO()
-                ci.save(out, "png")
-                font_src_images.append(out.getvalue())
-        return font_src_images
+
+def load_font(scale: float=1.0) -> Sequence[bytes]:
+    font_src_images = []
+    with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/font.png"))) as image:
+        for c in range(0, 128):
+            row, col = divmod(c, image.width // 8)       # the font image contains 8x8 pixel tiles
+            if row * 8 > image.height:
+                break
+            ci = image.crop((col * 8, row * 8, col * 8 + 8, row * 8 + 8))
+            if scale != 1:
+                ci = ci.resize((int(8 * scale), int(8 * scale)), Image.NONE)
+            out = io.BytesIO()
+            ci.save(out, "png")
+            font_src_images.append(out.getvalue())
+    return font_src_images

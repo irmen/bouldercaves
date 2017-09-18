@@ -12,7 +12,7 @@ import random
 import json
 from enum import Enum
 from typing import Callable, List, Optional
-from . import caves, audio, user_data_dir
+from . import caves, audio, user_data_dir, tiles
 
 
 class Direction(Enum):
@@ -75,9 +75,15 @@ class GameObject:
         self.consumable = consumable
         self.spritex = spritex
         self.spritey = spritey
+        self._tile = spritex + 8 * spritey
         self.sframes = sframes
         self.sfps = sfps
         self.anim_end_callback = anim_end_callback
+
+    def tile(self, animframe: int = 0) -> int:
+        if self.sframes:
+            return self._tile + animframe % self.sframes
+        return self._tile
 
 
 class Objects:      # namespace for the game objects in the tilesheet
@@ -120,7 +126,7 @@ class Objects:      # namespace for the game objects in the tilesheet
     # row 5
     HEXPANDINGWALL = g("HEXPANDINGWALL", False, False, True, 0, 5)
     VEXPANDINGWALL = g("VEXPANDINGWALL", False, False, True, 1, 5)
-    ROCKFORD.bomb = (2, 5, 0, 0)
+    ROCKFORD.bomb = g("ROCKFORD.BOMB", False, True, True, 2, 5)
     EXPLOSION = g("EXPLOSION", False, False, False, 3, 5, sframes=5, sfps=10)
     # row 6
     BOMB = g("BOMB", True, False, True, 0, 6)
@@ -182,15 +188,15 @@ class Objects:      # namespace for the game objects in the tilesheet
     # row 25
     SLIME = g("SLIME", False, False, True, 0, 25, sframes=8, sfps=20)
     # row 26 - 30
-    ROCKFORD.blink = (0, 26, 8, 20)
-    ROCKFORD.tap = (0, 27, 8, 20)
-    ROCKFORD.tapblink = (0, 28, 8, 20)
-    ROCKFORD.left = (0, 29, 8, 20)
-    ROCKFORD.right = (0, 30, 8, 20)
+    ROCKFORD.blink = g("ROCKFORD.BLINK", False, True, True, 0, 26, sframes=8, sfps=20)
+    ROCKFORD.tap = g("ROCKFORD.TAP", False, True, True, 0, 27, sframes=8, sfps=20)
+    ROCKFORD.tapblink = g("ROCKFORD.TAPBLINK", False, True, True, 0, 28, sframes=8, sfps=20)
+    ROCKFORD.left = g("ROCKFORD.LEFT", False, True, True, 0, 29, sframes=8, sfps=20)
+    ROCKFORD.right = g("ROCKFORD.RIGHT", False, True, True, 0, 30, sframes=8, sfps=20)
     # row 31
     DIAMOND = g("DIAMOND", True, False, True, 0, 31, sframes=8, sfps=20)
     # row 32
-    ROCKFORD.stirring = (0, 32, 8, 20)
+    ROCKFORD.stirring = g("ROCKFORD.STIRRING", False, True, True, 0, 32, sframes=8, sfps=20)
     # row 33   # ...contains hammer
     # row 34
     MEGABOULDER = g("MEGABOULDER", True, False, True, 0, 34)
@@ -246,10 +252,10 @@ class Objects:      # namespace for the game objects in the tilesheet
     ROCKETDOWN = g("ROCKETDOWN", False, False, True, 7, 45)
     # row 46
     ROCKETLAUNCHER = g("ROCKETLAUNCHER", False, False, True, 0, 46)
-    ROCKFORD.rocketlauncher = (1, 46, 0, 0)
+    ROCKFORD.rocketlauncher = g("ROCKFORD.ROCKETLAUNCHER", False, True, True, 1, 46, sframes=0, sfps=0)
     # row 49 - 50
-    ROCKFORD.pushleft = (0, 49, 8, 20)
-    ROCKFORD.pushright = (0, 50, 8, 20)
+    ROCKFORD.pushleft = g("ROCKFORD.PUSHLEFT", False, True, True, 0, 49, sframes=8, sfps=20)
+    ROCKFORD.pushright = g("ROCKFORD.PUSHRIGHT", False, True, True, 0, 50, sframes=8, sfps=20)
 
 
 class HighScores:
@@ -484,9 +490,8 @@ class GameState:
                 for _ in range(step >> 4):
                     yield direction
 
-    def __init__(self, gfxwindow, sprites) -> None:
+    def __init__(self, gfxwindow) -> None:
         self.gfxwindow = gfxwindow
-        self.sprites = sprites
         self.graphics_frame_counter = 0    # will be set via the update() method
         self.fps = 8      # game logic updates every 1/8 seconds
         self.update_timestep = 1 / self.fps
@@ -629,7 +634,7 @@ class GameState:
         self.cheat_used |= self.start_level_number > 1
         cave = self.caveset.cave(levelnumber)
         self._create_cave(cave.width, cave.height)
-        self.gfxwindow.create_canvas_playfield_and_tilesheet(cave.width, cave.height)
+        self.gfxwindow.create_canvas_playfield(cave.width, cave.height)
         self.level_name = cave.name
         self.level_description = cave.description
         self.intermission = cave.intermission
@@ -1191,7 +1196,7 @@ class GameState:
         #     diamonds="\x0e {:02d}/{:02d}".format(self.diamonds, self.diamonds_needed),
         #     keys=self.keys["diamond"]
         # )).ljust(width)
-        # self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.sprites.text2tiles(text))
+        # self.gfxwindow.tilesheet_score.set_tiles(0, 0, tiles.text2tiles(text))
         # if self.keys["one"]:
         #     self.gfxwindow.tilesheet_score[9, 0] = Objects.KEY1.spritex + Objects.KEY1.spritey * self.gfxwindow.tile_image_numcolumns
         # if self.keys["two"]:
@@ -1202,15 +1207,13 @@ class GameState:
         if self.level < 1:
             # level has not been loaded yet (we're still at the title screen)
             if self.gfxwindow.smallwindow and self.gfxwindow.c64colors:
-                self.gfxwindow.set_scorebar_tiles(0, 0, self.sprites.text2tiles("Welcome to Boulder Caves 'authentic'".center(width)))
+                self.gfxwindow.set_scorebar_tiles(0, 0, tiles.text2tiles("Welcome to Boulder Caves 'authentic'".center(width)))
             else:
-                self.gfxwindow.set_scorebar_tiles(0, 0, self.sprites.text2tiles("Welcome to Boulder Caves".center(width)))
-            self.gfxwindow.set_scorebar_tiles(0, 1, self.sprites.text2tiles("F1\x04New game! F4\x04Scores F9\x04Demo".center(width)))
+                self.gfxwindow.set_scorebar_tiles(0, 0, tiles.text2tiles("Welcome to Boulder Caves".center(width)))
+            self.gfxwindow.set_scorebar_tiles(0, 1, tiles.text2tiles("F1\x04New game! F4\x04Scores F9\x04Demo".center(width)))
             if not self.gfxwindow.smallwindow:
-                left = [self.sprites.sprite2tile(obj)
-                        for obj in [Objects.MEGABOULDER, Objects.FLYINGDIAMOND, Objects.DIAMOND, Objects.ROCKFORD.pushleft]]
-                right = [self.sprites.sprite2tile(obj)
-                         for obj in [Objects.ROCKFORD.pushright, Objects.DIAMOND, Objects.FLYINGDIAMOND, Objects.MEGABOULDER]]
+                left = [Objects.MEGABOULDER.tile(), Objects.FLYINGDIAMOND.tile(), Objects.DIAMOND.tile(), Objects.ROCKFORD.pushleft.tile()]
+                right = [Objects.ROCKFORD.pushright.tile(), Objects.MEGABOULDER.tile(), Objects.FLYINGDIAMOND.tile(), Objects.DIAMOND.tile()]
                 self.gfxwindow.set_scorebar_tiles(0, 0, left)
                 self.gfxwindow.set_scorebar_tiles(0, 1, left)
                 self.gfxwindow.set_scorebar_tiles(width - len(right), 0, right)
@@ -1224,19 +1227,19 @@ class GameState:
             extra=self.diamondvalue_extra,
             diamonds="{:02d}/{:02d}".format(self.diamonds, self.diamonds_needed),
         )).ljust(width)
-        self.gfxwindow.tilesheet_score.set_tiles(0, 0, self.sprites.text2tiles(text))
+        self.gfxwindow.tilesheet_score.set_tiles(0, 0, tiles.text2tiles(text))
         if self.game_status == GameStatus.WON:
-            tiles = self.sprites.text2tiles("\x0e  C O N G R A T U L A T I O N S  \x0e".center(width))
+            line_tiles = tiles.text2tiles("\x0e  C O N G R A T U L A T I O N S  \x0e".center(width))
         elif self.game_status == GameStatus.LOST:
-            tiles = self.sprites.text2tiles("\x0b  G A M E   O V E R  \x0b".center(width))
+            line_tiles = tiles.text2tiles("\x0b  G A M E   O V E R  \x0b".center(width))
         elif self.game_status == GameStatus.PAUSED:
-            tiles = self.sprites.text2tiles("\x08  P A U S E D  \x08".center(width))
+            line_tiles = tiles.text2tiles("\x08  P A U S E D  \x08".center(width))
         else:
             fmt = "Intermission {:s}" if self.intermission else "Cave {:s}"
             if self.game_status == GameStatus.DEMO:
                 fmt += " [Demo]"
-            tiles = self.sprites.text2tiles(fmt.format(self.level_name).center(width))
-        self.gfxwindow.set_scorebar_tiles(0, 1, tiles[:40])  # line 2
+            line_tiles = tiles.text2tiles(fmt.format(self.level_name).center(width))
+        self.gfxwindow.set_scorebar_tiles(0, 1, line_tiles[:40])  # line 2
 
     def fall_sound(self, cell: Cell, pushing: bool=False) -> None:
         if cell.isboulder() or cell.iswall():
@@ -1302,7 +1305,9 @@ class GameState:
             self.draw_single_cell(explosioncell, Objects.GRAVESTONE)
         else:
             self.draw_single_cell(explosioncell, explode_obj)
-        for direction in set(Direction) - {Direction.NOWHERE}:
+        for direction in Direction:
+            if direction == Direction.NOWHERE:
+                continue
             cell = self.cave[explosioncell.x + explosioncell.y * self.width + self._dirxy[direction]]
             if cell.isexplodable():
                 self.explode(cell, Direction.NOWHERE)
