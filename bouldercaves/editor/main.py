@@ -15,13 +15,13 @@ import tkinter.ttk
 import pkgutil
 from typing import Tuple, List, Dict
 from ..gfxwindow import __version__
-from ..caves import colorpalette
+from ..caves import colorpalette, C64Cave
 from ..game import Objects, GameObject
 from .. import tiles
 
 
 class ScrollableImageSelector(tkinter.Frame):
-    def __init__(self, master: tkinter.Widget, listener: 'Editor') -> None:
+    def __init__(self, master: tkinter.Widget, listener: 'EditorWindow') -> None:
         super().__init__(master)
         self.treeview = tkinter.ttk.Treeview(self, columns=("tile",), displaycolumns=("tile",), height="5")
         self.treeview.heading("tile", text="Tile")
@@ -75,11 +75,11 @@ class ScrollableImageSelector(tkinter.Frame):
 
 
 class Cave:
-    def __init__(self, width: int, height: int, editor: 'Editor') -> None:
+    def __init__(self, width: int, height: int, editor: 'EditorWindow') -> None:
         self.width = width
         self.height = height
         self.cells = [(Objects.EMPTY, Objects.EMPTY.tile())] * width * height
-        self.cells_snapshot = []
+        self.cells_snapshot = []   # type: List[Tuple[GameObject, int]]
         self.editor = editor
 
     def __setitem__(self, xy: Tuple[int, int], thing: Tuple[GameObject, int]) -> None:
@@ -165,10 +165,10 @@ class EditorWindow(tkinter.Tk):
         self.imageselector.pack()
         f = tkinter.Frame(lf)
         tkinter.Label(f, text=" Draw: \n(Lmb)").grid(row=0, column=0)
-        self.draw_label = tkinter.Label(f, text="???")
+        self.draw_label = tkinter.Label(f)
         self.draw_label.grid(row=0, column=1)
         tkinter.Label(f, text=" Erase: \n(Rmb)").grid(row=0, column=2)
-        self.erase_label = tkinter.Label(f, text="???")
+        self.erase_label = tkinter.Label(f)
         self.erase_label.grid(row=0, column=3)
         tkinter.Label(f, text="Select for draw,\ndoubleclick to set erase.").grid(row=1, column=0, columnspan=4)
         f.pack(pady=4)
@@ -178,7 +178,10 @@ class EditorWindow(tkinter.Tk):
         tkinter.Label(lf, text="S - make snapshot").pack(anchor=tkinter.W, padx=4)
         tkinter.Label(lf, text="R - restore snapshot").pack(anchor=tkinter.W, padx=4)
         lf.pack(expand=1, fill=tkinter.Y)
+        tkinter.Button(buttonsframe, text="Randomize", command=self.randomize).pack()
+        tkinter.Button(buttonsframe, text="Wipe", command=self.wipe).pack()
         buttonsframe.pack(side=tkinter.LEFT, anchor=tkinter.N)
+        self.buttonsframe = buttonsframe
         self.bind("<KeyPress>", self.keypress)
         self.bind("<KeyRelease>", self.keyrelease)
         self.canvas.bind("<Button-1>", self.mousebutton_left)
@@ -197,20 +200,22 @@ class EditorWindow(tkinter.Tk):
         self.canvas.configure(scrollregion=(0, 0, w * 2, h * 2))
         self.canvas.xview_moveto(0)
         self.canvas.yview_moveto(0)
-        self.init_new_cave()
         self.populate_imageselector()
         self.draw_label.configure(image=self.tile_images[self.imageselector.selected_tile])
         self.erase_label.configure(image=self.tile_images[self.imageselector.selected_erase_tile])
-        self.snapshot()
+        self.wipe(False)
+        self.randomize_initial_values = None   # type: Tuple
 
-    def init_new_cave(self):
-        self.cave = Cave(self.playfield_columns, self.playfield_rows, self)
+    def init_new_cave(self, only_steel_border=False):
+        if not only_steel_border:
+            self.cave = Cave(self.playfield_columns, self.playfield_rows, self)
         steel = (Objects.STEEL, Objects.STEEL.tile())
         self.cave.horiz_line(0, 0, self.playfield_columns, steel)
         self.cave.horiz_line(0, self.playfield_rows - 1, self.playfield_columns, steel)
         self.cave.vert_line(0, 1, self.playfield_rows - 2, steel)
         self.cave.vert_line(self.playfield_columns - 1, 1, self.playfield_rows - 2, steel)
-        self.flood_fill(2, 2, (Objects.DIRT, EDITOR_OBJECTS[Objects.DIRT]))
+        if not only_steel_border:
+            self.flood_fill(2, 2, (Objects.DIRT, EDITOR_OBJECTS[Objects.DIRT]))
 
     def populate_imageselector(self):
         rows = []
@@ -233,7 +238,7 @@ class EditorWindow(tkinter.Tk):
             self.restore()
 
     def keyrelease(self, event) -> None:
-        print("keyrelease", event)  # XXX
+        pass
 
     def mousebutton_left(self, event) -> None:
         self.canvas.focus_set()
@@ -244,7 +249,7 @@ class EditorWindow(tkinter.Tk):
                 self.cave[x, y] = (self.imageselector.selected_object, self.imageselector.selected_tile)
 
     def mousebutton_middle(self, event) -> None:
-        print("mouse middle", event)  # XXX
+        pass
 
     def mousebutton_right(self, event) -> None:
         current = self.canvas.find_withtag(tkinter.CURRENT)
@@ -310,6 +315,7 @@ class EditorWindow(tkinter.Tk):
         target = self.cave[x, y][0]
         if target == thing[0]:
             return
+
         def flood(x, y):
             t = self.cave[x, y][0]
             if t != target:
@@ -319,6 +325,7 @@ class EditorWindow(tkinter.Tk):
             flood(x + 1, y)
             flood(x, y - 1)
             flood(x, y + 1)
+
         flood(x, y)
 
     def snapshot(self) -> None:
@@ -326,6 +333,105 @@ class EditorWindow(tkinter.Tk):
 
     def restore(self) -> None:
         self.cave.restore()
+
+    def wipe(self, confirm=True) -> None:
+        if confirm and not tkinter.messagebox.askokcancel("Confirm", "Wipe cave?", parent=self.buttonsframe):
+            return
+        self.init_new_cave()
+        self.snapshot()
+
+    def randomize(self) -> None:
+        RandomizeDialog(self.buttonsframe, "Randomize Cave", self, self.randomize_initial_values)
+
+    def do_random_fill(self, rseed: int, randomprobs: Tuple[int, int, int, int], randomobjs: Tuple[str, str, str, str]) -> None:
+        randomseeds = [0, rseed]
+        for y in range(1, self.playfield_rows - 1):
+            for x in range(0, self.playfield_columns):
+                objname = Objects.DIRT.name.lower()
+                C64Cave.bdrandom(randomseeds)
+                for randomobj, randomprob in zip(randomobjs, randomprobs):
+                    if randomseeds[0] < randomprob:
+                        objname = randomobj.lower()
+
+                for obj, displaytile in EDITOR_OBJECTS.items():
+                    if obj.name.lower() == objname:
+                        self.cave[x, y] = (obj, displaytile)
+        self.init_new_cave(only_steel_border=True)
+        self.randomize_initial_values = (rseed, randomprobs, randomobjs)
+
+
+class RandomizeDialog(tkinter.simpledialog.Dialog):
+    def __init__(self, parent, title, editor, initial_values):
+        self.editor = editor
+        self.initial_values = initial_values
+        super().__init__(parent=parent, title=title)
+
+    def body(self, master):
+        if not self.initial_values:
+            self.initial_values = (199, (100, 60, 25, 15),
+                                   (Objects.EMPTY.name, Objects.BOULDER.name, Objects.DIAMOND.name, Objects.FIREFLY.name))
+        self.rseed_var = tkinter.IntVar(value=self.initial_values[0])
+        self.rp1_var = tkinter.IntVar(value=self.initial_values[1][0])
+        self.rp2_var = tkinter.IntVar(value=self.initial_values[1][1])
+        self.rp3_var = tkinter.IntVar(value=self.initial_values[1][2])
+        self.rp4_var = tkinter.IntVar(value=self.initial_values[1][3])
+        self.robj1_var = tkinter.StringVar(value=self.initial_values[2][0].title())
+        self.robj2_var = tkinter.StringVar(value=self.initial_values[2][1].title())
+        self.robj3_var = tkinter.StringVar(value=self.initial_values[2][2].title())
+        self.robj4_var = tkinter.StringVar(value=self.initial_values[2][3].title())
+        tkinter.Label(master, text="Fill the cave with randomized stuff, using the C-64 BD randomizer.\n").pack()
+        f = tkinter.Frame(master)
+        tkinter.Label(f, text="Random seed (0-255): ").grid(row=0, column=0)
+        tkinter.Label(f, text="Random probability (0-255): ").grid(row=1, column=0)
+        tkinter.Label(f, text="Random probability (0-255): ").grid(row=2, column=0)
+        tkinter.Label(f, text="Random probability (0-255): ").grid(row=3, column=0)
+        tkinter.Label(f, text="Random probability (0-255): ").grid(row=4, column=0)
+        rseed = tkinter.Entry(f, textvariable=self.rseed_var, width=4, font="monospace")
+        rp1 = tkinter.Entry(f, textvariable=self.rp1_var, width=4, font="monospace")
+        rp2 = tkinter.Entry(f, textvariable=self.rp2_var, width=4, font="monospace")
+        rp3 = tkinter.Entry(f, textvariable=self.rp3_var, width=4, font="monospace")
+        rp4 = tkinter.Entry(f, textvariable=self.rp4_var, width=4, font="monospace")
+        rseed.grid(row=0, column=1)
+        rp1.grid(row=1, column=1)
+        rp2.grid(row=2, column=1)
+        rp3.grid(row=3, column=1)
+        rp4.grid(row=4, column=1)
+        options = sorted([obj.name.title() for obj in EDITOR_OBJECTS])
+        tkinter.OptionMenu(f, self.robj1_var, *options).grid(row=1, column=2, stick=tkinter.W)
+        tkinter.OptionMenu(f, self.robj2_var, *options).grid(row=2, column=2, stick=tkinter.W)
+        tkinter.OptionMenu(f, self.robj3_var, *options).grid(row=3, column=2, stick=tkinter.W)
+        tkinter.OptionMenu(f, self.robj4_var, *options).grid(row=4, column=2, stick=tkinter.W)
+        f.pack()
+        tkinter.Label(master, text="\n\nWARNING: DOING THIS WILL WIPE THE CURRENT CAVE!").pack()
+        return rp1
+
+    def validate(self):
+        try:
+            vs = self.rseed_var.get()
+            v1 = self.rp1_var.get()
+            v2 = self.rp1_var.get()
+            v3 = self.rp1_var.get()
+            v4 = self.rp1_var.get()
+        except tkinter.TclError as x:
+            tkinter.messagebox.showerror("Invalid entry", str(x), parent=self)
+            return False
+        else:
+            if not (0 <= vs <= 255) or not (0 <= v1 <= 255) or not(0 <= v2 <= 255) or not(0 <= v3 <= 255) or not(0 <= v4 <= 255):
+                tkinter.messagebox.showerror("Invalid entry", "One or more of the values is invalid.", parent=self)
+                return False
+        return True
+
+    def apply(self):
+        vs = self.rseed_var.get()
+        v1 = self.rp1_var.get()
+        v2 = self.rp2_var.get()
+        v3 = self.rp3_var.get()
+        v4 = self.rp4_var.get()
+        o1 = self.robj1_var.get()
+        o2 = self.robj2_var.get()
+        o3 = self.robj3_var.get()
+        o4 = self.robj4_var.get()
+        self.editor.do_random_fill(vs, (v1, v2, v3, v4), (o1, o2, o3, o4))
 
 
 def start() -> None:

@@ -637,7 +637,7 @@ class GameState:
         self.cheat_used |= self.start_level_number > 1
         cave = self.caveset.cave(levelnumber)
         self._create_cave(cave.width, cave.height)
-        self.gfxwindow.create_canvas_playfield(cave.width, cave.height)
+        self.gfxwindow.create_canvas_playfield_and_tilesheet(cave.width, cave.height)
         self.level_name = cave.name
         self.level_description = cave.description
         self.intermission = cave.intermission
