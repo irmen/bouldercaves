@@ -474,6 +474,10 @@ class GameState:
         def move_done(self):
             try:
                 self.demo_direction = next(self.demo_moves)
+                if self.demo_direction == Direction.LEFT:
+                    self.lastXdir = Direction.LEFT
+                elif self.demo_direction == Direction.RIGHT:
+                    self.lastXdir = Direction.RIGHT
             except StopIteration:
                 self.demo_finished = True
                 self.demo_direction = Direction.NOWHERE
@@ -678,8 +682,9 @@ class GameState:
         for i, (gobj, direction) in enumerate(cave.map):
             y, x = divmod(i, cave.width)
             self.draw_single(gobj, x, y, initial_direction=direction)
-        self.gfxwindow.create_colored_tiles(cave.bgcolor1, cave.bgcolor2, cave.fgcolor, cave.screencolor)
-        self.gfxwindow.set_screen_colors(cave.bordercolor, cave.screencolor)
+        rgb = cave.colors.rgb()
+        self.gfxwindow.create_colored_tiles(rgb)
+        self.gfxwindow.set_screen_colors(rgb.screen, rgb.border)
 
         def prepare_reveal():
             self.gfxwindow.prepare_reveal()

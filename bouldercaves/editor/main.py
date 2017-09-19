@@ -8,15 +8,16 @@ License: MIT open-source.
 """
 
 import sys
-import random
+import getpass
+import datetime
 import tkinter
 import tkinter.messagebox
 import tkinter.simpledialog
 import tkinter.ttk
 import pkgutil
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Optional
 from ..gfxwindow import __version__
-from ..caves import colorpalette, C64Cave
+from ..caves import colorpalette, C64Cave, Cave as BaseCave, RgbPalette, Palette
 from ..game import Objects, GameObject
 from .. import tiles
 
@@ -88,10 +89,9 @@ class ScrollableImageSelector(tkinter.Frame):
         self.erase_label.configure(image=self.listener.tile_images[self.selected_erase_tile])
 
 
-class Cave:
+class Cave(BaseCave):
     def __init__(self, width: int, height: int, editor: 'EditorWindow') -> None:
-        self.width = width
-        self.height = height
+        super().__init__(0, "", "", width, height)
         self.cells = [(Objects.EMPTY, Objects.EMPTY.tile())] * width * height
         self.cells_snapshot = []   # type: List[Tuple[GameObject, int]]
         self.editor = editor
@@ -161,10 +161,10 @@ class EditorWindow(tkinter.Tk):
             import ctypes
             myappid = 'net.Razorvine.Bouldercaves.editor'  # arbitrary string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-        cf = tkinter.Frame(self)
+        rightframe = tkinter.Frame(self)
+        cf = tkinter.Frame(rightframe)
         w, h = tiles.tile2pixels(self.visible_columns, self.visible_rows)
-        self.canvas = tkinter.Canvas(cf, width=w * 2, height=h * 2, borderwidth=8,
-                                     highlightthickness=6, background="#302010", highlightcolor="#206040")
+        self.canvas = tkinter.Canvas(cf, width=w * 2, height=h * 2, borderwidth=16, background="black", highlightthickness=0)
         self.canvas.grid(row=0, column=0)
         sy = tkinter.Scrollbar(cf, orient=tkinter.VERTICAL, command=self.canvas.yview)
         sx = tkinter.Scrollbar(cf, orient=tkinter.HORIZONTAL, command=self.canvas.xview)
@@ -172,7 +172,26 @@ class EditorWindow(tkinter.Tk):
         self.canvas["yscrollcommand"] = sy.set
         sy.grid(row=0, column=1, sticky=tkinter.N + tkinter.S)
         sx.grid(row=1, column=0, sticky=tkinter.E + tkinter.W)
-        cf.pack(side=tkinter.RIGHT, padx=4, pady=4, fill=tkinter.BOTH, expand=1)
+        cf.pack()
+        f = tkinter.Frame(rightframe)
+        tkinter.Label(f, text="Cave name:").grid(column=0, row=0)
+        tkinter.Label(f, text="Cave description:").grid(column=0, row=1)
+        tkinter.Label(f, text="Author:").grid(column=0, row=2)
+        tkinter.Label(f, text="WWW:").grid(column=0, row=3)
+        tkinter.Label(f, text="Date:").grid(column=0, row=4)
+        self.cavename_var = tkinter.StringVar(value="A: test")
+        self.cavedescr_var = tkinter.StringVar(value="A test cave.")
+        self.caveauthor_var = tkinter.StringVar(value=getpass.getuser())
+        self.cavewww_var = tkinter.StringVar()
+        self.cavedate_var = tkinter.StringVar(value=datetime.datetime.now().date())
+        tkinter.Entry(f, textvariable=self.cavename_var).grid(column=1, row=0)
+        tkinter.Entry(f, textvariable=self.cavedescr_var).grid(column=1, row=1)
+        tkinter.Entry(f, textvariable=self.caveauthor_var).grid(column=1, row=2)
+        tkinter.Entry(f, textvariable=self.cavewww_var).grid(column=1, row=3)
+        tkinter.Entry(f, textvariable=self.cavedate_var).grid(column=1, row=4)
+        f.pack(side=tkinter.LEFT)
+        rightframe.pack(side=tkinter.RIGHT, padx=4, pady=4, fill=tkinter.BOTH, expand=1)
+
         buttonsframe = tkinter.Frame(self)
         lf = tkinter.LabelFrame(buttonsframe, text="Select object")
         self.imageselector = ScrollableImageSelector(lf, self)
@@ -214,8 +233,7 @@ class EditorWindow(tkinter.Tk):
         self.playfield_rows = self.playfield_columns = 0
         self.canvas_tag_to_tilexy = {}      # type: Dict[int, Tuple[int, int]]
         self.c64colors = False
-        self.active_palette = (8, 11, 9, 0)
-        self.create_tile_images(*self.active_palette)
+        self.create_tile_images(Palette().rgb())
         self.playfield_columns = 40
         self.playfield_rows = 22
         self.wipe(False)
@@ -291,12 +309,10 @@ class EditorWindow(tkinter.Tk):
                 # right / middle mouse button drag
                 self.cave[x, y] = (self.imageselector.selected_erase_object, self.imageselector.selected_erase_tile)
 
-    def create_tile_images(self, color1: int, color2: int, color3: int, bgcolor: int) -> None:
-        source_images = tiles.load_sprites(self.c64colors, colorpalette[color1], colorpalette[color2],
-                                           colorpalette[color3], colorpalette[bgcolor], scale=2)
+    def create_tile_images(self, colors: RgbPalette) -> None:
+        source_images = tiles.load_sprites(self.c64colors, colors, scale=2)
         self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
-        source_images = tiles.load_sprites(self.c64colors, colorpalette[color1], colorpalette[color2],
-                                           colorpalette[color3], colorpalette[bgcolor], scale=1)
+        source_images = tiles.load_sprites(self.c64colors, colors, scale=1)
         self.tile_images_small = [tkinter.PhotoImage(data=image) for image in source_images]
 
     def create_canvas_playfield(self, width: int, height: int) -> None:
@@ -363,9 +379,13 @@ class EditorWindow(tkinter.Tk):
         RandomizeDialog(self.buttonsframe, "Randomize Cave", self, self.randomize_initial_values)
 
     def palette_edit(self) -> None:
-        palette = PaletteDialog(self.buttonsframe, "Edit Palette", self, self.active_palette).result
+        original_palette = self.cave.colors.copy()
+        palette = PaletteDialog(self.buttonsframe, "Edit Palette", self, self.cave.colors).result
         if palette:
-            self.active_palette = palette
+            self.cave.colors = palette
+        else:
+            self.cave.colors = original_palette
+            self.apply_new_palette(original_palette.rgb())
 
     def do_random_fill(self, rseed: int, randomprobs: Tuple[int, int, int, int], randomobjs: Tuple[str, str, str, str]) -> None:
         randomseeds = [0, rseed]
@@ -386,36 +406,30 @@ class EditorWindow(tkinter.Tk):
     def c64_colors_switched(self, switch) -> None:
         self.c64random_button.configure(state=tkinter.NORMAL if switch else tkinter.DISABLED)
         self.c64colors = bool(switch)
-        self.create_tile_images(*self.active_palette)
+        self.create_tile_images(self.cave.colors.rgb())
         self.populate_imageselector()
         self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
 
     def c64_colors_randomize(self) -> None:
         if self.c64colors:
-            c1 = random.randint(1, 15)
-            c2 = c3 = c1
-            while c2 == c1:
-                c2 = random.randint(1, 15)
-            while c3 == c1 or c3 == c2:
-                c3 = random.randint(1, 15)
-            c4 = 0
-            self.active_palette = (c1, c2, c3, c4)
-            self.apply_new_palette(*self.active_palette)
+            self.cave.colors.randomize()
+            self.apply_new_palette(self.cave.colors.rgb())
 
-    def apply_new_palette(self, c1, c2, c3, c4):
+    def apply_new_palette(self, colors: RgbPalette) -> None:
         if self.c64colors:
-            self.create_tile_images(c1, c2, c3, c4)
+            self.create_tile_images(colors)
             self.populate_imageselector()
             self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
+            self.canvas.configure(background="#{:06x}".format(colors.border))
 
 
 class RandomizeDialog(tkinter.simpledialog.Dialog):
-    def __init__(self, parent, title, editor, initial_values):
+    def __init__(self, parent, title: str, editor, initial_values: Tuple) -> None:
         self.editor = editor
         self.initial_values = initial_values
         super().__init__(parent=parent, title=title)
 
-    def body(self, master):
+    def body(self, master: tkinter.Widget) -> tkinter.Widget:
         if not self.initial_values:
             self.initial_values = (199, (100, 60, 25, 15),
                                    (Objects.EMPTY.name, Objects.BOULDER.name, Objects.DIAMOND.name, Objects.FIREFLY.name))
@@ -454,7 +468,7 @@ class RandomizeDialog(tkinter.simpledialog.Dialog):
         tkinter.Label(master, text="\n\nWARNING: DOING THIS WILL WIPE THE CURRENT CAVE!").pack()
         return rp1
 
-    def validate(self):
+    def validate(self) -> bool:
         try:
             vs = self.rseed_var.get()
             v1 = self.rp1_var.get()
@@ -470,7 +484,7 @@ class RandomizeDialog(tkinter.simpledialog.Dialog):
                 return False
         return True
 
-    def apply(self):
+    def apply(self) -> None:
         vs = self.rseed_var.get()
         v1 = self.rp1_var.get()
         v2 = self.rp2_var.get()
@@ -484,42 +498,48 @@ class RandomizeDialog(tkinter.simpledialog.Dialog):
 
 
 class PaletteDialog(tkinter.simpledialog.Dialog):
-    def __init__(self, parent, title, editor, colors):
+    def __init__(self, parent, title: str, editor, colors: Palette) -> None:
         self.editor = editor
         self.colors = colors
-        self.result = None
+        self.result = None  # type: Palette
         super().__init__(parent=parent, title=title)
 
-    def body(self, master):
-        self.color_vars = []
-        self.color_selectors = []
-        for colornum, colorp in enumerate(self.colors):
-            f = tkinter.Frame(master)
-            color_var = tkinter.IntVar(value=colorp)
-            self.color_vars.append(color_var)
-            tkinter.Label(f, text="Color {:d}: ".format(colornum +1)).grid(row=0, column=0)
-            rf = tkinter.Frame(f)
-            colorbuttons = []
+    def body(self, master: tkinter.Widget) -> Optional[tkinter.Widget]:
+        self.color_vars = {}   # type: Dict[str, tkinter.Variable]
+        colors = [("fg1", self.colors.fg1), ("fg2", self.colors.fg2), ("fg3", self.colors.fg3),
+                  ("amoeba", self.colors.amoeba), ("slime", self.colors.slime),
+                  ("screen", self.colors.screen), ("border", self.colors.border)]
+        for colornum, (name, value) in enumerate(colors):
+            color_var = tkinter.IntVar(value=value)
+            self.color_vars[name] = color_var
+            tkinter.Label(master, text="{:s} color: ".format(name.title())).grid(row=colornum, sticky=tkinter.E)
+            rf = tkinter.Frame(master)
             for num, color in enumerate(colorpalette):
                 tkcolor = "#{:06x}".format(color)
                 rb = tkinter.Radiobutton(rf, variable=color_var, indicatoron=False, value=num,
                                          activebackground=tkcolor, command=self.color_chosen,
                                          offrelief=tkinter.FLAT, bd=5, bg=tkcolor, selectcolor=tkcolor, width=2, height=1)
                 rb.pack(side=tkinter.LEFT)
-                if num == colorp:
+                if num == value:
                     rb.select()
-                colorbuttons.append(rb)
-            self.color_selectors.append(colorbuttons)
-            rf.grid(row=0, column=1, pady=4)
-            f.pack()
+            rf.grid(row=colornum, column=1, pady=4, sticky=tkinter.W)
         return None
 
-    def color_chosen(self):
-        palette = tuple(v.get() for v in self.color_vars)
-        self.editor.apply_new_palette(*palette)
+    def color_chosen(self) -> None:
+        self.editor.apply_new_palette(self.palette.rgb())
 
-    def apply(self):
-        self.result = tuple(v.get() for v in self.color_vars)
+    def apply(self) -> None:
+        self.result = self.palette
+
+    @property
+    def palette(self) -> Palette:
+        return Palette(self.color_vars["fg1"].get(),
+                       self.color_vars["fg2"].get(),
+                       self.color_vars["fg3"].get(),
+                       self.color_vars["amoeba"].get(),
+                       self.color_vars["slime"].get(),
+                       self.color_vars["screen"].get(),
+                       self.color_vars["border"].get())
 
 
 def start() -> None:

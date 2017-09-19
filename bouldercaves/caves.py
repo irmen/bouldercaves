@@ -8,6 +8,8 @@ Written by Irmen de Jong (irmen@razorvine.net)
 License: MIT open-source.
 """
 
+import random
+import datetime
 from typing import Sequence, List, Tuple
 
 
@@ -215,11 +217,63 @@ colorpalette = (  # this is a lighter Commodore-64 palette
 )
 
 
+class Palette:
+    def __init__(self, fg1: int=8, fg2: int=11, fg3: int=1, amoeba: int=5, slime: int=6, screen: int=0, border: int=0) -> None:
+        self.fg1 = fg1
+        self.fg2 = fg2
+        self.fg3 = fg3
+        self.amoeba = amoeba
+        self.slime = slime
+        self.screen = screen
+        self.border = border
+
+    def __str__(self):
+        return "<Palette fg1={fg1}, fg2={fg2}, fg3={fg3}, amoeba={amoeba}, slime={slime}, screen={screen}, border={border}>"\
+            .format(**vars(self))
+
+    def copy(self) -> 'Palette':
+        return Palette(self.fg1, self.fg2, self.fg3, self.amoeba, self.slime, self.screen, self.border)
+
+    def rgb(self) -> 'RgbPalette':
+        return RgbPalette(self)
+
+    def randomize(self) -> None:
+        available = list(range(1, len(colorpalette)))
+        self.fg1 = random.choice(available)
+        available.remove(self.fg1)
+        self.fg2 = random.choice(available)
+        available.remove(self.fg2)
+        self.fg3 = random.choice(available)
+        available.remove(self.fg3)
+        self.slime = random.choice(available)
+        available.remove(self.slime)
+        self.amoeba = random.choice(available)
+        available.remove(self.amoeba)
+        self.screen = self.border = 0
+
+
+class RgbPalette:
+    def __init__(self, palette: Palette=None) -> None:
+        if palette:
+            self.fg1 = colorpalette[palette.fg1]
+            self.fg2 = colorpalette[palette.fg2]
+            self.fg3 = colorpalette[palette.fg3]
+            self.amoeba = colorpalette[palette.amoeba]
+            self.slime = colorpalette[palette.slime]
+            self.screen = colorpalette[palette.screen]
+            self.border = colorpalette[palette.border]
+        else:
+            self.fg1 = self.fg2 = self.fg3 = self.amoeba = self.slime = self.screen = self.border = 0
+
+
 class Cave:
     def __init__(self, index: int, name: str, description: str, width: int, height: int) -> None:
         self.index = index
         self.name = name
         self.description = description
+        self.author = ""
+        self.www = ""
+        self.date = str(datetime.datetime.now().date())
         self.intermission = False
         self.width = width
         self.height = height
@@ -232,11 +286,7 @@ class Cave:
         self.amoebamaxsize = 0
         self.slime_permeability = 0
         self.time = 0
-        self.bgcolor1 = 0
-        self.bgcolor2 = 0
-        self.fgcolor = 0
-        self.bordercolor = 0
-        self.screencolor = 0
+        self.colors = Palette()
 
 
 class C64Cave(Cave):
@@ -256,8 +306,8 @@ class C64Cave(Cave):
         cave.randomseed = data[0x04]
         cave.diamonds_needed = data[0x09]
         cave.time = data[0x0e]
-        cave.bgcolor1 = colorpalette[data[0x13]]
-        cave.bgcolor2 = colorpalette[data[0x14]]
+        cave.fgcolor1 = colorpalette[data[0x13]]
+        cave.fgcolor2 = colorpalette[data[0x14]]
         cave.fgcolor = colorpalette[data[0x15]]
         cave.random_objects = data[0x18], data[0x19], data[0x1a], data[0x1b]
         cave.random_probabilities = data[0x1c], data[0x1d], data[0x1e], data[0x1f]
@@ -422,11 +472,13 @@ class CaveSet:
         cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)
         cave.time = bdcff.cavetime
         cave.slime_permeability = bdcff.slimepermeability
-        cave.bordercolor = colorpalette[bdcff.color_border]
-        cave.screencolor = colorpalette[bdcff.color_screen]
-        cave.bgcolor1 = colorpalette[bdcff.color_fg1]
-        cave.bgcolor2 = colorpalette[bdcff.color_fg2]
-        cave.fgcolor = colorpalette[bdcff.color_fg3]
+        cave.colors.fg1 = bdcff.color_fg1
+        cave.colors.fg2 = bdcff.color_fg2
+        cave.colors.fg3 = bdcff.color_fg3
+        cave.colors.amoeba = bdcff.color_amoeba
+        cave.colors.slime = bdcff.color_slime
+        cave.colors.screen = bdcff.color_screen if bdcff.color_screen >= 0 else 0
+        cave.colors.border = bdcff.color_border if bdcff.color_border >= 0 else 0
         # convert the bdcff map
         from .game import Objects, Direction
         conversion = {

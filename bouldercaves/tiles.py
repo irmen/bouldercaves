@@ -12,6 +12,7 @@ import io
 import pkgutil
 from typing import Tuple, Union, Iterable, Sequence
 from PIL import Image
+from .caves import Cave, colorpalette, RgbPalette
 
 
 class Tilesheet:
@@ -117,7 +118,7 @@ def text2tiles(text: str) -> Sequence[int]:
     return [num_sprites + ord(c) for c in text]
 
 
-def load_sprites(c64colors=False, color1: int=0, color2: int=0, color3: int=0, bgcolor: int=0, scale: float=1.0) -> Sequence[bytes]:
+def load_sprites(c64colors=False, colors: RgbPalette=None, scale: float=1.0) -> Sequence[bytes]:
     tiles_filename = "c64_gfx.png" if c64colors else "boulder_rush.png"
     sprite_src_images = []
     with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/" + tiles_filename))) as tile_image:
@@ -126,16 +127,18 @@ def load_sprites(c64colors=False, color1: int=0, color2: int=0, color3: int=0, b
             palettevalues = tile_image.getpalette()
             assert 768 - palettevalues.count(0) <= 16, "must be an image with <= 16 colors"
             palette = [(r, g, b) for r, g, b in zip(palettevalues[0:16 * 3:3], palettevalues[1:16 * 3:3], palettevalues[2:16 * 3:3])]
-            pc1 = palette.index((255, 0, 255))
-            pc2 = palette.index((255, 0, 0))
-            pc3 = palette.index((255, 255, 0))
-            pc4 = palette.index((0, 255, 0))
-            pc_bg = palette.index((0, 0, 0))
-            palette[pc1] = (color2 >> 16, (color2 & 0xff00) >> 8, color2 & 0xff)
-            palette[pc2] = (color1 >> 16, (color1 & 0xff00) >> 8, color1 & 0xff)
-            palette[pc3] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)
-            palette[pc4] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)
-            palette[pc_bg] = (bgcolor >> 16, (bgcolor & 0xff00) >> 8, bgcolor & 0xff)
+            pc1 = palette.index((255, 0, 255))      # purple, foreground 1
+            pc2 = palette.index((255, 0, 0))        # red, foreground 2
+            pc3 = palette.index((255, 255, 0))      # yellow, foreground 3 (highlight)
+            pc4 = palette.index((0, 255, 0))        # green, amoeba color
+            pc5 = palette.index((0, 0, 255))        # blue, slime color
+            pc_bg = palette.index((0, 0, 0))        # black, background color
+            palette[pc1] = (colors.fg1 >> 16, (colors.fg1 & 0xff00) >> 8, colors.fg1 & 0xff)
+            palette[pc2] = (colors.fg2 >> 16, (colors.fg2 & 0xff00) >> 8, colors.fg2 & 0xff)
+            palette[pc3] = (colors.fg3 >> 16, (colors.fg3 & 0xff00) >> 8, colors.fg3 & 0xff)
+            palette[pc4] = (colors.amoeba >> 16, (colors.amoeba & 0xff00) >> 8, colors.amoeba & 0xff)
+            palette[pc5] = (colors.slime >> 16, (colors.slime & 0xff00) >> 8, colors.slime & 0xff)
+            palette[pc_bg] = (colors.screen >> 16, (colors.screen & 0xff00) >> 8, colors.screen & 0xff)
             palettevalues = []
             for rgb in palette:
                 palettevalues.extend(rgb)

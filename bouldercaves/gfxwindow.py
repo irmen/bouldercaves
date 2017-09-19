@@ -19,7 +19,7 @@ import time
 import getpass
 from typing import Tuple, Sequence, List, Iterable, Callable
 from .game import GameState, Objects, GameObject, Direction, GameStatus, HighScores
-from .caves import colorpalette
+from .caves import colorpalette, Palette, RgbPalette
 from . import audio, synthsamples, tiles
 
 __version__ = "2.7"
@@ -194,16 +194,12 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.cheat_skip_level()
         elif event.keysym == "F8":
             # choose a random color scheme (only works when using retro C-64 colors)
-            c1 = random.randint(1, 15)
-            c2 = c3 = c1
-            while c2 == c1:
-                c2 = random.randint(1, 15)
-            while c3 == c1 or c3 == c2:
-                c3 = random.randint(1, 15)
-            c4 = 0
-            print("random colors:", c1, c2, c3, c4)
-            self.create_colored_tiles(colorpalette[c1], colorpalette[c2], colorpalette[c3], colorpalette[c4])
-            self.set_screen_colors(0, colorpalette[c4])
+            colors = Palette()
+            colors.randomize()
+            print("random colors:", colors)
+            rgb = colors.rgb()
+            self.create_colored_tiles(rgb)
+            self.set_screen_colors(rgb.screen, rgb.border)
             self.tilesheet.all_dirty()
         elif event.keysym == "F4":
             self.gamestate.show_highscores()
@@ -297,14 +293,15 @@ class BoulderWindow(tkinter.Tk):
         for index, tile in self.tilesheet.dirty():
             self.canvas.itemconfigure(self.c_tiles[index], image=self.tile_images[tile])
 
-    def create_colored_tiles(self, color1: int, color2: int, color3: int, screencolor: int) -> None:
+    def create_colored_tiles(self, colors: RgbPalette) -> None:
         if self.c64colors:
-            source_images = tiles.load_sprites(self.c64colors, color1, color2, color3, screencolor, scale=self.scalexy)
+            source_images = tiles.load_sprites(self.c64colors, colors, scale=self.scalexy)
             for i, image in enumerate(source_images):
                 self.tile_images[i] = tkinter.PhotoImage(data=image)
 
     def create_tile_images(self) -> None:
-        source_images = tiles.load_sprites(self.c64colors, colorpalette[2], colorpalette[14], colorpalette[13], 0, scale=self.scalexy)
+        initial_palette = Palette(2, 4, 13, 5, 6)
+        source_images = tiles.load_sprites(self.c64colors, initial_palette.rgb(), scale=self.scalexy)
         self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
         source_images = tiles.load_font(self.scalexy if self.smallwindow else 2 * self.scalexy)
         self.tile_images.extend([tkinter.PhotoImage(data=image) for image in source_images])
@@ -339,9 +336,9 @@ class BoulderWindow(tkinter.Tk):
                 self.cscore_tiles.append(tile)
         self.tilesheet = tiles.Tilesheet(self.playfield_columns, self.playfield_rows, self.visible_columns, self.visible_rows)
 
-    def set_screen_colors(self, bordercolor: int, screencolor: int) -> None:
-        self.configure(background="#{:06x}".format(bordercolor))
-        self.canvas.configure(background="#{:06x}".format(screencolor))
+    def set_screen_colors(self, screencolorrgb: int, bordercolorrgb: int) -> None:
+        self.configure(background="#{:06x}".format(bordercolorrgb))
+        self.canvas.configure(background="#{:06x}".format(screencolorrgb))
 
     def set_tile(self, x: int, y: int, obj: GameObject) -> None:
         self.tilesheet[x, y] = obj.tile()

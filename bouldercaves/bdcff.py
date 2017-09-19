@@ -53,8 +53,8 @@ class BdcffParser:
             colors = [c64colors.index(c.lower()) for c in self.properties.pop("colors").split()]
             self.color_border = 0
             self.color_screen = 0
-            self.color_amoeba = 0   # not supported
-            self.color_slime = 0    # not supported
+            self.color_amoeba = -1
+            self.color_slime = -1
             if len(colors) == 3:
                 self.color_fg1, self.color_fg2, self.color_fg3 = colors
             elif len(colors) == 5:
