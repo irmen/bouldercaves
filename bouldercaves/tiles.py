@@ -133,8 +133,6 @@ def load_sprites(c64colors=False, color1: int=0, color2: int=0, color3: int=0, b
             pc_bg = palette.index((0, 0, 0))
             palette[pc1] = (color2 >> 16, (color2 & 0xff00) >> 8, color2 & 0xff)
             palette[pc2] = (color1 >> 16, (color1 & 0xff00) >> 8, color1 & 0xff)
-            if color3 < 0x808080:
-                color3 = 0xffffff
             palette[pc3] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)
             palette[pc4] = (color3 >> 16, (color3 & 0xff00) >> 8, color3 & 0xff)
             palette[pc_bg] = (bgcolor >> 16, (bgcolor & 0xff00) >> 8, bgcolor & 0xff)

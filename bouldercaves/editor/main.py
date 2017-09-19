@@ -198,7 +198,7 @@ class EditorWindow(tkinter.Tk):
         c64_check.grid(column=0, row=0)
         self.c64random_button = tkinter.Button(lf, text="Random", state=tkinter.DISABLED, command=self.c64_colors_randomize)
         self.c64random_button.grid(column=0, row=1)
-        tkinter.Button(lf, text="Edit").grid(column=1, row=1)
+        tkinter.Button(lf, text="Edit", command=self.palette_edit).grid(column=1, row=1)
         lf.pack(fill=tkinter.X, pady=4)
         buttonsframe.pack(side=tkinter.LEFT, anchor=tkinter.N)
         self.buttonsframe = buttonsframe
@@ -211,10 +211,11 @@ class EditorWindow(tkinter.Tk):
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.c_tiles = []      # type: List[str]
         self.tile_images = []  # type: List[tkinter.PhotoImage]
-        self.c64colors = False
         self.playfield_rows = self.playfield_columns = 0
         self.canvas_tag_to_tilexy = {}      # type: Dict[int, Tuple[int, int]]
-        self.create_tile_images(8, 11, 9, 0)
+        self.c64colors = False
+        self.active_palette = (8, 11, 9, 0)
+        self.create_tile_images(*self.active_palette)
         self.playfield_columns = 40
         self.playfield_rows = 22
         self.wipe(False)
@@ -291,9 +292,11 @@ class EditorWindow(tkinter.Tk):
                 self.cave[x, y] = (self.imageselector.selected_erase_object, self.imageselector.selected_erase_tile)
 
     def create_tile_images(self, color1: int, color2: int, color3: int, bgcolor: int) -> None:
-        source_images = tiles.load_sprites(self.c64colors, colorpalette[color1], colorpalette[color2], colorpalette[color3], bgcolor, scale=2)
+        source_images = tiles.load_sprites(self.c64colors, colorpalette[color1], colorpalette[color2],
+                                           colorpalette[color3], colorpalette[bgcolor], scale=2)
         self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
-        source_images = tiles.load_sprites(self.c64colors, colorpalette[color1], colorpalette[color2], colorpalette[color3], bgcolor, scale=1)
+        source_images = tiles.load_sprites(self.c64colors, colorpalette[color1], colorpalette[color2],
+                                           colorpalette[color3], colorpalette[bgcolor], scale=1)
         self.tile_images_small = [tkinter.PhotoImage(data=image) for image in source_images]
 
     def create_canvas_playfield(self, width: int, height: int) -> None:
@@ -359,6 +362,11 @@ class EditorWindow(tkinter.Tk):
     def randomize(self) -> None:
         RandomizeDialog(self.buttonsframe, "Randomize Cave", self, self.randomize_initial_values)
 
+    def palette_edit(self) -> None:
+        palette = PaletteDialog(self.buttonsframe, "Edit Palette", self, self.active_palette).result
+        if palette:
+            self.active_palette = palette
+
     def do_random_fill(self, rseed: int, randomprobs: Tuple[int, int, int, int], randomobjs: Tuple[str, str, str, str]) -> None:
         randomseeds = [0, rseed]
         for y in range(1, self.playfield_rows - 1):
@@ -378,7 +386,7 @@ class EditorWindow(tkinter.Tk):
     def c64_colors_switched(self, switch) -> None:
         self.c64random_button.configure(state=tkinter.NORMAL if switch else tkinter.DISABLED)
         self.c64colors = bool(switch)
-        self.create_tile_images(8, 11, 9, 0)
+        self.create_tile_images(*self.active_palette)
         self.populate_imageselector()
         self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
 
@@ -391,7 +399,11 @@ class EditorWindow(tkinter.Tk):
             while c3 == c1 or c3 == c2:
                 c3 = random.randint(1, 15)
             c4 = 0
-            print("random colors:", c1, c2, c3, c4)   # @todo store these on the cave config (and make them editable)
+            self.active_palette = (c1, c2, c3, c4)
+            self.apply_new_palette(*self.active_palette)
+
+    def apply_new_palette(self, c1, c2, c3, c4):
+        if self.c64colors:
             self.create_tile_images(c1, c2, c3, c4)
             self.populate_imageselector()
             self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
@@ -469,6 +481,45 @@ class RandomizeDialog(tkinter.simpledialog.Dialog):
         o3 = self.robj3_var.get()
         o4 = self.robj4_var.get()
         self.editor.do_random_fill(vs, (v1, v2, v3, v4), (o1, o2, o3, o4))
+
+
+class PaletteDialog(tkinter.simpledialog.Dialog):
+    def __init__(self, parent, title, editor, colors):
+        self.editor = editor
+        self.colors = colors
+        self.result = None
+        super().__init__(parent=parent, title=title)
+
+    def body(self, master):
+        self.color_vars = []
+        self.color_selectors = []
+        for colornum, colorp in enumerate(self.colors):
+            f = tkinter.Frame(master)
+            color_var = tkinter.IntVar(value=colorp)
+            self.color_vars.append(color_var)
+            tkinter.Label(f, text="Color {:d}: ".format(colornum +1)).grid(row=0, column=0)
+            rf = tkinter.Frame(f)
+            colorbuttons = []
+            for num, color in enumerate(colorpalette):
+                tkcolor = "#{:06x}".format(color)
+                rb = tkinter.Radiobutton(rf, variable=color_var, indicatoron=False, value=num,
+                                         activebackground=tkcolor, command=self.color_chosen,
+                                         offrelief=tkinter.FLAT, bd=5, bg=tkcolor, selectcolor=tkcolor, width=2, height=1)
+                rb.pack(side=tkinter.LEFT)
+                if num == colorp:
+                    rb.select()
+                colorbuttons.append(rb)
+            self.color_selectors.append(colorbuttons)
+            rf.grid(row=0, column=1, pady=4)
+            f.pack()
+        return None
+
+    def color_chosen(self):
+        palette = tuple(v.get() for v in self.color_vars)
+        self.editor.apply_new_palette(*palette)
+
+    def apply(self):
+        self.result = tuple(v.get() for v in self.color_vars)
 
 
 def start() -> None:
