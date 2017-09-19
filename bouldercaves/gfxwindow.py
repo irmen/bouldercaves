@@ -523,7 +523,13 @@ def start(sargs: Sequence[str]=None) -> None:
     ap.add_argument("-n", "--nosound", help="don't use sound", action="store_true")
     ap.add_argument("-y", "--synth", help="use synthesized sounds instead of samples", action="store_true")
     ap.add_argument("-l", "--level", help="select start level (cave number). When using this, no highscores will be recorded.", type=int, default=1)
+    ap.add_argument("-e", "--editor", help="run the cave editor instead of the game.", action="store_true")
     args = ap.parse_args(sargs)
+
+    if args.editor:
+        from .editor import main
+        main.start()
+        raise SystemExit
 
     if args.nosound:
         args.synth = False

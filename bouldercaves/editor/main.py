@@ -8,6 +8,7 @@ License: MIT open-source.
 """
 
 import sys
+import random
 import tkinter
 import tkinter.messagebox
 import tkinter.simpledialog
@@ -23,6 +24,7 @@ from .. import tiles
 class ScrollableImageSelector(tkinter.Frame):
     def __init__(self, master: tkinter.Widget, listener: 'EditorWindow') -> None:
         super().__init__(master)
+        self.listener = listener
         self.treeview = tkinter.ttk.Treeview(self, columns=("tile",), displaycolumns=("tile",), height="5")
         self.treeview.heading("tile", text="Tile")
         self.treeview.column("#0", stretch=False, minwidth=40, width=40)
@@ -38,7 +40,15 @@ class ScrollableImageSelector(tkinter.Frame):
         self.selected_tile = Objects.BOULDER.tile()
         self.selected_erase_object = Objects.EMPTY
         self.selected_erase_tile = Objects.EMPTY.tile()
-        self.listener = listener
+        f = tkinter.Frame(master)
+        tkinter.Label(f, text=" Draw: \n(Lmb)").grid(row=0, column=0)
+        self.draw_label = tkinter.Label(f)
+        self.draw_label.grid(row=0, column=1)
+        tkinter.Label(f, text=" Erase: \n(Rmb)").grid(row=0, column=2)
+        self.erase_label = tkinter.Label(f)
+        self.erase_label.grid(row=0, column=3)
+        tkinter.Label(f, text="Select for draw,\ndoubleclick to set erase.").grid(row=1, column=0, columnspan=4)
+        f.pack(side=tkinter.BOTTOM, pady=4)
 
     def on_selected_doubleclick(self, event) -> None:
         item = self.treeview.focus()
@@ -50,6 +60,7 @@ class ScrollableImageSelector(tkinter.Frame):
             if obj.name.lower() == selected_name:
                 self.selected_erase_object = obj
                 self.selected_erase_tile = displaytile
+                self.erase_label.configure(image=self.listener.tile_images[self.selected_erase_tile])
                 self.listener.tile_erase_selection_changed(obj, displaytile)
                 break
 
@@ -63,6 +74,7 @@ class ScrollableImageSelector(tkinter.Frame):
             if obj.name.lower() == selected_name:
                 self.selected_object = obj
                 self.selected_tile = displaytile
+                self.draw_label.configure(image=self.listener.tile_images[self.selected_tile])
                 self.listener.tile_selection_changed(obj, displaytile)
                 break
 
@@ -72,6 +84,8 @@ class ScrollableImageSelector(tkinter.Frame):
         for image, name in rows:
             self.treeview.insert("", tkinter.END, image=image, values=(name,))
         self.treeview.configure(height=min(16, len(rows)))
+        self.draw_label.configure(image=self.listener.tile_images[self.selected_tile])
+        self.erase_label.configure(image=self.listener.tile_images[self.selected_erase_tile])
 
 
 class Cave:
@@ -115,7 +129,7 @@ EDITOR_OBJECTS = {
     Objects.BRICK: Objects.BRICK.tile(),
     Objects.BUTTERFLY: Objects.BUTTERFLY.tile(2),
     Objects.DIAMOND: Objects.DIAMOND.tile(),
-    Objects.DIRT: Objects.DIRT2.tile(),
+    Objects.DIRT: Objects.DIRT.tile(),
     Objects.EMPTY: Objects.EMPTY.tile(),
     Objects.FIREFLY: Objects.FIREFLY.tile(1),
     Objects.HEXPANDINGWALL: Objects.HEXPANDINGWALL.tile(),
@@ -150,7 +164,7 @@ class EditorWindow(tkinter.Tk):
         cf = tkinter.Frame(self)
         w, h = tiles.tile2pixels(self.visible_columns, self.visible_rows)
         self.canvas = tkinter.Canvas(cf, width=w * 2, height=h * 2, borderwidth=8,
-                                     highlightthickness=6, background="red", highlightcolor="#206040")
+                                     highlightthickness=6, background="#302010", highlightcolor="#206040")
         self.canvas.grid(row=0, column=0)
         sy = tkinter.Scrollbar(cf, orient=tkinter.VERTICAL, command=self.canvas.yview)
         sx = tkinter.Scrollbar(cf, orient=tkinter.HORIZONTAL, command=self.canvas.xview)
@@ -162,24 +176,30 @@ class EditorWindow(tkinter.Tk):
         buttonsframe = tkinter.Frame(self)
         lf = tkinter.LabelFrame(buttonsframe, text="Select object")
         self.imageselector = ScrollableImageSelector(lf, self)
-        self.imageselector.pack()
-        f = tkinter.Frame(lf)
-        tkinter.Label(f, text=" Draw: \n(Lmb)").grid(row=0, column=0)
-        self.draw_label = tkinter.Label(f)
-        self.draw_label.grid(row=0, column=1)
-        tkinter.Label(f, text=" Erase: \n(Rmb)").grid(row=0, column=2)
-        self.erase_label = tkinter.Label(f)
-        self.erase_label.grid(row=0, column=3)
-        tkinter.Label(f, text="Select for draw,\ndoubleclick to set erase.").grid(row=1, column=0, columnspan=4)
-        f.pack(pady=4)
-        lf.pack(expand=1, fill=tkinter.Y)
+        self.imageselector.pack(padx=4, pady=4)
+
+        lf.pack(expand=1, fill=tkinter.BOTH)
         lf = tkinter.LabelFrame(buttonsframe, text="Keyboard commands")
         tkinter.Label(lf, text="F - flood fill").pack(anchor=tkinter.W, padx=4)
         tkinter.Label(lf, text="S - make snapshot").pack(anchor=tkinter.W, padx=4)
         tkinter.Label(lf, text="R - restore snapshot").pack(anchor=tkinter.W, padx=4)
-        lf.pack(expand=1, fill=tkinter.Y)
-        tkinter.Button(buttonsframe, text="Randomize", command=self.randomize).pack()
-        tkinter.Button(buttonsframe, text="Wipe", command=self.wipe).pack()
+        lf.pack(fill=tkinter.X, pady=4)
+        lf = tkinter.LabelFrame(buttonsframe, text="Misc. edit")
+        tkinter.Button(lf, text="Randomize", command=self.randomize).grid(column=0, row=0)
+        tkinter.Button(lf, text="Wipe", command=self.wipe).grid(column=1, row=0)
+        tkinter.Label(lf, text="Load...@todo").grid(column=0, row=1)        # @todo
+        tkinter.Label(lf, text="Save...@todo").grid(column=0, row=2)        # @todo
+        tkinter.Label(lf, text="Playtest...@todo").grid(column=0, row=3)    # @todo
+        lf.pack(fill=tkinter.X, pady=4)
+        lf = tkinter.LabelFrame(buttonsframe, text="C-64 colors")
+        c64colors_var = tkinter.IntVar()
+        c64_check = tkinter.Checkbutton(lf, text="enable palette", variable=c64colors_var,
+                                        selectcolor=self.cget("background"), command=lambda: self.c64_colors_switched(c64colors_var.get()))
+        c64_check.grid(column=0, row=0)
+        self.c64random_button = tkinter.Button(lf, text="randomize", state=tkinter.DISABLED, command=self.c64_colors_randomize)
+        self.c64random_button.grid(column=0, row=1)
+        tkinter.Button(lf, text="edit").grid(column=1, row=1)
+        lf.pack(fill=tkinter.X, pady=4)
         buttonsframe.pack(side=tkinter.LEFT, anchor=tkinter.N)
         self.buttonsframe = buttonsframe
         self.bind("<KeyPress>", self.keypress)
@@ -194,16 +214,16 @@ class EditorWindow(tkinter.Tk):
         self.c64colors = False
         self.playfield_rows = self.playfield_columns = 0
         self.canvas_tag_to_tilexy = {}      # type: Dict[int, Tuple[int, int]]
-        self.create_tile_images()
-        self.create_canvas_playfield(40, 22)
+        self.create_tile_images(8, 11, 9, 0)
+        self.playfield_columns = 40
+        self.playfield_rows = 22
+        self.wipe(False)
+        self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
         w, h = tiles.tile2pixels(self.playfield_columns, self.playfield_rows)
         self.canvas.configure(scrollregion=(0, 0, w * 2, h * 2))
         self.canvas.xview_moveto(0)
         self.canvas.yview_moveto(0)
         self.populate_imageselector()
-        self.draw_label.configure(image=self.tile_images[self.imageselector.selected_tile])
-        self.erase_label.configure(image=self.tile_images[self.imageselector.selected_erase_tile])
-        self.wipe(False)
         self.randomize_initial_values = None   # type: Tuple
 
     def init_new_cave(self, only_steel_border=False):
@@ -270,16 +290,14 @@ class EditorWindow(tkinter.Tk):
                 # right / middle mouse button drag
                 self.cave[x, y] = (self.imageselector.selected_erase_object, self.imageselector.selected_erase_tile)
 
-    def create_tile_images(self) -> None:
-        source_images = tiles.load_sprites(self.c64colors, colorpalette[2], colorpalette[14], colorpalette[13], 0, scale=2)
+    def create_tile_images(self, color1: int, color2: int, color3: int, bgcolor: int) -> None:
+        source_images = tiles.load_sprites(self.c64colors, colorpalette[color1], colorpalette[color2], colorpalette[color3], bgcolor, scale=2)
         self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
-        source_images = tiles.load_sprites(self.c64colors, colorpalette[2], colorpalette[14], colorpalette[13], 0, scale=1)
+        source_images = tiles.load_sprites(self.c64colors, colorpalette[color1], colorpalette[color2], colorpalette[color3], bgcolor, scale=1)
         self.tile_images_small = [tkinter.PhotoImage(data=image) for image in source_images]
 
     def create_canvas_playfield(self, width: int, height: int) -> None:
-        # create the images on the canvas for all tiles (fixed position):
-        if width == self.playfield_columns and height == self.playfield_rows:
-            return
+        # create the images on the canvas for all tiles (fixed position)
         if width < 4 or width > 200 or height < 4 or height > 200:
             raise ValueError("invalid playfield/cave width or height")
         self.playfield_columns = width
@@ -287,11 +305,11 @@ class EditorWindow(tkinter.Tk):
         self.canvas.delete(tkinter.ALL)
         self.c_tiles.clear()
         self.canvas_tag_to_tilexy.clear()
-        boulder_tile = Objects.DIRT2.tile()
         for y in range(self.playfield_rows):
             for x in range(self.playfield_columns):
                 sx, sy = tiles.tile2pixels(x, y)
-                tile = self.canvas.create_image(sx * 2, sy * 2, image=self.tile_images[boulder_tile],
+                tilenum = self.cave[x, y][1]
+                tile = self.canvas.create_image(sx * 2, sy * 2, image=self.tile_images[tilenum],
                                                 activeimage=self.tile_images[self.imageselector.selected_tile],
                                                 anchor=tkinter.NW, tags="tile")
                 self.c_tiles.append(tile)
@@ -299,13 +317,11 @@ class EditorWindow(tkinter.Tk):
 
     def tile_selection_changed(self, object: GameObject, tile: int) -> None:
         image = self.tile_images[tile]
-        self.draw_label.configure(image=image)
         for c_tile in self.c_tiles:
             self.canvas.itemconfigure(c_tile, activeimage=image)
 
     def tile_erase_selection_changed(self, object: GameObject, tile: int) -> None:
-        image = self.tile_images[tile]
-        self.erase_label.configure(image=image)
+        pass
 
     def set_tile(self, x: int, y: int, tile: int) -> None:
         c_tile = self.canvas.find_closest(x * 32, y * 32)
@@ -358,6 +374,27 @@ class EditorWindow(tkinter.Tk):
                         self.cave[x, y] = (obj, displaytile)
         self.init_new_cave(only_steel_border=True)
         self.randomize_initial_values = (rseed, randomprobs, randomobjs)
+
+    def c64_colors_switched(self, switch) -> None:
+        self.c64random_button.configure(state=tkinter.NORMAL if switch else tkinter.DISABLED)
+        self.c64colors = bool(switch)
+        self.create_tile_images(8, 11, 9, 0)
+        self.populate_imageselector()
+        self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
+
+    def c64_colors_randomize(self) -> None:
+        if self.c64colors:
+            c1 = random.randint(1, 15)
+            c2 = c3 = c1
+            while c2 == c1:
+                c2 = random.randint(1, 15)
+            while c3 == c1 or c3 == c2:
+                c3 = random.randint(1, 15)
+            c4 = 0
+            print("random colors:", c1, c2, c3, c4)   # @todo store these on the cave config (and make them editable)
+            self.create_tile_images(c1, c2, c3, c4)
+            self.populate_imageselector()
+            self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
 
 
 class RandomizeDialog(tkinter.simpledialog.Dialog):
