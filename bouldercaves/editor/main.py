@@ -185,20 +185,20 @@ class EditorWindow(tkinter.Tk):
         tkinter.Label(lf, text="R - restore snapshot").pack(anchor=tkinter.W, padx=4)
         lf.pack(fill=tkinter.X, pady=4)
         lf = tkinter.LabelFrame(buttonsframe, text="Misc. edit")
-        tkinter.Button(lf, text="Randomize", command=self.randomize).grid(column=0, row=0)
-        tkinter.Button(lf, text="Wipe", command=self.wipe).grid(column=1, row=0)
-        tkinter.Label(lf, text="Load...@todo").grid(column=0, row=1)        # @todo
-        tkinter.Label(lf, text="Save...@todo").grid(column=0, row=2)        # @todo
-        tkinter.Label(lf, text="Playtest...@todo").grid(column=0, row=3)    # @todo
+        tkinter.Button(lf, text="Load @todo").grid(column=0, row=0)   # @todo load
+        tkinter.Button(lf, text="Save @todo").grid(column=1, row=0)   # @todo save
+        tkinter.Button(lf, text="Randomize", command=self.randomize).grid(column=0, row=1)
+        tkinter.Button(lf, text="Wipe", command=self.wipe).grid(column=1, row=1)
+        tkinter.Button(lf, text="Playtest @todo", command=self.wipe).grid(column=0, row=2)    # @todo playtest
         lf.pack(fill=tkinter.X, pady=4)
         lf = tkinter.LabelFrame(buttonsframe, text="C-64 colors")
         c64colors_var = tkinter.IntVar()
-        c64_check = tkinter.Checkbutton(lf, text="enable palette", variable=c64colors_var,
+        c64_check = tkinter.Checkbutton(lf, text="Enable palette", variable=c64colors_var,
                                         selectcolor=self.cget("background"), command=lambda: self.c64_colors_switched(c64colors_var.get()))
         c64_check.grid(column=0, row=0)
-        self.c64random_button = tkinter.Button(lf, text="randomize", state=tkinter.DISABLED, command=self.c64_colors_randomize)
+        self.c64random_button = tkinter.Button(lf, text="Random", state=tkinter.DISABLED, command=self.c64_colors_randomize)
         self.c64random_button.grid(column=0, row=1)
-        tkinter.Button(lf, text="edit").grid(column=1, row=1)
+        tkinter.Button(lf, text="Edit").grid(column=1, row=1)
         lf.pack(fill=tkinter.X, pady=4)
         buttonsframe.pack(side=tkinter.LEFT, anchor=tkinter.N)
         self.buttonsframe = buttonsframe

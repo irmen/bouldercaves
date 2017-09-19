@@ -1,5 +1,5 @@
 # Boulder Caves
-A Boulder Dash (tm) clone in pure python.
+A Boulder Dash (tm) clone in pure python. Includes a cave editor.
 
 Requirements to run this:
 - Python 3.5 +
@@ -55,6 +55,8 @@ You control the game via the keyboard:
 - F7: cheat and skip to the next level.   No highscore will be recorded if you use this.
 - F8: randomize colors (only when using Commodore-64 colors)
 - F9: replay prerecorded demo (from title screen)
+- F12: launch cave editor
+
 
 ## Sound
 

@@ -209,6 +209,13 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.show_highscores()
         elif event.keysym == "F9":
             self.gamestate.start_demo()
+        elif event.keysym == "F12":
+            # launch the editor in a separate process
+            import subprocess, os
+            from .editor import main
+            env = os.environ.copy()
+            env["PYTHONPATH"] = sys.path[0]
+            subprocess.Popen([sys.executable, "-m", main.__name__], env=env)
 
     def repaint(self) -> None:
         self.graphics_frame += 1
