@@ -306,13 +306,15 @@ class C64Cave(Cave):
         cave.randomseed = data[0x04]
         cave.diamonds_needed = data[0x09]
         cave.time = data[0x0e]
-        cave.fgcolor1 = colorpalette[data[0x13]]
-        cave.fgcolor2 = colorpalette[data[0x14]]
-        cave.fgcolor = colorpalette[data[0x15]]
+        cave.colors = Palette(data[0x13], data[0x14], 1, data[0x15])
         cave.random_objects = data[0x18], data[0x19], data[0x1a], data[0x1b]
         cave.random_probabilities = data[0x1c], data[0x1d], data[0x1e], data[0x1f]
         cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)
         cave.build_map(data[0x20:])
+        # if map contains amoeba, the fg3 color is not white but instead the amoeba color.
+        from .game import Objects  # XXX
+        if any(m[0] == Objects.AMOEBA for m in cave.map):
+            cave.colors.fg3 = cave.colors.amoeba
         return cave
 
     @staticmethod
@@ -472,8 +474,8 @@ class CaveSet:
         cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)
         cave.time = bdcff.cavetime
         cave.slime_permeability = bdcff.slimepermeability
-        cave.colors.fg1 = bdcff.color_fg1
-        cave.colors.fg2 = bdcff.color_fg2
+        cave.colors.fg1 = bdcff.color_fg2       # XXX order of colors?
+        cave.colors.fg2 = bdcff.color_fg1
         cave.colors.fg3 = bdcff.color_fg3
         cave.colors.amoeba = bdcff.color_amoeba
         cave.colors.slime = bdcff.color_slime
