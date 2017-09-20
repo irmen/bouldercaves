@@ -127,8 +127,8 @@ def load_sprites(c64colors=False, colors: RgbPalette=None, scale: float=1.0) -> 
             palettevalues = tile_image.getpalette()
             assert 768 - palettevalues.count(0) <= 16, "must be an image with <= 16 colors"
             palette = [(r, g, b) for r, g, b in zip(palettevalues[0:16 * 3:3], palettevalues[1:16 * 3:3], palettevalues[2:16 * 3:3])]
-            pc1 = palette.index((255, 0, 255))      # purple, foreground 1
-            pc2 = palette.index((255, 0, 0))        # red, foreground 2
+            pc1 = palette.index((255, 0, 0))        # red, foreground 1
+            pc2 = palette.index((255, 0, 255))      # purple, foreground 2
             pc3 = palette.index((255, 255, 0))      # yellow, foreground 3 (highlight)
             pc4 = palette.index((0, 255, 0))        # green, amoeba color
             pc5 = palette.index((0, 0, 255))        # blue, slime color

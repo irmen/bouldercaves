@@ -473,8 +473,8 @@ class CaveSet:
         cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)
         cave.time = bdcff.cavetime
         cave.slime_permeability = bdcff.slimepermeability
-        cave.colors.fg1 = bdcff.color_fg2       # XXX order of colors?
-        cave.colors.fg2 = bdcff.color_fg1
+        cave.colors.fg1 = bdcff.color_fg1
+        cave.colors.fg2 = bdcff.color_fg2
         cave.colors.fg3 = bdcff.color_fg3
         cave.colors.amoeba = bdcff.color_amoeba
         cave.colors.slime = bdcff.color_slime
