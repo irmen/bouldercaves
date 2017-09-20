@@ -39,7 +39,7 @@ class BdcffCave:
         self.cavetime = 200
         self.cavedelay = 8
         self.slimepermeability = 1.0
-        self.amoebamaxsize = 200  # @todo factor
+        self.amoebafactor = 0.2273
         self.amoebatime = 999
         self.magicwalltime = 999
         self.diamonds_required = 10
@@ -64,9 +64,10 @@ class BdcffCave:
             dv = dve = dvalue
         self.diamondvalue_normal = int(dv)
         self.diamondvalue_extra = int(dve)
-        self.amoebatime = int(self.properties.pop("amoebatime", 999))
-        self.magicwalltime = int(self.properties.pop("magicwalltime", 999))
-        self.slimepermeability = float(self.properties.pop("slimepermeability", 1.0))
+        self.amoebatime = int(self.properties.pop("amoebatime", self.amoebatime))
+        self.amoebafactor = float(self.properties.pop("amoebathreshold", self.amoebafactor))
+        self.magicwalltime = int(self.properties.pop("magicwalltime", self.magicwalltime))
+        self.slimepermeability = float(self.properties.pop("slimepermeability", self.slimepermeability))
         colors = [BdcffParser.COLORNAMES.index(c) for c in self.properties.pop("colors").split()]
         self.color_border = 0
         self.color_screen = 0
@@ -106,6 +107,7 @@ class BdcffCave:
         out.write("DiamondsRequired={:d}\n".format(self.diamonds_required))
         out.write("DiamondValue={:d} {:d}\n".format(self.diamondvalue_normal, self.diamondvalue_extra))
         out.write("AmoebaTime={:d}\n".format(self.amoebatime))
+        out.write("AmoebaThreshold={:f}\n".format(self.amoebafactor))
         out.write("MagicWallTime={:d}\n".format(self.magicwalltime))
         out.write("SlimePermeability={:.3f}\n".format(self.slimepermeability))
         out.write("Size={:d} {:d}\n".format(self.width, self.height))

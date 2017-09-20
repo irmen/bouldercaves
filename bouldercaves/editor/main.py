@@ -450,7 +450,7 @@ class EditorWindow(tkinter.Tk):
         c = self.cave.colors
         cave.color_border, cave.color_screen, cave.color_fg1, cave.color_fg2, cave.color_fg3, cave.color_amoeba, cave.color_slime = \
             c.border, c.screen, c.fg1, c.fg2, c.fg3, c.amoeba, c.slime
-        cave.amoebamaxsize = self.cave.amoebamaxsize   # @todo factor
+        cave.amoebafactor = self.cave.amoebafactor
         BDCFFSYMBOL = {(obj, direction): symbol for symbol, (obj, direction) in BDCFFOBJECTS.items()}
         BDCFFSYMBOL_NO_DIR = {obj: symbol for symbol, (obj, _) in BDCFFOBJECTS.items()}
         for y in range(0, self.cave.height):

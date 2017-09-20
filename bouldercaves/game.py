@@ -437,7 +437,7 @@ class GameState:
         self.movement = self.MovementInfo()
         self.amoeba = {
             "size": 0,
-            "max": cave.amoebamaxsize,      # @todo use factor
+            "max": cave.amoebafactor * self.width * self.height,
             "slow": cave.amoeba_slowgrowthtime / self.update_timestep,
             "enclosed": False,
             "dead": None,

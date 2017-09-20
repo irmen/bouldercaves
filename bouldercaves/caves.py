@@ -286,7 +286,7 @@ class Cave:
         self.diamondvalue_normal = defaults.diamondvalue_normal
         self.diamondvalue_extra = defaults.diamondvalue_extra
         self.diamonds_required = defaults.diamonds_required
-        self.amoebamaxsize = defaults.amoebamaxsize    # @todo factor
+        self.amoebafactor = defaults.amoebafactor
         self.slime_permeability = defaults.slimepermeability
         self.time = defaults.cavetime
         self.colors = Palette()
@@ -312,7 +312,7 @@ class C64Cave(Cave):
         cave.colors = Palette(data[0x13], data[0x14], 1, data[0x15])
         cave.random_objects = data[0x18], data[0x19], data[0x1a], data[0x1b]
         cave.random_probabilities = data[0x1c], data[0x1d], data[0x1e], data[0x1f]
-        cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)   # @todo factor
+        cave.amoebafactor = 0.2273
         cave.build_map(data[0x20:])
         # if map contains amoeba, the fg3 color is not white but instead the amoeba color.
         if any(m[0] == objects.AMOEBA for m in cave.map):
@@ -471,7 +471,7 @@ class CaveSet:
         cave.diamondvalue_normal = bdcff.diamondvalue_normal
         cave.diamondvalue_extra = bdcff.diamondvalue_extra
         cave.diamonds_required = bdcff.diamonds_required
-        cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)   # @todo factor
+        cave.amoebafactor = bdcff.amoebafactor
         cave.time = bdcff.cavetime
         cave.slime_permeability = bdcff.slimepermeability
         cave.colors.fg1 = bdcff.color_fg1
