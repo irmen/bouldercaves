@@ -11,6 +11,8 @@ License: MIT open-source.
 import random
 import datetime
 from typing import Sequence, List, Tuple
+from .objects import Direction
+from . import objects, bdcff
 
 
 BD1CAVES = [
@@ -312,8 +314,7 @@ class C64Cave(Cave):
         cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)
         cave.build_map(data[0x20:])
         # if map contains amoeba, the fg3 color is not white but instead the amoeba color.
-        from .game import Objects  # XXX
-        if any(m[0] == Objects.AMOEBA for m in cave.map):
+        if any(m[0] == objects.AMOEBA for m in cave.map):
             cave.colors.fg3 = cave.colors.amoeba
         return cave
 
@@ -380,30 +381,29 @@ class C64Cave(Cave):
                 raise ValueError("invalid cave instruction encountered")
 
         # convert the c64 cave map codes to objects we recognise
-        from .game import Objects, Direction
         conversion = {
-            0x00: (Objects.EMPTY, Direction.NOWHERE),
-            0x01: (Objects.DIRT, Direction.NOWHERE),
-            0x02: (Objects.BRICK, Direction.NOWHERE),
-            0x03: (Objects.MAGICWALL, Direction.NOWHERE),
-            0x04: (Objects.OUTBOXCLOSED, Direction.NOWHERE),
-            0x05: (Objects.OUTBOXBLINKING, Direction.NOWHERE),
-            0x07: (Objects.STEEL, Direction.NOWHERE),
-            0x08: (Objects.FIREFLY, Direction.LEFT),
-            0x09: (Objects.FIREFLY, Direction.UP),
-            0x0a: (Objects.FIREFLY, Direction.RIGHT),
-            0x0b: (Objects.FIREFLY, Direction.DOWN),
-            0x10: (Objects.BOULDER, Direction.NOWHERE),
-            0x12: (Objects.BOULDER, Direction.NOWHERE),
-            0x14: (Objects.DIAMOND, Direction.NOWHERE),
-            0x16: (Objects.DIAMOND, Direction.NOWHERE),
-            0x25: (Objects.INBOXBLINKING, Direction.NOWHERE),
-            0x30: (Objects.BUTTERFLY, Direction.DOWN),
-            0x31: (Objects.BUTTERFLY, Direction.LEFT),
-            0x32: (Objects.BUTTERFLY, Direction.UP),
-            0x33: (Objects.BUTTERFLY, Direction.RIGHT),
-            0x38: (Objects.ROCKFORD, Direction.NOWHERE),
-            0x3a: (Objects.AMOEBA, Direction.NOWHERE)
+            0x00: (objects.EMPTY, Direction.NOWHERE),
+            0x01: (objects.DIRT, Direction.NOWHERE),
+            0x02: (objects.BRICK, Direction.NOWHERE),
+            0x03: (objects.MAGICWALL, Direction.NOWHERE),
+            0x04: (objects.OUTBOXCLOSED, Direction.NOWHERE),
+            0x05: (objects.OUTBOXBLINKING, Direction.NOWHERE),
+            0x07: (objects.STEEL, Direction.NOWHERE),
+            0x08: (objects.FIREFLY, Direction.LEFT),
+            0x09: (objects.FIREFLY, Direction.UP),
+            0x0a: (objects.FIREFLY, Direction.RIGHT),
+            0x0b: (objects.FIREFLY, Direction.DOWN),
+            0x10: (objects.BOULDER, Direction.NOWHERE),
+            0x12: (objects.BOULDER, Direction.NOWHERE),
+            0x14: (objects.DIAMOND, Direction.NOWHERE),
+            0x16: (objects.DIAMOND, Direction.NOWHERE),
+            0x25: (objects.INBOXBLINKING, Direction.NOWHERE),
+            0x30: (objects.BUTTERFLY, Direction.DOWN),
+            0x31: (objects.BUTTERFLY, Direction.LEFT),
+            0x32: (objects.BUTTERFLY, Direction.UP),
+            0x33: (objects.BUTTERFLY, Direction.RIGHT),
+            0x38: (objects.ROCKFORD, Direction.NOWHERE),
+            0x3a: (objects.AMOEBA, Direction.NOWHERE)
         }
         self.map = [conversion[code] for code in self.codemap]
         del self.codemap
@@ -439,7 +439,6 @@ class C64Cave(Cave):
 class CaveSet:
     def __init__(self, external_bdcff_file: str=None) -> None:
         if external_bdcff_file:
-            from . import bdcff
             self.mode = "bdcff"
             self.caves = bdcff.BdcffParser(external_bdcff_file)
             self.name = self.caves.game_properties["name"]
@@ -482,31 +481,30 @@ class CaveSet:
         cave.colors.screen = bdcff.color_screen if bdcff.color_screen >= 0 else 0
         cave.colors.border = bdcff.color_border if bdcff.color_border >= 0 else 0
         # convert the bdcff map
-        from .game import Objects, Direction
         conversion = {
-            '.': (Objects.DIRT, Direction.NOWHERE),
-            ' ': (Objects.EMPTY, Direction.NOWHERE),
-            'w': (Objects.BRICK, Direction.NOWHERE),
-            'M': (Objects.MAGICWALL, Direction.NOWHERE),
-            'x': (Objects.HEXPANDINGWALL, Direction.NOWHERE),
-            'v': (Objects.VEXPANDINGWALL, Direction.NOWHERE),
-            'X': (Objects.OUTBOXCLOSED, Direction.NOWHERE),
-            'H': (Objects.OUTBOXCLOSED, Direction.NOWHERE),    # should be a 'hidden' outbox officially
-            'W': (Objects.STEEL, Direction.NOWHERE),
-            'Q': (Objects.FIREFLY, Direction.LEFT),
-            'q': (Objects.FIREFLY, Direction.RIGHT),
-            'O': (Objects.FIREFLY, Direction.UP),
-            'o': (Objects.FIREFLY, Direction.DOWN),
-            'c': (Objects.BUTTERFLY, Direction.DOWN),
-            'C': (Objects.BUTTERFLY, Direction.LEFT),
-            'b': (Objects.BUTTERFLY, Direction.UP),
-            'B': (Objects.BUTTERFLY, Direction.RIGHT),
-            'r': (Objects.BOULDER, Direction.NOWHERE),
-            'd': (Objects.DIAMOND, Direction.NOWHERE),
-            'P': (Objects.INBOXBLINKING, Direction.NOWHERE),
-            'a': (Objects.AMOEBA, Direction.NOWHERE),
-            'F': (Objects.VOODOO, Direction.NOWHERE),
-            's': (Objects.SLIME, Direction.NOWHERE)
+            '.': (objects.DIRT, Direction.NOWHERE),
+            ' ': (objects.EMPTY, Direction.NOWHERE),
+            'w': (objects.BRICK, Direction.NOWHERE),
+            'M': (objects.MAGICWALL, Direction.NOWHERE),
+            'x': (objects.HEXPANDINGWALL, Direction.NOWHERE),
+            'v': (objects.VEXPANDINGWALL, Direction.NOWHERE),
+            'X': (objects.OUTBOXCLOSED, Direction.NOWHERE),
+            'H': (objects.OUTBOXCLOSED, Direction.NOWHERE),    # should be a 'hidden' outbox officially
+            'W': (objects.STEEL, Direction.NOWHERE),
+            'Q': (objects.FIREFLY, Direction.LEFT),
+            'q': (objects.FIREFLY, Direction.RIGHT),
+            'O': (objects.FIREFLY, Direction.UP),
+            'o': (objects.FIREFLY, Direction.DOWN),
+            'c': (objects.BUTTERFLY, Direction.DOWN),
+            'C': (objects.BUTTERFLY, Direction.LEFT),
+            'b': (objects.BUTTERFLY, Direction.UP),
+            'B': (objects.BUTTERFLY, Direction.RIGHT),
+            'r': (objects.BOULDER, Direction.NOWHERE),
+            'd': (objects.DIAMOND, Direction.NOWHERE),
+            'P': (objects.INBOXBLINKING, Direction.NOWHERE),
+            'a': (objects.AMOEBA, Direction.NOWHERE),
+            'F': (objects.VOODOO, Direction.NOWHERE),
+            's': (objects.SLIME, Direction.NOWHERE)
         }
         cave.map = [conversion[x] for line in bdcff.map.maplines for x in line]
         return cave

@@ -8,6 +8,7 @@ Written by Irmen de Jong (irmen@razorvine.net)
 License: MIT open-source.
 """
 
+import os
 import random
 import sys
 import math
@@ -18,9 +19,9 @@ import pkgutil
 import time
 import getpass
 from typing import Tuple, Sequence, List, Iterable, Callable
-from .game import GameState, Objects, GameObject, Direction, GameStatus, HighScores
+from .game import GameState, Direction, GameStatus, HighScores
 from .caves import colorpalette, Palette, RgbPalette
-from . import audio, synthsamples, tiles
+from . import audio, synthsamples, tiles, objects
 
 __version__ = "2.7"
 
@@ -207,7 +208,7 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.start_demo()
         elif event.keysym == "F12":
             # launch the editor in a separate process
-            import subprocess, os
+            import subprocess
             from .editor import main
             env = os.environ.copy()
             env["PYTHONPATH"] = sys.path[0]
@@ -247,29 +248,29 @@ class BoulderWindow(tkinter.Tk):
 
         if self.gamestate.rockford_cell:
             # is rockford moving or pushing left/right?
-            rockford_sprite = Objects.ROCKFORD
+            rockford_sprite = objects.ROCKFORD
             animframe = 0
             if self.gamestate.movement.direction == Direction.LEFT or \
                     (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
                      self.gamestate.movement.lastXdir == Direction.LEFT):
                 if self.gamestate.movement.pushing:
-                    rockford_sprite = Objects.ROCKFORD.pushleft
+                    rockford_sprite = objects.ROCKFORD.pushleft
                 else:
-                    rockford_sprite = Objects.ROCKFORD.left
+                    rockford_sprite = objects.ROCKFORD.left
             elif self.gamestate.movement.direction == Direction.RIGHT or \
                     (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
                      self.gamestate.movement.lastXdir == Direction.RIGHT):
                 if self.gamestate.movement.pushing:
-                    rockford_sprite = Objects.ROCKFORD.pushright
+                    rockford_sprite = objects.ROCKFORD.pushright
                 else:
-                    rockford_sprite = Objects.ROCKFORD.right
+                    rockford_sprite = objects.ROCKFORD.right
             # handle rockford idle state/animation
             elif self.gamestate.idle["tap"] and self.gamestate.idle["blink"]:
-                rockford_sprite = Objects.ROCKFORD.tapblink
+                rockford_sprite = objects.ROCKFORD.tapblink
             elif self.gamestate.idle["tap"]:
-                rockford_sprite = Objects.ROCKFORD.tap
+                rockford_sprite = objects.ROCKFORD.tap
             elif self.gamestate.idle["blink"]:
-                rockford_sprite = Objects.ROCKFORD.blink
+                rockford_sprite = objects.ROCKFORD.blink
             if rockford_sprite.sframes:
                 animframe = int(rockford_sprite.sfps / self.update_fps *
                                 (self.graphics_frame - self.gamestate.rockford_cell.anim_start_gfx_frame)) % rockford_sprite.sframes
@@ -277,9 +278,9 @@ class BoulderWindow(tkinter.Tk):
         # other animations:
         for cell in self.gamestate.cells_with_animations():
             obj = cell.obj
-            if obj is Objects.MAGICWALL:
+            if obj is objects.MAGICWALL:
                 if not self.gamestate.magicwall["active"]:
-                    obj = Objects.BRICK
+                    obj = objects.BRICK
             animframe = int(obj.sfps / self.update_fps * (self.graphics_frame - cell.anim_start_gfx_frame))
             self.tilesheet[cell.x, cell.y] = obj.tile(animframe)
             if animframe >= obj.sframes and obj.anim_end_callback:
@@ -340,17 +341,17 @@ class BoulderWindow(tkinter.Tk):
         self.configure(background="#{:06x}".format(bordercolorrgb))
         self.canvas.configure(background="#{:06x}".format(screencolorrgb))
 
-    def set_tile(self, x: int, y: int, obj: GameObject) -> None:
+    def set_tile(self, x: int, y: int, obj: objects.GameObject) -> None:
         self.tilesheet[x, y] = obj.tile()
 
     def set_scorebar_tiles(self, x: int, y: int, tiles: Sequence[int]) -> None:
         self.tilesheet_score.set_tiles(x, y, tiles)
 
     def clear_tilesheet(self) -> None:
-        self.tilesheet.set_tiles(0, 0, [Objects.DIRT2.tile()] * self.playfield_columns * self.playfield_rows)
+        self.tilesheet.set_tiles(0, 0, [objects.DIRT2.tile()] * self.playfield_columns * self.playfield_rows)
 
     def prepare_reveal(self) -> None:
-        c = Objects.COVERED.tile()
+        c = objects.COVERED.tile()
         for c_tile in self.c_tiles:
             self.canvas.itemconfigure(c_tile, image=self.tile_images[c])
         self.tiles_revealed = bytearray(len(self.c_tiles))
@@ -368,7 +369,7 @@ class BoulderWindow(tkinter.Tk):
                 self.tiles_revealed[idx] = 1
                 self.canvas.itemconfigure(self.c_tiles[idx], image=self.tile_images[tile])
         # animate the cover-tiles
-        cover_tile = Objects.COVERED.tile(self.graphics_frame)
+        cover_tile = objects.COVERED.tile(self.graphics_frame)
         for i, c_tile in enumerate(self.c_tiles):
             if self.tiles_revealed[i] == 0:
                 self.canvas.itemconfigure(c_tile, image=self.tile_images[cover_tile])
@@ -460,13 +461,13 @@ class BoulderWindow(tkinter.Tk):
             x, y, popupwidth, popupheight,
             self.tilesheet.get_tiles(x, y, popupwidth, popupheight)
         )
-        self.tilesheet.set_tiles(x, y, [Objects.STEELSLOPEDUPLEFT.tile()] +
-                                 [Objects.STEEL.tile()] * (popupwidth - 2) + [Objects.STEELSLOPEDUPRIGHT.tile()])
+        self.tilesheet.set_tiles(x, y, [objects.STEELSLOPEDUPLEFT.tile()] +
+                                 [objects.STEEL.tile()] * (popupwidth - 2) + [objects.STEELSLOPEDUPRIGHT.tile()])
         y += 1
         if not self.smallwindow:
             self.tilesheet.set_tiles(x + 1, y, tiles.text2tiles(bchar * (popupwidth - 2)))
-            self.tilesheet[x, y] = Objects.STEEL.tile()
-            self.tilesheet[x + popupwidth - 1, y] = Objects.STEEL.tile()
+            self.tilesheet[x, y] = objects.STEEL.tile()
+            self.tilesheet[x + popupwidth - 1, y] = objects.STEEL.tile()
             y += 1
         lines.insert(0, "")
         if not self.smallwindow:
@@ -475,17 +476,17 @@ class BoulderWindow(tkinter.Tk):
             if not line:
                 line = " "
             line_tiles = tiles.text2tiles(bchar + " " + line.ljust(width) + " " + bchar)
-            self.tilesheet[x, y] = Objects.STEEL.tile()
-            self.tilesheet[x + popupwidth - 1, y] = Objects.STEEL.tile()
+            self.tilesheet[x, y] = objects.STEEL.tile()
+            self.tilesheet[x + popupwidth - 1, y] = objects.STEEL.tile()
             self.tilesheet.set_tiles(x + 1, y, line_tiles)
             y += 1
         if not self.smallwindow:
-            self.tilesheet[x, y] = Objects.STEEL.tile()
-            self.tilesheet[x + popupwidth - 1, y] = Objects.STEEL.tile()
+            self.tilesheet[x, y] = objects.STEEL.tile()
+            self.tilesheet[x + popupwidth - 1, y] = objects.STEEL.tile()
             self.tilesheet.set_tiles(x + 1, y, tiles.text2tiles(bchar * (popupwidth - 2)))
             y += 1
-        self.tilesheet.set_tiles(x, y, [Objects.STEELSLOPEDDOWNLEFT.tile()] +
-                                 [Objects.STEEL.tile()] * (popupwidth - 2) + [Objects.STEELSLOPEDDOWNRIGHT.tile()])
+        self.tilesheet.set_tiles(x, y, [objects.STEELSLOPEDDOWNLEFT.tile()] +
+                                 [objects.STEEL.tile()] * (popupwidth - 2) + [objects.STEELSLOPEDDOWNRIGHT.tile()])
         self.popup_frame = int(self.graphics_frame + self.update_fps * duration)
         self.on_popup_closed = on_close
 

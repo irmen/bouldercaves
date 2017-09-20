@@ -18,8 +18,8 @@ import pkgutil
 from typing import Tuple, List, Dict, Optional
 from ..gfxwindow import __version__
 from ..caves import colorpalette, C64Cave, Cave as BaseCave, RgbPalette, Palette
-from ..game import Objects, GameObject
-from .. import tiles
+from ..objects import GameObject
+from .. import tiles, objects
 
 
 class ScrollableImageSelector(tkinter.Frame):
@@ -37,10 +37,10 @@ class ScrollableImageSelector(tkinter.Frame):
         self.treeview.pack(expand=1, fill=tkinter.Y)
         self.treeview.bind("<<TreeviewSelect>>", self.on_selected)
         self.treeview.bind("<Double-Button-1>", self.on_selected_doubleclick)
-        self.selected_object = Objects.BOULDER
-        self.selected_tile = Objects.BOULDER.tile()
-        self.selected_erase_object = Objects.EMPTY
-        self.selected_erase_tile = Objects.EMPTY.tile()
+        self.selected_object = objects.BOULDER
+        self.selected_tile = objects.BOULDER.tile()
+        self.selected_erase_object = objects.EMPTY
+        self.selected_erase_tile = objects.EMPTY.tile()
         f = tkinter.Frame(master)
         tkinter.Label(f, text=" Draw: \n(Lmb)").grid(row=0, column=0)
         self.draw_label = tkinter.Label(f)
@@ -55,8 +55,8 @@ class ScrollableImageSelector(tkinter.Frame):
         item = self.treeview.focus()
         item = self.treeview.item(item)
         selected_name = item["values"][0].lower()
-        self.selected_erase_object = Objects.EMPTY
-        self.selected_erase_tile = Objects.EMPTY.tile()
+        self.selected_erase_object = objects.EMPTY
+        self.selected_erase_tile = objects.EMPTY.tile()
         for obj, displaytile in EDITOR_OBJECTS.items():
             if obj.name.lower() == selected_name:
                 self.selected_erase_object = obj
@@ -69,8 +69,8 @@ class ScrollableImageSelector(tkinter.Frame):
         item = self.treeview.focus()
         item = self.treeview.item(item)
         selected_name = item["values"][0].lower()
-        self.selected_object = Objects.BOULDER
-        self.selected_tile = Objects.BOULDER.tile()
+        self.selected_object = objects.BOULDER
+        self.selected_tile = objects.BOULDER.tile()
         for obj, displaytile in EDITOR_OBJECTS.items():
             if obj.name.lower() == selected_name:
                 self.selected_object = obj
@@ -92,7 +92,7 @@ class ScrollableImageSelector(tkinter.Frame):
 class Cave(BaseCave):
     def __init__(self, width: int, height: int, editor: 'EditorWindow') -> None:
         super().__init__(0, "", "", width, height)
-        self.cells = [(Objects.EMPTY, Objects.EMPTY.tile())] * width * height
+        self.cells = [(objects.EMPTY, objects.EMPTY.tile())] * width * height
         self.cells_snapshot = []   # type: List[Tuple[GameObject, int]]
         self.editor = editor
 
@@ -124,22 +124,22 @@ class Cave(BaseCave):
 
 
 EDITOR_OBJECTS = {
-    Objects.AMOEBA: Objects.AMOEBA.tile(),
-    Objects.BOULDER: Objects.BOULDER.tile(),
-    Objects.BRICK: Objects.BRICK.tile(),
-    Objects.BUTTERFLY: Objects.BUTTERFLY.tile(2),
-    Objects.DIAMOND: Objects.DIAMOND.tile(),
-    Objects.DIRT: Objects.DIRT.tile(),
-    Objects.EMPTY: Objects.EMPTY.tile(),
-    Objects.FIREFLY: Objects.FIREFLY.tile(1),
-    Objects.HEXPANDINGWALL: Objects.HEXPANDINGWALL.tile(),
-    Objects.INBOXBLINKING: Objects.ROCKFORD.tile(),
-    Objects.MAGICWALL: Objects.MAGICWALL.tile(),
-    Objects.OUTBOXBLINKING: Objects.OUTBOXBLINKING.tile(1),
-    Objects.SLIME: Objects.SLIME.tile(1),
-    Objects.STEEL: Objects.STEEL.tile(),
-    Objects.VEXPANDINGWALL: Objects.VEXPANDINGWALL.tile(),
-    Objects.VOODOO: Objects.VOODOO.tile()
+    objects.AMOEBA: objects.AMOEBA.tile(),
+    objects.BOULDER: objects.BOULDER.tile(),
+    objects.BRICK: objects.BRICK.tile(),
+    objects.BUTTERFLY: objects.BUTTERFLY.tile(2),
+    objects.DIAMOND: objects.DIAMOND.tile(),
+    objects.DIRT: objects.DIRT.tile(),
+    objects.EMPTY: objects.EMPTY.tile(),
+    objects.FIREFLY: objects.FIREFLY.tile(1),
+    objects.HEXPANDINGWALL: objects.HEXPANDINGWALL.tile(),
+    objects.INBOXBLINKING: objects.ROCKFORD.tile(),
+    objects.MAGICWALL: objects.MAGICWALL.tile(),
+    objects.OUTBOXBLINKING: objects.OUTBOXBLINKING.tile(1),
+    objects.SLIME: objects.SLIME.tile(1),
+    objects.STEEL: objects.STEEL.tile(),
+    objects.VEXPANDINGWALL: objects.VEXPANDINGWALL.tile(),
+    objects.VOODOO: objects.VOODOO.tile()
 }
 
 
@@ -248,13 +248,13 @@ class EditorWindow(tkinter.Tk):
     def init_new_cave(self, only_steel_border=False):
         if not only_steel_border:
             self.cave = Cave(self.playfield_columns, self.playfield_rows, self)
-        steel = (Objects.STEEL, Objects.STEEL.tile())
+        steel = (objects.STEEL, objects.STEEL.tile())
         self.cave.horiz_line(0, 0, self.playfield_columns, steel)
         self.cave.horiz_line(0, self.playfield_rows - 1, self.playfield_columns, steel)
         self.cave.vert_line(0, 1, self.playfield_rows - 2, steel)
         self.cave.vert_line(self.playfield_columns - 1, 1, self.playfield_rows - 2, steel)
         if not only_steel_border:
-            self.flood_fill(2, 2, (Objects.DIRT, EDITOR_OBJECTS[Objects.DIRT]))
+            self.flood_fill(2, 2, (objects.DIRT, EDITOR_OBJECTS[objects.DIRT]))
 
     def populate_imageselector(self):
         rows = []
@@ -391,7 +391,7 @@ class EditorWindow(tkinter.Tk):
         randomseeds = [0, rseed]
         for y in range(1, self.playfield_rows - 1):
             for x in range(0, self.playfield_columns):
-                objname = Objects.DIRT.name.lower()
+                objname = objects.DIRT.name.lower()
                 C64Cave.bdrandom(randomseeds)
                 for randomobj, randomprob in zip(randomobjs, randomprobs):
                     if randomseeds[0] < randomprob:
@@ -432,7 +432,7 @@ class RandomizeDialog(tkinter.simpledialog.Dialog):
     def body(self, master: tkinter.Widget) -> tkinter.Widget:
         if not self.initial_values:
             self.initial_values = (199, (100, 60, 25, 15),
-                                   (Objects.EMPTY.name, Objects.BOULDER.name, Objects.DIAMOND.name, Objects.FIREFLY.name))
+                                   (objects.EMPTY.name, objects.BOULDER.name, objects.DIAMOND.name, objects.FIREFLY.name))
         self.rseed_var = tkinter.IntVar(value=self.initial_values[0])
         self.rp1_var = tkinter.IntVar(value=self.initial_values[1][0])
         self.rp2_var = tkinter.IntVar(value=self.initial_values[1][1])

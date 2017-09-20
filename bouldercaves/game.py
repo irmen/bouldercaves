@@ -11,46 +11,9 @@ import datetime
 import random
 import json
 from enum import Enum
-from typing import Callable, List, Optional
-from . import caves, audio, user_data_dir, tiles
-
-
-class Direction(Enum):
-    NOWHERE = ""
-    LEFT = "l"
-    RIGHT = "r"
-    UP = "u"
-    DOWN = "d"
-    LEFTUP = "lu"
-    RIGHTUP = "ru"
-    LEFTDOWN = "ld"
-    RIGHTDOWN = "rd"
-
-    def rotate90left(self: 'Direction') -> 'Direction':
-        return {
-            Direction.NOWHERE: Direction.NOWHERE,
-            Direction.UP: Direction.LEFT,
-            Direction.LEFT: Direction.DOWN,
-            Direction.DOWN: Direction.RIGHT,
-            Direction.RIGHT: Direction.UP,
-            Direction.LEFTUP: Direction.LEFTDOWN,
-            Direction.LEFTDOWN: Direction.RIGHTDOWN,
-            Direction.RIGHTDOWN: Direction.RIGHTUP,
-            Direction.RIGHTUP: Direction.LEFTUP
-        }[self]
-
-    def rotate90right(self: 'Direction') -> 'Direction':
-        return {
-            Direction.NOWHERE: Direction.NOWHERE,
-            Direction.UP: Direction.RIGHT,
-            Direction.RIGHT: Direction.DOWN,
-            Direction.DOWN: Direction.LEFT,
-            Direction.LEFT: Direction.UP,
-            Direction.LEFTUP: Direction.RIGHTUP,
-            Direction.RIGHTUP: Direction.RIGHTDOWN,
-            Direction.RIGHTDOWN: Direction.LEFTDOWN,
-            Direction.LEFTDOWN: Direction.LEFTUP
-        }[self]
+from typing import List, Optional
+from .objects import Direction
+from . import caves, audio, user_data_dir, tiles, objects
 
 
 class GameStatus(Enum):
@@ -63,202 +26,6 @@ class GameStatus(Enum):
     WON = 7
     DEMO = 8
     HIGHSCORE = 9
-
-
-class GameObject:
-    def __init__(self, name: str, rounded: bool, explodable: bool, consumable: bool,
-                 spritex: int, spritey: int, sframes: int=0, sfps: int=0,
-                 anim_end_callback: Callable[['GameState.Cell'], None]=None) -> None:
-        self.name = name
-        self.rounded = rounded
-        self.explodable = explodable
-        self.consumable = consumable
-        self.spritex = spritex
-        self.spritey = spritey
-        self._tile = spritex + 8 * spritey
-        self.sframes = sframes
-        self.sfps = sfps
-        self.anim_end_callback = anim_end_callback
-
-    def __str__(self):
-        return "<{cls} {name} (#{tile}) at {oid}>".format(cls=self.__class__.__name__, name=self.name, tile=self._tile, oid=hex(id(self)))
-
-    def tile(self, animframe: int = 0) -> int:
-        if self.sframes:
-            return self._tile + animframe % self.sframes
-        return self._tile
-
-
-class Objects:      # namespace for the game objects in the tilesheet
-    # row 0
-    g = GameObject
-    EMPTY = g("EMPTY", False, False, True, 0, 0)
-    BOULDER = g("BOULDER", True, False, True, 1, 0)
-    DIRT = g("DIRT", False, False, True, 2, 0)
-    DIRT2 = g("DIRT2", False, False, True, 3, 0)
-    STEEL = g("STEEL", False, False, False, 4, 0)
-    BRICK = g("BRICK", True, False, True, 5, 0)
-    BLADDERSPENDER = g("BLADDERSPENDER", False, False, False, 6, 0)
-    VOODOO = g("VOODOO", True, True, True, 7, 0)
-    # row 1
-    SWEET = g("SWEET", True, False, True, 0, 1)
-    GRAVESTONE = g("GRAVESTONE", True, False, False, 1, 1)
-    TRAPPEDDIAMOND = g("TRAPPEDDIAMOND", False, False, False, 2, 1)
-    DIAMONDKEY = g("DIAMONDKEY", True, True, True, 3, 1)
-    BITERSWITCH1 = g("BITERSWITCH1", False, False, True, 4, 1)
-    BITERSWITCH2 = g("BITERSWITCH2", False, False, True, 5, 1)
-    BITERSWITCH3 = g("BITERSWITCH3", False, False, True, 6, 1)
-    BITERSWITCH4 = g("BITERSWITCH4", False, False, True, 7, 1)
-    # row 2
-    CLOCK = g("CLOCK", True, False, True, 0, 2)
-    CHASINGBOULDER = g("CHASINGBOULDER", True, False, True, 1, 2)
-    CREATURESWITCH = g("CREATURESWITCH", False, False, False, 2, 2)
-    CREATURESWITCHON = g("CREATURESWITCHON", False, False, False, 3, 2)
-    ACID = g("ACID", False, False, False, 4, 2)
-    SOKOBANBOX = g("SOKOBANBOX", False, False, False, 5, 2)
-    INBOXBLINKING = g("INBOXBLINKING", False, False, False, 6, 2, sframes=2, sfps=4)
-    OUTBOXBLINKING = g("OUTBOXBLINKING", False, False, False, 6, 2, sframes=2, sfps=4)
-    OUTBOXCLOSED = g("OUTBOXCLOSED", False, False, False, 6, 2)
-    # row 3
-    STEELWALLBIRTH = g("STEELWALLBIRTH", False, False, False, 0, 3, sframes=4, sfps=10)
-    CLOCKBIRTH = g("CLOCKBIRTH", False, False, False, 4, 3, sframes=4, sfps=10)
-    # row 4
-    ROCKFORDBIRTH = g("ROCKFORDBIRTH", False, False, False, 0, 4, sframes=4, sfps=10)
-    ROCKFORD = g("ROCKFORD", False, True, True, 3, 4)  # standing still
-    BOULDERBIRTH = g("BOULDERBIRTH", False, False, False, 4, 4, sframes=4, sfps=10)
-    # row 5
-    HEXPANDINGWALL = g("HEXPANDINGWALL", False, False, True, 0, 5)
-    VEXPANDINGWALL = g("VEXPANDINGWALL", False, False, True, 1, 5)
-    ROCKFORD.bomb = g("ROCKFORD.BOMB", False, True, True, 2, 5)
-    EXPLOSION = g("EXPLOSION", False, False, False, 3, 5, sframes=5, sfps=10)
-    # row 6
-    BOMB = g("BOMB", True, False, True, 0, 6)
-    IGNITEDBOMB = g("IGNITEDBOMB", True, False, True, 1, 6, sframes=7, sfps=10)
-    # row 7
-    DIAMONDBIRTH = g("DIAMONDBIRTH", False, False, False, 0, 7, sframes=5, sfps=10)
-    TELEPORTER = g("TELEPORTER", False, False, False, 5, 7)
-    HAMMER = g("HAMMER", True, False, False, 6, 7)
-    POT = g("POT", True, False, False, 7, 7)
-    # row 8
-    DOOR1 = g("DOOR1", False, False, False, 0, 8)
-    DOOR2 = g("DOOR2", False, False, False, 1, 8)
-    DOOR3 = g("DOOR3", False, False, False, 2, 8)
-    KEY1 = g("KEY1", False, False, False, 3, 8)
-    KEY2 = g("KEY2", False, False, False, 4, 8)
-    KEY3 = g("KEY3", False, False, False, 5, 8)
-    EDIT_QUESTION = g("E_QUESTION", False, False, False, 6, 8)
-    EDIT_EAT = g("E_EAT", False, False, False, 7, 8)
-    # row 9
-    STEELWALLDESTRUCTABLE = g("STEELWALLDESTRUCTABLE", False, False, True, 0, 9)
-    EDIT_DOWN_ARROW = g("E_DOWNARROW", False, False, False, 1, 9)
-    EDIT_LEFTRIGHT_ARROW = g("E_LEFTRIGHTARROW", False, False, False, 2, 9)
-    EDIT_EVERYDIR_ARROW = g("E_EVERYDIRARROW", False, False, False, 3, 9)
-    EDIT_LOCKED = g("E_LOCKED", False, False, False, 4, 9)
-    EDIT_OUT = g("E_OUIT", False, False, False, 5, 9)
-    EDIT_EXCLAM = g("E_EXCLAM", False, False, False, 6, 9)
-    EDIT_CROSS = g("E_CROSS", False, False, False, 7, 9)
-    # row 10
-    GHOSTEXPLODE = g("GHOSTEXPLODE", False, False, False, 0, 10, sframes=4, sfps=10)
-    BOMBEXPLODE = g("BOMBEXPLODE", False, False, False, 4, 10, sframes=4, sfps=10)
-    # row 11
-    COW = g("COW", False, True, True, 0, 11, sframes=8, sfps=10)
-    # row 12
-    WATER = g("WATER", False, False, True, 0, 12, sframes=8, sfps=20)
-    # row 13
-    ALTFIREFLY = g("ALTFIREFLY", False, True, True, 0, 13, sframes=8, sfps=20)
-    # row 14
-    ALTBUTTERFLY = g("ALTBUTTERFLY", False, True, True, 0, 14, sframes=8, sfps=20)
-    # row 15
-    BONUSBG = g("BONUSBG", False, False, True, 0, 15, sframes=8, sfps=10)
-    # row 16
-    COVERED = g("COVERED", False, False, False, 0, 16, sframes=8, sfps=20)
-    # row 17
-    FIREFLY = g("FIREFLY", False, True, True, 0, 17, sframes=8, sfps=20)
-    # row 18
-    BUTTERFLY = g("BUTTERFLY", False, True, True, 0, 18, sframes=8, sfps=20)
-    # row 19
-    STONEFLY = g("STONEFLY", False, True, True, 0, 19, sframes=8, sfps=20)
-    # row 20
-    GHOST = g("GHOST", False, True, True, 0, 20, sframes=8, sfps=20)
-    # row 21
-    BITER = g("BITER", False, True, True, 0, 21, sframes=8, sfps=20)
-    # row 22
-    BLADDER = g("BLADDER", False, True, True, 0, 22, sframes=8, sfps=20)
-    # row 23
-    MAGICWALL = g("MAGICWALL", False, False, True, 0, 23, sframes=8, sfps=20)
-    # row 24
-    AMOEBA = g("AMOEBA", False, False, True, 0, 24, sframes=8, sfps=20)
-    # row 25
-    SLIME = g("SLIME", False, False, True, 0, 25, sframes=8, sfps=20)
-    # row 26 - 30
-    ROCKFORD.blink = g("ROCKFORD.BLINK", False, True, True, 0, 26, sframes=8, sfps=20)
-    ROCKFORD.tap = g("ROCKFORD.TAP", False, True, True, 0, 27, sframes=8, sfps=20)
-    ROCKFORD.tapblink = g("ROCKFORD.TAPBLINK", False, True, True, 0, 28, sframes=8, sfps=20)
-    ROCKFORD.left = g("ROCKFORD.LEFT", False, True, True, 0, 29, sframes=8, sfps=20)
-    ROCKFORD.right = g("ROCKFORD.RIGHT", False, True, True, 0, 30, sframes=8, sfps=20)
-    # row 31
-    DIAMOND = g("DIAMOND", True, False, True, 0, 31, sframes=8, sfps=20)
-    # row 32
-    ROCKFORD.stirring = g("ROCKFORD.STIRRING", False, True, True, 0, 32, sframes=8, sfps=20)
-    # row 33   # ...contains hammer
-    # row 34
-    MEGABOULDER = g("MEGABOULDER", True, False, True, 0, 34)
-    SKELETON = g("SKELETON", True, False, True, 1, 34)
-    GRAVITYSWITCH = g("GRAVITYSWITCH", False, False, False, 2, 34)
-    GRAVITYSWITCHON = g("GRAVITYSWITCHON", False, False, False, 3, 34)
-    BRICKSLOPEDUPRIGHT = g("BRICKSLOPEDUPRIGHT", True, False, True, 4, 34)
-    BRICKSLOPEDUPLEFT = g("BRICKSLOPEDUPLEFT", True, False, True, 5, 34)
-    BRICKSLOPEDDOWNLEFT = g("BRICKSLOPEDDOWNLEFT", True, False, True, 6, 34)
-    BRICKSLOPEDDOWNRIGHT = g("BRICKSLOPEDDOWNRIGHT", True, False, True, 7, 34)
-    # row 35
-    DIRTSLOPEDUPRIGHT = g("DIRTSLOPEDUPRIGHT", True, False, True, 0, 35)
-    DIRTSLOPEDUPLEFT = g("DIRTSLOPEDUPLEFT", True, False, True, 1, 35)
-    DIRTSLOPEDDOWNLEFT = g("DIRTSLOPEDDOWNLEFT", True, False, True, 2, 35)
-    DIRTSLOPEDDOWNRIGHT = g("DIRTSLOPEDDOWNRIGHT", True, False, True, 3, 35)
-    STEELSLOPEDUPRIGHT = g("STEELSLOPEDUPRIGHT", True, False, True, 4, 35)
-    STEELSLOPEDUPLEFT = g("STEELSLOPEDUPLEFT", True, False, True, 5, 35)
-    STEELSLOPEDDOWNLEFT = g("STEELSLOPEDDOWNLEFT", True, False, True, 6, 35)
-    STEELSLOPEDDOWNRIGHT = g("STEELSLOPEDDOWNRIGHT", True, False, True, 7, 35)
-    # row 36
-    NITROFLASK = g("NITROFLASK", True, False, True, 0, 36)
-    DIRTBALL = g("DIRTBALL", True, False, True, 1, 36)
-    REPLICATORSWITCHON = g("REPLICATORSWITCHON", False, False, False, 2, 36)
-    REPLICATORSWITCHOFF = g("REPLICATORSWITCHOFF", False, False, False, 3, 36)
-    AMOEBAEXPLODE = g("AMOEBAEXPLODE", False, False, False, 4, 36, sframes=4, sfps=10)
-    # row 37
-    AMOEBARECTANGLE = g("AMOEBARECTANGLE", False, True, True, 0, 37, sframes=8, sfps=10)
-    # row 38
-    REPLICATOR = g("REPLICATOR", False, False, False, 0, 38, sframes=8, sfps=20)
-    # row 39
-    LAVA = g("LAVA", False, False, True, 0, 39, sframes=8, sfps=20)
-    # row 40
-    CONVEYORRIGHT = g("CONVEYORRIGHT", False, False, True, 0, 40, sframes=8, sfps=20)
-    # row 41
-    CONVEYORLEFT = g("CONVEYORLEFT", False, False, True, 0, 41, sframes=8, sfps=20)
-    # row 42
-    DRAGONFLY = g("DRAGONFLY", False, True, True, 0, 42, sframes=8, sfps=20)
-    # row 43
-    FLYINGDIAMOND = g("FLYINGDIAMOND", True, False, True, 0, 43, sframes=8, sfps=20)
-    # row 44
-    DIRTLOOSE = g("DIRTLOOSE", False, False, True, 0, 44)
-    CONVEYORDIRECTIONSWITCHNORMAL = g("CONVEYORDIRECTIONSWITCHNORMAL", False, False, False, 1, 44)
-    CONVEYORDIRECTIONSWITCHCHANGED = g("CONVEYORDIRECTIONSWITCHCHANGED", False, False, False, 2, 44)
-    CONVEYORDIRECTIONSWITCHOFF = g("CONVEYORDIRECTIONSWITCHOFF", False, False, False, 3, 44)
-    CONVEYORDIRECTIONSWITCHON = g("CONVEYORDIRECTIONSWITCHON", False, False, False, 4, 44)
-    FLYINGBOULDER = g("FLYINGBOULDER", False, True, True, 5, 44)
-    COCONUT = g("COCONUT", False, False, True, 6, 44)
-    # row 45
-    NUTCRACK = g("NUTCRACK", False, False, False, 0, 45, sframes=4, sfps=10)
-    ROCKETRIGHT = g("ROCKETRIGHT", False, False, True, 4, 45)
-    ROCKETUP = g("ROCKETUP", False, False, True, 5, 45)
-    ROCKETLEFT = g("ROCKETLEFT", False, False, True, 6, 45)
-    ROCKETDOWN = g("ROCKETDOWN", False, False, True, 7, 45)
-    # row 46
-    ROCKETLAUNCHER = g("ROCKETLAUNCHER", False, False, True, 0, 46)
-    ROCKFORD.rocketlauncher = g("ROCKFORD.ROCKETLAUNCHER", False, True, True, 1, 46, sframes=0, sfps=0)
-    # row 49 - 50
-    ROCKFORD.pushleft = g("ROCKFORD.PUSHLEFT", False, True, True, 0, 49, sframes=8, sfps=20)
-    ROCKFORD.pushright = g("ROCKFORD.PUSHRIGHT", False, True, True, 0, 50, sframes=8, sfps=20)
 
 
 class HighScores:
@@ -308,7 +75,7 @@ class GameState:
     class Cell:
         __slots__ = ("obj", "x", "y", "frame", "falling", "direction", "anim_start_gfx_frame")
 
-        def __init__(self, obj: GameObject, x: int, y: int) -> None:
+        def __init__(self, obj: objects.GameObject, x: int, y: int) -> None:
             self.obj = obj  # what object is in the cell
             self.x = x
             self.y = y
@@ -321,15 +88,15 @@ class GameState:
             return "<Cell {:s} @{:d},{:d}>".format(self.obj.name, self.x, self.y)
 
         def isempty(self) -> bool:
-            return self.obj in {Objects.EMPTY, Objects.BONUSBG, None}
+            return self.obj in {objects.EMPTY, objects.BONUSBG, None}
 
         def isdirt(self) -> bool:
-            return self.obj in {Objects.DIRTBALL, Objects.DIRT, Objects.DIRT2, Objects.DIRTLOOSE,
-                                Objects.DIRTSLOPEDDOWNLEFT, Objects.DIRTSLOPEDDOWNRIGHT,
-                                Objects.DIRTSLOPEDUPLEFT, Objects.DIRTSLOPEDUPRIGHT}
+            return self.obj in {objects.DIRTBALL, objects.DIRT, objects.DIRT2, objects.DIRTLOOSE,
+                                objects.DIRTSLOPEDDOWNLEFT, objects.DIRTSLOPEDDOWNRIGHT,
+                                objects.DIRTSLOPEDUPLEFT, objects.DIRTSLOPEDUPRIGHT}
 
         def isrockford(self) -> bool:
-            return self.obj is Objects.ROCKFORD
+            return self.obj is objects.ROCKFORD
 
         def isrounded(self) -> bool:
             return self.obj.rounded
@@ -341,43 +108,43 @@ class GameState:
             return self.obj.consumable
 
         def ismagic(self) -> bool:
-            return self.obj is Objects.MAGICWALL
+            return self.obj is objects.MAGICWALL
 
         def isslime(self) -> bool:
-            return self.obj is Objects.SLIME
+            return self.obj is objects.SLIME
 
         def isbutterfly(self) -> bool:
             # these explode to diamonds
-            return self.obj is Objects.BUTTERFLY or self.obj is Objects.ALTBUTTERFLY
+            return self.obj is objects.BUTTERFLY or self.obj is objects.ALTBUTTERFLY
 
         def isamoeba(self) -> bool:
-            return self.obj is Objects.AMOEBA or self.obj is Objects.AMOEBARECTANGLE
+            return self.obj is objects.AMOEBA or self.obj is objects.AMOEBARECTANGLE
 
         def isfirefly(self) -> bool:
-            return self.obj is Objects.FIREFLY or self.obj is Objects.ALTFIREFLY
+            return self.obj is objects.FIREFLY or self.obj is objects.ALTFIREFLY
 
         def isdiamond(self) -> bool:
-            return self.obj is Objects.DIAMOND or self.obj is Objects.FLYINGDIAMOND
+            return self.obj is objects.DIAMOND or self.obj is objects.FLYINGDIAMOND
 
         def isboulder(self) -> bool:
-            return self.obj in {Objects.BOULDER, Objects.MEGABOULDER, Objects.CHASINGBOULDER, Objects.FLYINGBOULDER}
+            return self.obj in {objects.BOULDER, objects.MEGABOULDER, objects.CHASINGBOULDER, objects.FLYINGBOULDER}
 
         def iswall(self) -> bool:
-            return self.obj in {Objects.HEXPANDINGWALL, Objects.VEXPANDINGWALL, Objects.BRICK,
-                                Objects.MAGICWALL, Objects.STEEL, Objects.STEELWALLBIRTH,
-                                Objects.BRICKSLOPEDDOWNRIGHT, Objects.BRICKSLOPEDDOWNLEFT,
-                                Objects.BRICKSLOPEDUPRIGHT, Objects.BRICKSLOPEDUPLEFT,
-                                Objects.STEELSLOPEDDOWNLEFT, Objects.STEELSLOPEDDOWNRIGHT,
-                                Objects.STEELSLOPEDUPLEFT, Objects.STEELSLOPEDUPRIGHT}
+            return self.obj in {objects.HEXPANDINGWALL, objects.VEXPANDINGWALL, objects.BRICK,
+                                objects.MAGICWALL, objects.STEEL, objects.STEELWALLBIRTH,
+                                objects.BRICKSLOPEDDOWNRIGHT, objects.BRICKSLOPEDDOWNLEFT,
+                                objects.BRICKSLOPEDUPRIGHT, objects.BRICKSLOPEDUPLEFT,
+                                objects.STEELSLOPEDDOWNLEFT, objects.STEELSLOPEDDOWNRIGHT,
+                                objects.STEELSLOPEDUPLEFT, objects.STEELSLOPEDUPRIGHT}
 
         def isoutbox(self) -> bool:
-            return self.obj is Objects.OUTBOXBLINKING
+            return self.obj is objects.OUTBOXBLINKING
 
         def canfall(self) -> bool:
-            return self.obj in {Objects.BOULDER, Objects.SWEET, Objects.DIAMONDKEY, Objects.BOMB,
-                                Objects.IGNITEDBOMB, Objects.KEY1, Objects.KEY2, Objects.KEY3,
-                                Objects.DIAMOND, Objects.MEGABOULDER, Objects.SKELETON, Objects.NITROFLASK,
-                                Objects.DIRTBALL, Objects.COCONUT, Objects.ROCKETLAUNCHER}
+            return self.obj in {objects.BOULDER, objects.SWEET, objects.DIAMONDKEY, objects.BOMB,
+                                objects.IGNITEDBOMB, objects.KEY1, objects.KEY2, objects.KEY3,
+                                objects.DIAMOND, objects.MEGABOULDER, objects.SKELETON, objects.NITROFLASK,
+                                objects.DIRTBALL, objects.COCONUT, objects.ROCKETLAUNCHER}
 
     class MovementInfo:
         def __init__(self) -> None:
@@ -506,9 +273,9 @@ class GameState:
         self.start_level_number = 1
         self.reveal_duration = 3.0
         # set the anim end callbacks:
-        Objects.ROCKFORDBIRTH.anim_end_callback = self.end_rockfordbirth
-        Objects.EXPLOSION.anim_end_callback = self.end_explosion
-        Objects.DIAMONDBIRTH.anim_end_callback = self.end_diamondbirth
+        objects.ROCKFORDBIRTH.anim_end_callback = self.end_rockfordbirth
+        objects.EXPLOSION.anim_end_callback = self.end_explosion
+        objects.DIAMONDBIRTH.anim_end_callback = self.end_diamondbirth
         self.highscores = HighScores(self.caveset.name)
         # and start the game on the title screen.
         self.restart()
@@ -565,7 +332,7 @@ class GameState:
         self.flash = 0
         # draw the 'title screen'
         self._create_cave(40, 22)
-        self.draw_rectangle(Objects.DIRT2, 0, 0, self.width, self.height, Objects.EMPTY)
+        self.draw_rectangle(objects.DIRT2, 0, 0, self.width, self.height, objects.EMPTY)
         title = r"""
 /**\           *\     *
 *  *   +        *   + *        +
@@ -588,23 +355,23 @@ class GameState:
                 if c == ' ':
                     continue
                 obj = {
-                    '*': Objects.BRICK,
-                    '/': Objects.BRICKSLOPEDUPLEFT,
-                    '\\': Objects.BRICKSLOPEDUPRIGHT,
-                    '@': Objects.BRICKSLOPEDDOWNLEFT,
-                    '$': Objects.BRICKSLOPEDDOWNRIGHT,
-                    '+': Objects.FLYINGDIAMOND,
-                    '#': Objects.BOULDER,
-                    'f': Objects.ALTFIREFLY
+                    '*': objects.BRICK,
+                    '/': objects.BRICKSLOPEDUPLEFT,
+                    '\\': objects.BRICKSLOPEDUPRIGHT,
+                    '@': objects.BRICKSLOPEDDOWNLEFT,
+                    '$': objects.BRICKSLOPEDDOWNRIGHT,
+                    '+': objects.FLYINGDIAMOND,
+                    '#': objects.BOULDER,
+                    'f': objects.ALTFIREFLY
                 }[c]
                 self.draw_single(obj, 2 + x, 1 + y)
 
-        self.draw_line(Objects.LAVA, 4, self.height - 3, self.width - 8, Direction.RIGHT)
-        self.draw_line(Objects.DIRT, 3, self.height - 2, self.width - 6, Direction.RIGHT)
-        self.draw_single(Objects.DIRTSLOPEDUPLEFT, 3, self.height - 3)
-        self.draw_single(Objects.DIRTSLOPEDUPLEFT, 2, self.height - 2)
-        self.draw_single(Objects.DIRTSLOPEDUPRIGHT, self.width - 4, self.height - 3)
-        self.draw_single(Objects.DIRTSLOPEDUPRIGHT, self.width - 3, self.height - 2)
+        self.draw_line(objects.LAVA, 4, self.height - 3, self.width - 8, Direction.RIGHT)
+        self.draw_line(objects.DIRT, 3, self.height - 2, self.width - 6, Direction.RIGHT)
+        self.draw_single(objects.DIRTSLOPEDUPLEFT, 3, self.height - 3)
+        self.draw_single(objects.DIRTSLOPEDUPLEFT, 2, self.height - 2)
+        self.draw_single(objects.DIRTSLOPEDUPRIGHT, self.width - 4, self.height - 3)
+        self.draw_single(objects.DIRTSLOPEDUPRIGHT, self.width - 3, self.height - 2)
 
     def _create_cave(self, width: int, height: int) -> None:
         self.width = width
@@ -623,7 +390,7 @@ class GameState:
         self.cave = []   # type: List[GameState.Cell]
         for y in range(self.height):
             for x in range(self.width):
-                self.cave.append(self.Cell(Objects.EMPTY, x, y))
+                self.cave.append(self.Cell(objects.EMPTY, x, y))
 
     def use_bdcff(self, filename: str) -> None:
         self.caveset = caves.CaveSet(filename)
@@ -678,7 +445,7 @@ class GameState:
         }
         # clear the previous cave data and replace with data from new cave
         self.gfxwindow.clear_tilesheet()
-        self.draw_rectangle(Objects.STEEL, 0, 0, self.width, self.height, Objects.STEEL)
+        self.draw_rectangle(objects.STEEL, 0, 0, self.width, self.height, objects.STEEL)
         for i, (gobj, direction) in enumerate(cave.map):
             y, x = divmod(i, cave.width)
             self.draw_single(gobj, x, y, initial_direction=direction)
@@ -753,7 +520,7 @@ class GameState:
             self.cheat_used = True
             self.load_level(self.level % self.caveset.num_caves + 1)
 
-    def draw_rectangle(self, obj: GameObject, x1: int, y1: int, width: int, height: int, fillobject: GameObject=None) -> None:
+    def draw_rectangle(self, obj: objects.GameObject, x1: int, y1: int, width: int, height: int, fillobject: objects.GameObject=None) -> None:
         self.draw_line(obj, x1, y1, width, Direction.RIGHT)
         self.draw_line(obj, x1, y1 + height - 1, width, Direction.RIGHT)
         self.draw_line(obj, x1, y1 + 1, height - 2, Direction.DOWN)
@@ -762,7 +529,7 @@ class GameState:
             for y in range(y1 + 1, y1 + height - 1):
                 self.draw_line(fillobject, x1 + 1, y, width - 2, Direction.RIGHT)
 
-    def draw_line(self, obj: GameObject, x: int, y: int, length: int, direction: Direction) -> None:
+    def draw_line(self, obj: objects.GameObject, x: int, y: int, length: int, direction: Direction) -> None:
         dx, dy = {
             Direction.LEFT: (-1, 0),
             Direction.RIGHT: (1, 0),
@@ -778,23 +545,23 @@ class GameState:
             x += dx
             y += dy
 
-    def draw_single(self, obj: GameObject, x: int, y: int, initial_direction: Direction=Direction.NOWHERE) -> None:
+    def draw_single(self, obj: objects.GameObject, x: int, y: int, initial_direction: Direction=Direction.NOWHERE) -> None:
         self.draw_single_cell(self.cave[x + y * self.width], obj, initial_direction)
 
-    def draw_single_cell(self, cell: Cell, obj: GameObject, initial_direction: Direction=Direction.NOWHERE) -> None:
+    def draw_single_cell(self, cell: Cell, obj: objects.GameObject, initial_direction: Direction=Direction.NOWHERE) -> None:
         cell.obj = obj
         cell.direction = initial_direction
         cell.frame = self.frame   # make sure the new cell is not immediately scanned
         cell.anim_start_gfx_frame = self.graphics_frame_counter   # default behavior is to start anims from the first frame
         cell.falling = False
-        if obj is Objects.MAGICWALL:
+        if obj is objects.MAGICWALL:
             if not self.magicwall["active"]:
-                obj = Objects.BRICK
+                obj = objects.BRICK
         self.gfxwindow.set_tile(cell.x, cell.y, obj)
         # animation is handled by the graphics refresh
 
     def clear_cell(self, cell: Cell) -> None:
-        self.draw_single_cell(cell, Objects.BONUSBG if self.bonusbg_frame > self.frame else Objects.EMPTY)
+        self.draw_single_cell(cell, objects.BONUSBG if self.bonusbg_frame > self.frame else objects.EMPTY)
 
     def get(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> Cell:
         # retrieve the cell relative to the given cell
@@ -837,11 +604,11 @@ class GameState:
             self.clear_cell(cell)
             cell_under_wall = self.get(self.get(cell, Direction.DOWN), Direction.DOWN)
             if cell_under_wall.isempty():
-                if obj is Objects.DIAMOND:
-                    self.draw_single_cell(cell_under_wall, Objects.BOULDER)
+                if obj is objects.DIAMOND:
+                    self.draw_single_cell(cell_under_wall, objects.BOULDER)
                     audio.play_sample("boulder")
-                elif obj is Objects.BOULDER:
-                    self.draw_single_cell(cell_under_wall, Objects.DIAMOND)
+                elif obj is objects.BOULDER:
+                    self.draw_single_cell(cell_under_wall, objects.DIAMOND)
                     audio.play_sample("diamond" + str(random.randint(1, 6)))
         else:
             # magic wall is disabled, stuff falling on it just disappears (a sound is already played)
@@ -887,18 +654,18 @@ class GameState:
                         self.update_firefly(cell)
                     elif cell.isbutterfly():
                         self.update_butterfly(cell)
-                    elif cell.obj is Objects.INBOXBLINKING:
+                    elif cell.obj is objects.INBOXBLINKING:
                         self.update_inbox(cell)
                     elif cell.isrockford():
                         self.update_rockford(cell)
                     elif cell.isamoeba():
                         self.update_amoeba(cell)
-                    elif cell.obj is Objects.OUTBOXCLOSED:
+                    elif cell.obj is objects.OUTBOXCLOSED:
                         self.update_outboxclosed(cell)
-                    elif cell.obj is Objects.BONUSBG:
+                    elif cell.obj is objects.BONUSBG:
                         if self.bonusbg_frame < self.frame:
-                            self.draw_single_cell(cell, Objects.EMPTY)
-                    elif cell.obj in (Objects.HEXPANDINGWALL, Objects.VEXPANDINGWALL):
+                            self.draw_single_cell(cell, objects.EMPTY)
+                    elif cell.obj in (objects.HEXPANDINGWALL, objects.VEXPANDINGWALL):
                         self.update_expandingwall(cell)
         self.frame_end()
 
@@ -925,11 +692,11 @@ class GameState:
             self.fall_sound_to_play = ""
         if self.amoeba["dead"] is None:
             if self.amoeba["enclosed"]:
-                self.amoeba["dead"] = Objects.DIAMOND
+                self.amoeba["dead"] = objects.DIAMOND
                 audio.silence_audio("amoeba")
                 audio.play_sample("diamond1")
             elif self.amoeba["size"] > self.amoeba["max"]:
-                self.amoeba["dead"] = Objects.BOULDER
+                self.amoeba["dead"] = objects.BOULDER
                 audio.silence_audio("amoeba")
                 audio.play_sample("boulder")
             elif self.amoeba["slow"] > 0:
@@ -976,7 +743,7 @@ class GameState:
         # search for the inbox when the game isn't running yet
         if self.level > 0:
             for cell in self.cave:
-                if cell.obj is Objects.INBOXBLINKING:
+                if cell.obj is objects.INBOXBLINKING:
                     self.last_focus_cell = cell
                     break
         return self.last_focus_cell
@@ -1046,7 +813,7 @@ class GameState:
             cell = self.move(cell, Direction.DOWN)
             if not self.get(cell, Direction.DOWN).isempty():
                 self.fall_sound(cell)  # play a sound as soon as we hit something.
-        elif cellbelow.obj is Objects.VOODOO and cell.obj is Objects.DIAMOND:
+        elif cellbelow.obj is objects.VOODOO and cell.obj is objects.DIAMOND:
             self.clear_cell(cell)
             self.collect_diamond()  # voodoo doll catches falling diamond
         elif cellbelow.isexplodable():
@@ -1073,8 +840,8 @@ class GameState:
         elif self.get(cell, Direction.UP).isamoeba() or self.get(cell, Direction.DOWN).isamoeba() \
                 or self.get(cell, Direction.LEFT).isamoeba() or self.get(cell, Direction.RIGHT).isamoeba():
             self.explode(cell)
-        elif self.get(cell, Direction.UP).obj is Objects.VOODOO or self.get(cell, Direction.DOWN).obj is Objects.VOODOO \
-                or self.get(cell, Direction.LEFT).obj is Objects.VOODOO or self.get(cell, Direction.RIGHT).obj is Objects.VOODOO:
+        elif self.get(cell, Direction.UP).obj is objects.VOODOO or self.get(cell, Direction.DOWN).obj is objects.VOODOO \
+                or self.get(cell, Direction.LEFT).obj is objects.VOODOO or self.get(cell, Direction.RIGHT).obj is objects.VOODOO:
             self.explode(cell)
             self.death_by_voodoo = True
         elif self.get(cell, newdir).isempty():
@@ -1093,8 +860,8 @@ class GameState:
         elif self.get(cell, Direction.UP).isamoeba() or self.get(cell, Direction.DOWN).isamoeba() \
                 or self.get(cell, Direction.LEFT).isamoeba() or self.get(cell, Direction.RIGHT).isamoeba():
             self.explode(cell)
-        elif self.get(cell, Direction.UP).obj is Objects.VOODOO or self.get(cell, Direction.DOWN).obj is Objects.VOODOO \
-                or self.get(cell, Direction.LEFT).obj is Objects.VOODOO or self.get(cell, Direction.RIGHT).obj is Objects.VOODOO:
+        elif self.get(cell, Direction.UP).obj is objects.VOODOO or self.get(cell, Direction.DOWN).obj is objects.VOODOO \
+                or self.get(cell, Direction.LEFT).obj is objects.VOODOO or self.get(cell, Direction.RIGHT).obj is objects.VOODOO:
             self.explode(cell)
             self.death_by_voodoo = True
         elif self.get(cell, newdir).isempty():
@@ -1108,14 +875,14 @@ class GameState:
         # after 4 blinks (=2 seconds), Rockford spawns in the inbox.
         self.inbox_cell = cell
         if self.update_timestep * self.frame > (2.0 + self.reveal_duration):
-            self.draw_single_cell(cell, Objects.ROCKFORDBIRTH)
+            self.draw_single_cell(cell, objects.ROCKFORDBIRTH)
             audio.play_sample("crack")
 
     def update_outboxclosed(self, cell: Cell) -> None:
         if self.diamonds >= self.diamonds_needed:
-            if cell.obj is not Objects.OUTBOXBLINKING:
+            if cell.obj is not objects.OUTBOXBLINKING:
                 audio.play_sample("crack")
-            self.draw_single_cell(cell, Objects.OUTBOXBLINKING)
+            self.draw_single_cell(cell, objects.OUTBOXBLINKING)
 
     def update_amoeba(self, cell: Cell) -> None:
         if self.amoeba["dead"] is not None:
@@ -1175,23 +942,23 @@ class GameState:
 
     def update_expandingwall(self, cell: Cell) -> None:
         # cell is an expanding wall (horizontally or vertically)
-        if cell.obj is Objects.HEXPANDINGWALL:
+        if cell.obj is objects.HEXPANDINGWALL:
             left = self.get(cell, Direction.LEFT)
             right = self.get(cell, Direction.RIGHT)
             if left.isempty():
-                self.draw_single_cell(left, Objects.HEXPANDINGWALL)
+                self.draw_single_cell(left, objects.HEXPANDINGWALL)
                 self.fall_sound(cell, pushing=True)
             if right.isempty():
-                self.draw_single_cell(right, Objects.HEXPANDINGWALL)
+                self.draw_single_cell(right, objects.HEXPANDINGWALL)
                 self.fall_sound(cell, pushing=True)
-        elif cell.obj is Objects.VEXPANDINGWALL:
+        elif cell.obj is objects.VEXPANDINGWALL:
             up = self.get(cell, Direction.UP)
             down = self.get(cell, Direction.DOWN)
             if up.isempty():
-                self.draw_single_cell(up, Objects.VEXPANDINGWALL)
+                self.draw_single_cell(up, objects.VEXPANDINGWALL)
                 self.fall_sound(cell, pushing=True)
             if down.isempty():
-                self.draw_single_cell(down, Objects.VEXPANDINGWALL)
+                self.draw_single_cell(down, objects.VEXPANDINGWALL)
                 self.fall_sound(cell, pushing=True)
 
     def update_scorebar(self) -> None:
@@ -1206,11 +973,11 @@ class GameState:
         # )).ljust(width)
         # self.gfxwindow.tilesheet_score.set_tiles(0, 0, tiles.text2tiles(text))
         # if self.keys["one"]:
-        #     self.gfxwindow.tilesheet_score[9, 0] = Objects.KEY1.spritex + Objects.KEY1.spritey * self.gfxwindow.tile_image_numcolumns
+        #     self.gfxwindow.tilesheet_score[9, 0] = objects.KEY1.spritex + objects.KEY1.spritey * self.gfxwindow.tile_image_numcolumns
         # if self.keys["two"]:
-        #     self.gfxwindow.tilesheet_score[10, 0] = Objects.KEY2.spritex + Objects.KEY2.spritey * self.gfxwindow.tile_image_numcolumns
+        #     self.gfxwindow.tilesheet_score[10, 0] = objects.KEY2.spritex + objects.KEY2.spritey * self.gfxwindow.tile_image_numcolumns
         # if self.keys["three"]:
-        #     self.gfxwindow.tilesheet_score[11, 0] = Objects.KEY3.spritex + Objects.KEY3.spritey * self.gfxwindow.tile_image_numcolumns
+        #     self.gfxwindow.tilesheet_score[11, 0] = objects.KEY3.spritex + objects.KEY3.spritey * self.gfxwindow.tile_image_numcolumns
         width = self.gfxwindow.tilesheet_score.width
         if self.level < 1:
             # level has not been loaded yet (we're still at the title screen)
@@ -1220,8 +987,8 @@ class GameState:
                 self.gfxwindow.set_scorebar_tiles(0, 0, tiles.text2tiles("Welcome to Boulder Caves".center(width)))
             self.gfxwindow.set_scorebar_tiles(0, 1, tiles.text2tiles("F1\x04New game! F4\x04Scores F9\x04Demo".center(width)))
             if not self.gfxwindow.smallwindow:
-                left = [Objects.MEGABOULDER.tile(), Objects.FLYINGDIAMOND.tile(), Objects.DIAMOND.tile(), Objects.ROCKFORD.pushleft.tile()]
-                right = [Objects.ROCKFORD.pushright.tile(), Objects.MEGABOULDER.tile(), Objects.FLYINGDIAMOND.tile(), Objects.DIAMOND.tile()]
+                left = [objects.MEGABOULDER.tile(), objects.FLYINGDIAMOND.tile(), objects.DIAMOND.tile(), objects.ROCKFORD.pushleft.tile()]
+                right = [objects.ROCKFORD.pushright.tile(), objects.MEGABOULDER.tile(), objects.FLYINGDIAMOND.tile(), objects.DIAMOND.tile()]
                 self.gfxwindow.set_scorebar_tiles(0, 0, left)
                 self.gfxwindow.set_scorebar_tiles(0, 1, left)
                 self.gfxwindow.set_scorebar_tiles(width - len(right), 0, right)
@@ -1279,8 +1046,8 @@ class GameState:
             self.lives += 1
             audio.play_sample("extra_life")
             for cell in self.cave:
-                if cell.obj is Objects.EMPTY:
-                    self.draw_single_cell(cell, Objects.BONUSBG)
+                if cell.obj is objects.EMPTY:
+                    self.draw_single_cell(cell, objects.BONUSBG)
                     self.bonusbg_frame = self.frame + self.fps * 6   # sparkle for 6 seconds
 
     def add_extra_time(self, seconds: float) -> None:
@@ -1289,7 +1056,7 @@ class GameState:
     def end_rockfordbirth(self, cell: Cell) -> None:
         # rockfordbirth eventually creates the real Rockford and starts the level timer.
         if self.game_status in (GameStatus.PLAYING, GameStatus.DEMO):
-            self.draw_single_cell(cell, Objects.ROCKFORD)
+            self.draw_single_cell(cell, objects.ROCKFORD)
             self.timelimit = datetime.datetime.now() + self.timeremaining
             self.inbox_cell = None
 
@@ -1299,18 +1066,18 @@ class GameState:
 
     def end_diamondbirth(self, cell: Cell) -> None:
         # diamondbirth ends with a diamond
-        self.draw_single_cell(cell, Objects.DIAMOND)
+        self.draw_single_cell(cell, objects.DIAMOND)
 
     def explode(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> None:
         explosion_sample = "explosion"
         explosioncell = self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
         if explosioncell.isbutterfly():
-            explode_obj = Objects.DIAMONDBIRTH
+            explode_obj = objects.DIAMONDBIRTH
         else:
-            explode_obj = Objects.EXPLOSION
-        if explosioncell.obj is Objects.VOODOO:
+            explode_obj = objects.EXPLOSION
+        if explosioncell.obj is objects.VOODOO:
             explosion_sample = "voodoo_explosion"
-            self.draw_single_cell(explosioncell, Objects.GRAVESTONE)
+            self.draw_single_cell(explosioncell, objects.GRAVESTONE)
         else:
             self.draw_single_cell(explosioncell, explode_obj)
         for direction in Direction:
@@ -1320,9 +1087,9 @@ class GameState:
             if cell.isexplodable():
                 self.explode(cell, Direction.NOWHERE)
             elif cell.isconsumable():
-                if cell.obj is Objects.VOODOO:
+                if cell.obj is objects.VOODOO:
                     explosion_sample = "voodoo_explosion"
-                    self.draw_single_cell(cell, Objects.GRAVESTONE)
+                    self.draw_single_cell(cell, objects.GRAVESTONE)
                 else:
                     self.draw_single_cell(cell, explode_obj)
         audio.play_sample(explosion_sample)
