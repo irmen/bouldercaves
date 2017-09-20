@@ -191,6 +191,7 @@ class BdcffParser:
         self.num_levels = int(self.game_properties.pop("levels"))
         self.num_caves = int(self.game_properties.pop("caves"))
         self.name = self.game_properties.pop("name")
+        self.description = self.game_properties.pop("description", "")
         self.author = self.game_properties.pop("author")
         self.www = self.game_properties.pop("www")
         self.date = self.game_properties.pop("date")

@@ -456,6 +456,13 @@ class CaveSet:
             self.cave_demo = CAVE_A_DEMO
             self.num_caves = len(BD1CAVES)
 
+    def cave_names(self):
+        if self.mode == "builtin":
+            return [c[0] for c in self.caves.caves]
+        elif self.mode == "bdcff":
+            return [c.name for c in self.caves.caves]
+        raise ValueError("invalid caveset mode")
+
     def cave(self, levelnumber: int) -> Cave:
         if self.mode == "builtin":
             return C64Cave.decode_from_lvl(levelnumber)

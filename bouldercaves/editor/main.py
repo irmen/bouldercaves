@@ -15,10 +15,11 @@ import tkinter
 import tkinter.messagebox
 import tkinter.simpledialog
 import tkinter.ttk
+import tkinter.filedialog
 import pkgutil
 from typing import Tuple, List, Dict, Optional
 from ..gfxwindow import __version__
-from ..caves import colorpalette, C64Cave, Cave as BaseCave, RgbPalette, Palette, BDCFFOBJECTS
+from ..caves import colorpalette, C64Cave, Cave as BaseCave, CaveSet, RgbPalette, Palette, BDCFFOBJECTS
 from ..objects import GameObject
 from .. import tiles, objects, bdcff
 
@@ -208,11 +209,11 @@ class EditorWindow(tkinter.Tk):
         tkinter.Label(lf, text="R - restore snapshot").pack(anchor=tkinter.W, padx=4)
         lf.pack(fill=tkinter.X, pady=4)
         lf = tkinter.LabelFrame(buttonsframe, text="Misc. edit")
-        tkinter.Button(lf, text="Load @todo").grid(column=0, row=0)   # @todo load
+        tkinter.Button(lf, text="Load", command=self.load).grid(column=0, row=0)
         tkinter.Button(lf, text="Save", command=self.save).grid(column=1, row=0)
         tkinter.Button(lf, text="Randomize", command=self.randomize).grid(column=0, row=1)
         tkinter.Button(lf, text="Wipe", command=self.wipe).grid(column=1, row=1)
-        tkinter.Button(lf, text="Playtest @todo", command=self.playtest).grid(column=0, row=2)
+        tkinter.Button(lf, text="Playtest", command=self.playtest).grid(column=0, row=2)
         lf.pack(fill=tkinter.X, pady=4)
         lf = tkinter.LabelFrame(buttonsframe, text="C-64 colors")
         c64colors_var = tkinter.IntVar()
@@ -426,7 +427,32 @@ class EditorWindow(tkinter.Tk):
             self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
             self.canvas.configure(background="#{:06x}".format(colors.border))
 
-    def save(self, gamefile: Optional[str]) -> None:
+    def load(self):
+        if not tkinter.messagebox.askokcancel("Confirm", "Load cave and lose current one?", parent=self.buttonsframe):
+            return
+        gamefile = tkinter.filedialog.askopenfilename(title="Load caveset file", defaultextension=".bdcff",
+                                                      filetypes=[("boulderdash", ".bdcff"),
+                                                                 ("boulderdash", ".bd"),
+                                                                 ("text", ".txt")],
+                                                      parent=self.buttonsframe)
+        caveset = CaveSet(gamefile)
+        if caveset.num_caves > 1:
+            message = ["Currently you can only edit a single cave.", "The selected file contains multiple caves:", ""]
+            for num, cavename in enumerate(caveset.cave_names(), start=1):
+                message.append("{:d} --> {:s}".format(num, cavename))
+            message.append("")
+            message.append("Type the number of the cave to load from this file:")
+            cavenum = tkinter.simpledialog.askinteger("Which cave to load?", "\n".join(message),
+                                                      initialvalue=1, minvalue=1, maxvalue=caveset.num_caves)
+        else:
+            cavenum = 1
+        cave = caveset.cave(cavenum)   # @todo use our own Cave subclass
+        print("SELECTED CAVE", cave, cave.name)   # XXX
+        self.cave = cave
+
+    def save(self, gamefile: Optional[str]=None) -> bool:
+        if not self.sanitycheck():
+            return False
         caveset = bdcff.BdcffParser()
         caveset.num_caves = 1
         caveset.name = "playtest caveset"
@@ -460,19 +486,53 @@ class EditorWindow(tkinter.Tk):
                 mapline += BDCFFSYMBOL_NO_DIR[obj]   # @todo use direction
             cave.map.maplines.append(mapline)
         caveset.caves.append(cave)
-        with open(gamefile, "wt") as out:
-            caveset.write(out)
+        gamefile = gamefile or tkinter.filedialog.asksaveasfilename(title="Save single cave as", defaultextension=".bdcff",
+                                                                    filetypes=[("boulderdash", ".bdcff"),
+                                                                               ("boulderdash", ".bd"),
+                                                                               ("text", ".txt")],
+                                                                    parent=self.buttonsframe)
+        if gamefile:
+            with open(gamefile, "wt") as out:
+                caveset.write(out)
+            return True
+        return False
+
+    def sanitycheck(self):
+        # check that the level is sane:
+        # edge must be all steel wall, or inbox/outbox.
+        # we should have at least 1 inbox and at least 1 outbox.
+        inbox_count = len([x for x, _ in self.cave.cells if x == objects.INBOXBLINKING])
+        outbox_count = len([x for x, _ in self.cave.cells if x in (objects.OUTBOXCLOSED, objects.OUTBOXBLINKING)])
+        enclosed_ok = True
+        edge_objs_allowed = {objects.STEEL, objects.INBOXBLINKING, objects.OUTBOXBLINKING, objects.OUTBOXCLOSED}
+        for x in range(0, self.cave.width):
+            enclosed_ok &= self.cave[x, 0][0] in edge_objs_allowed
+            enclosed_ok &= self.cave[x, self.cave.height - 1][0] in edge_objs_allowed
+        for y in range(0, self.cave.height):
+            enclosed_ok &= self.cave[0, y][0] in edge_objs_allowed
+            enclosed_ok &= self.cave[self.cave.width - 1, y][0] in edge_objs_allowed
+        messages = []
+        if inbox_count <= 0:
+            messages.append("There should be at least one INBOX.")
+        if outbox_count <= 0:
+            messages.append("There should be at least one OUTBOX.")
+        if not enclosed_ok:
+            messages.append("The edge of the level should be STEEL (or INBOX or OUTBOX).")
+        if messages:
+            messages.insert(0, "There are some problems with the current cave:")
+            tkinter.messagebox.showerror("Cave sanity check failed", "\n\n".join(messages), parent=self.buttonsframe)
+            return False
         return True
 
     def playtest(self) -> None:
         gamefile = os.path.expanduser("~/.bouldercaves/_playtest_cave.bdcff")
-        open(gamefile, "wt").writelines(["wott!"])
         if self.save(gamefile):
             # launch the game in a separate process
             import subprocess
             from .. import gfxwindow
             env = os.environ.copy()
             env["PYTHONPATH"] = sys.path[0]
+            # @todo playtest option to skip title screen and uncover tiles
             subprocess.Popen([sys.executable, "-m", gfxwindow.__name__, "--synth", "--c64colors", "--game", gamefile], env=env)
 
 

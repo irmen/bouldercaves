@@ -338,8 +338,9 @@ class BoulderWindow(tkinter.Tk):
         self.tilesheet = tiles.Tilesheet(self.playfield_columns, self.playfield_rows, self.visible_columns, self.visible_rows)
 
     def set_screen_colors(self, screencolorrgb: int, bordercolorrgb: int) -> None:
-        self.configure(background="#{:06x}".format(bordercolorrgb))
-        self.canvas.configure(background="#{:06x}".format(screencolorrgb))
+        if self.c64colors:
+            self.configure(background="#{:06x}".format(bordercolorrgb))
+            self.canvas.configure(background="#{:06x}".format(screencolorrgb))
 
     def set_canvas_tile(self, x: int, y: int, obj: objects.GameObject) -> None:
         self.tilesheet[x, y] = obj.tile()
