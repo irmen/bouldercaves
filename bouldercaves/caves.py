@@ -280,14 +280,15 @@ class Cave:
         self.width = width
         self.height = height
         self.map = []       # type: List[Tuple]
-        self.magicwall_millingtime = 0
-        self.amoeba_slowgrowthtime = 0
-        self.diamondvalue_initial = 0
-        self.diamondvalue_extra = 0
-        self.diamonds_needed = 0
-        self.amoebamaxsize = 0
-        self.slime_permeability = 0
-        self.time = 0
+        defaults = bdcff.BdcffCave()
+        self.magicwall_millingtime = defaults.magicwalltime
+        self.amoeba_slowgrowthtime = defaults.amoebatime
+        self.diamondvalue_normal = defaults.diamondvalue_normal
+        self.diamondvalue_extra = defaults.diamondvalue_extra
+        self.diamonds_required = defaults.diamonds_required
+        self.amoebamaxsize = defaults.amoebamaxsize    # @todo factor
+        self.slime_permeability = defaults.slimepermeability
+        self.time = defaults.cavetime
         self.colors = Palette()
 
 
@@ -303,15 +304,15 @@ class C64Cave(Cave):
         cave.codemap = bytearray(cave.width * cave.height)
         cave.intermission = name.lower().startswith("intermission")
         cave.magicwall_millingtime = cave.amoeba_slowgrowthtime = data[0x01]
-        cave.diamondvalue_initial = data[0x02]
+        cave.diamondvalue_normal = data[0x02]
         cave.diamondvalue_extra = data[0x03]
         cave.randomseed = data[0x04]
-        cave.diamonds_needed = data[0x09]
+        cave.diamonds_required = data[0x09]
         cave.time = data[0x0e]
         cave.colors = Palette(data[0x13], data[0x14], 1, data[0x15])
         cave.random_objects = data[0x18], data[0x19], data[0x1a], data[0x1b]
         cave.random_probabilities = data[0x1c], data[0x1d], data[0x1e], data[0x1f]
-        cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)
+        cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)   # @todo factor
         cave.build_map(data[0x20:])
         # if map contains amoeba, the fg3 color is not white but instead the amoeba color.
         if any(m[0] == objects.AMOEBA for m in cave.map):
@@ -467,10 +468,10 @@ class CaveSet:
         cave.intermission = bdcff.intermission
         cave.magicwall_millingtime = bdcff.magicwalltime
         cave.amoeba_slowgrowthtime = bdcff.amoebatime
-        cave.diamondvalue_initial = bdcff.diamondvalue_normal
+        cave.diamondvalue_normal = bdcff.diamondvalue_normal
         cave.diamondvalue_extra = bdcff.diamondvalue_extra
-        cave.diamonds_needed = bdcff.diamonds_required
-        cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)
+        cave.diamonds_required = bdcff.diamonds_required
+        cave.amoebamaxsize = int(cave.width * cave.height * 0.2273)   # @todo factor
         cave.time = bdcff.cavetime
         cave.slime_permeability = bdcff.slimepermeability
         cave.colors.fg1 = bdcff.color_fg1
@@ -481,30 +482,32 @@ class CaveSet:
         cave.colors.screen = bdcff.color_screen if bdcff.color_screen >= 0 else 0
         cave.colors.border = bdcff.color_border if bdcff.color_border >= 0 else 0
         # convert the bdcff map
-        conversion = {
-            '.': (objects.DIRT, Direction.NOWHERE),
-            ' ': (objects.EMPTY, Direction.NOWHERE),
-            'w': (objects.BRICK, Direction.NOWHERE),
-            'M': (objects.MAGICWALL, Direction.NOWHERE),
-            'x': (objects.HEXPANDINGWALL, Direction.NOWHERE),
-            'v': (objects.VEXPANDINGWALL, Direction.NOWHERE),
-            'X': (objects.OUTBOXCLOSED, Direction.NOWHERE),
-            'H': (objects.OUTBOXCLOSED, Direction.NOWHERE),    # should be a 'hidden' outbox officially
-            'W': (objects.STEEL, Direction.NOWHERE),
-            'Q': (objects.FIREFLY, Direction.LEFT),
-            'q': (objects.FIREFLY, Direction.RIGHT),
-            'O': (objects.FIREFLY, Direction.UP),
-            'o': (objects.FIREFLY, Direction.DOWN),
-            'c': (objects.BUTTERFLY, Direction.DOWN),
-            'C': (objects.BUTTERFLY, Direction.LEFT),
-            'b': (objects.BUTTERFLY, Direction.UP),
-            'B': (objects.BUTTERFLY, Direction.RIGHT),
-            'r': (objects.BOULDER, Direction.NOWHERE),
-            'd': (objects.DIAMOND, Direction.NOWHERE),
-            'P': (objects.INBOXBLINKING, Direction.NOWHERE),
-            'a': (objects.AMOEBA, Direction.NOWHERE),
-            'F': (objects.VOODOO, Direction.NOWHERE),
-            's': (objects.SLIME, Direction.NOWHERE)
-        }
-        cave.map = [conversion[x] for line in bdcff.map.maplines for x in line]
+        cave.map = [BDCFFOBJECTS[x] for line in bdcff.map.maplines for x in line]
         return cave
+
+
+BDCFFOBJECTS = {
+    '.': (objects.DIRT, Direction.NOWHERE),
+    ' ': (objects.EMPTY, Direction.NOWHERE),
+    'w': (objects.BRICK, Direction.NOWHERE),
+    'M': (objects.MAGICWALL, Direction.NOWHERE),
+    'x': (objects.HEXPANDINGWALL, Direction.NOWHERE),
+    'v': (objects.VEXPANDINGWALL, Direction.NOWHERE),
+    'H': (objects.OUTBOXCLOSED, Direction.NOWHERE),    # should be a 'hidden' outbox officially
+    'X': (objects.OUTBOXCLOSED, Direction.NOWHERE),
+    'W': (objects.STEEL, Direction.NOWHERE),
+    'Q': (objects.FIREFLY, Direction.LEFT),
+    'q': (objects.FIREFLY, Direction.RIGHT),
+    'O': (objects.FIREFLY, Direction.UP),
+    'o': (objects.FIREFLY, Direction.DOWN),
+    'c': (objects.BUTTERFLY, Direction.DOWN),
+    'C': (objects.BUTTERFLY, Direction.LEFT),
+    'b': (objects.BUTTERFLY, Direction.UP),
+    'B': (objects.BUTTERFLY, Direction.RIGHT),
+    'r': (objects.BOULDER, Direction.NOWHERE),
+    'd': (objects.DIAMOND, Direction.NOWHERE),
+    'P': (objects.INBOXBLINKING, Direction.NOWHERE),
+    'a': (objects.AMOEBA, Direction.NOWHERE),
+    'F': (objects.VOODOO, Direction.NOWHERE),
+    's': (objects.SLIME, Direction.NOWHERE)
+}

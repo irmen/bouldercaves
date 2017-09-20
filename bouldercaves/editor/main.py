@@ -18,9 +18,12 @@ import tkinter.ttk
 import pkgutil
 from typing import Tuple, List, Dict, Optional
 from ..gfxwindow import __version__
-from ..caves import colorpalette, C64Cave, Cave as BaseCave, RgbPalette, Palette
+from ..caves import colorpalette, C64Cave, Cave as BaseCave, RgbPalette, Palette, BDCFFOBJECTS
 from ..objects import GameObject
-from .. import tiles, objects
+from .. import tiles, objects, bdcff
+
+
+# @todo add support for initial direction of objects
 
 
 class ScrollableImageSelector(tkinter.Frame):
@@ -101,7 +104,7 @@ class Cave(BaseCave):
         x, y = xy
         obj, displaytile = thing
         self.cells[x + self.width * y] = (obj, displaytile)
-        self.editor.set_tile(x, y, displaytile)
+        self.editor.set_canvas_tile(x, y, displaytile)
 
     def __getitem__(self, xy: Tuple[int, int]) -> Tuple[GameObject, int]:
         x, y = xy
@@ -136,7 +139,7 @@ EDITOR_OBJECTS = {
     objects.HEXPANDINGWALL: objects.HEXPANDINGWALL.tile(),
     objects.INBOXBLINKING: objects.ROCKFORD.tile(),
     objects.MAGICWALL: objects.MAGICWALL.tile(),
-    objects.OUTBOXBLINKING: objects.OUTBOXBLINKING.tile(1),
+    objects.OUTBOXCLOSED: objects.OUTBOXBLINKING.tile(1),
     objects.SLIME: objects.SLIME.tile(1),
     objects.STEEL: objects.STEEL.tile(),
     objects.VEXPANDINGWALL: objects.VEXPANDINGWALL.tile(),
@@ -175,21 +178,21 @@ class EditorWindow(tkinter.Tk):
         sx.grid(row=1, column=0, sticky=tkinter.E + tkinter.W)
         cf.pack()
         f = tkinter.Frame(rightframe)
-        tkinter.Label(f, text="Cave name:").grid(column=0, row=0)
-        tkinter.Label(f, text="Cave description:").grid(column=0, row=1)
-        tkinter.Label(f, text="Author:").grid(column=0, row=2)
-        tkinter.Label(f, text="WWW:").grid(column=0, row=3)
-        tkinter.Label(f, text="Date:").grid(column=0, row=4)
+        tkinter.Label(f, text="Cave name:").grid(column=0, row=0, sticky=tkinter.E)
+        tkinter.Label(f, text="Cave description:").grid(column=0, row=1, sticky=tkinter.E)
+        tkinter.Label(f, text="caveset Author:").grid(column=0, row=2, sticky=tkinter.E)
+        tkinter.Label(f, text="caveset WWW:").grid(column=0, row=3, sticky=tkinter.E)
+        tkinter.Label(f, text="caveset Date:").grid(column=0, row=4, sticky=tkinter.E)
         self.cavename_var = tkinter.StringVar(value="A: test")
         self.cavedescr_var = tkinter.StringVar(value="A test cave.")
-        self.caveauthor_var = tkinter.StringVar(value=getpass.getuser())
-        self.cavewww_var = tkinter.StringVar()
-        self.cavedate_var = tkinter.StringVar(value=datetime.datetime.now().date())
+        self.cavesetauthor_var = tkinter.StringVar(value=getpass.getuser())
+        self.cavesetwww_var = tkinter.StringVar()
+        self.cavesetdate_var = tkinter.StringVar(value=datetime.datetime.now().date())
         tkinter.Entry(f, textvariable=self.cavename_var).grid(column=1, row=0)
         tkinter.Entry(f, textvariable=self.cavedescr_var).grid(column=1, row=1)
-        tkinter.Entry(f, textvariable=self.caveauthor_var).grid(column=1, row=2)
-        tkinter.Entry(f, textvariable=self.cavewww_var).grid(column=1, row=3)
-        tkinter.Entry(f, textvariable=self.cavedate_var).grid(column=1, row=4)
+        tkinter.Entry(f, textvariable=self.cavesetauthor_var).grid(column=1, row=2)
+        tkinter.Entry(f, textvariable=self.cavesetwww_var).grid(column=1, row=3)
+        tkinter.Entry(f, textvariable=self.cavesetdate_var).grid(column=1, row=4)
         f.pack(side=tkinter.LEFT)
         rightframe.pack(side=tkinter.RIGHT, padx=4, pady=4, fill=tkinter.BOTH, expand=1)
 
@@ -206,7 +209,7 @@ class EditorWindow(tkinter.Tk):
         lf.pack(fill=tkinter.X, pady=4)
         lf = tkinter.LabelFrame(buttonsframe, text="Misc. edit")
         tkinter.Button(lf, text="Load @todo").grid(column=0, row=0)   # @todo load
-        tkinter.Button(lf, text="Save @todo").grid(column=1, row=0)   # @todo save
+        tkinter.Button(lf, text="Save", command=self.save).grid(column=1, row=0)
         tkinter.Button(lf, text="Randomize", command=self.randomize).grid(column=0, row=1)
         tkinter.Button(lf, text="Wipe", command=self.wipe).grid(column=1, row=1)
         tkinter.Button(lf, text="Playtest @todo", command=self.playtest).grid(column=0, row=2)
@@ -343,7 +346,7 @@ class EditorWindow(tkinter.Tk):
     def tile_erase_selection_changed(self, object: GameObject, tile: int) -> None:
         pass
 
-    def set_tile(self, x: int, y: int, tile: int) -> None:
+    def set_canvas_tile(self, x: int, y: int, tile: int) -> None:
         c_tile = self.canvas.find_closest(x * 32, y * 32)
         self.canvas.itemconfigure(c_tile, image=self.tile_images[tile])
 
@@ -422,6 +425,44 @@ class EditorWindow(tkinter.Tk):
             self.populate_imageselector()
             self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
             self.canvas.configure(background="#{:06x}".format(colors.border))
+
+    def save(self, gamefile: Optional[str]) -> None:
+        caveset = bdcff.BdcffParser()
+        caveset.num_caves = 1
+        caveset.name = "playtest caveset"
+        caveset.author = self.cavesetauthor_var.get()
+        caveset.www = self.cavesetwww_var.get()
+        caveset.date = self.cavesetdate_var.get()
+        caveset.description = "for playtesting the cave"
+        cave = bdcff.BdcffCave()
+        cave.name = self.cavename_var.get()
+        cave.description = self.cavedescr_var.get()
+        cave.width = self.cave.width
+        cave.height = self.cave.height
+        cave.cavetime = self.cave.time
+        cave.diamonds_required = self.cave.diamonds_required
+        cave.diamondvalue_normal = self.cave.diamondvalue_normal
+        cave.diamondvalue_extra = self.cave.diamondvalue_extra
+        cave.amoebatime = self.cave.amoeba_slowgrowthtime
+        cave.magicwalltime = self.cave.magicwall_millingtime
+        cave.slimepermeability = self.cave.slime_permeability
+        cave.intermission = self.cave.intermission
+        c = self.cave.colors
+        cave.color_border, cave.color_screen, cave.color_fg1, cave.color_fg2, cave.color_fg3, cave.color_amoeba, cave.color_slime = \
+            c.border, c.screen, c.fg1, c.fg2, c.fg3, c.amoeba, c.slime
+        cave.amoebamaxsize = self.cave.amoebamaxsize   # @todo factor
+        BDCFFSYMBOL = {(obj, direction): symbol for symbol, (obj, direction) in BDCFFOBJECTS.items()}
+        BDCFFSYMBOL_NO_DIR = {obj: symbol for symbol, (obj, _) in BDCFFOBJECTS.items()}
+        for y in range(0, self.cave.height):
+            mapline = ""
+            for x in range(0, self.cave.width):
+                obj, direction = self.cave[x, y]
+                mapline += BDCFFSYMBOL_NO_DIR[obj]   # @todo use direction
+            cave.map.maplines.append(mapline)
+        caveset.caves.append(cave)
+        with open(gamefile, "wt") as out:
+            caveset.write(out)
+        return True
 
     def playtest(self) -> None:
         gamefile = os.path.expanduser("~/.bouldercaves/_playtest_cave.bdcff")

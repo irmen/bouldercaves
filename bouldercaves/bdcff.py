@@ -13,7 +13,8 @@ License: MIT open-source.
 
 import sys
 import datetime
-from typing import Dict, List, Any, TextIO
+import getpass
+from typing import Dict, List, Any, TextIO, Optional
 
 
 class BdcffFormatError(Exception):
@@ -31,9 +32,22 @@ class BdcffCave:
             self.width = len(self.maplines[0])
 
     def __init__(self):
+        # create a cave with the defaults from the Bdcff specification
         self.properties = {}
         self.map = self.Map()
         self.intermission = False
+        self.cavetime = 200
+        self.cavedelay = 8
+        self.slimepermeability = 1.0
+        self.amoebamaxsize = 200  # @todo factor
+        self.amoebatime = 999
+        self.magicwalltime = 999
+        self.diamonds_required = 10
+        self.diamondvalue_normal = self.diamondvalue_extra = 0
+        self.width = self.map.width
+        self.height = self.map.height
+        self.color_screen, self.color_border, self.color_fg1, self.color_fg2, self.color_fg3, \
+            self.color_amoeba, self.color_slime = [0, 0, 10, 12, 1, 5, 6]
 
     def postprocess(self):
         self.name = self.properties.pop("name")
@@ -50,9 +64,9 @@ class BdcffCave:
             dv = dve = dvalue
         self.diamondvalue_normal = int(dv)
         self.diamondvalue_extra = int(dve)
-        self.amoebatime = int(self.properties.pop("amoebatime", 200))
-        self.magicwalltime = int(self.properties.pop("magicwalltime", 0))
-        self.slimepermeability = float(self.properties.pop("slimepermeability", 0))
+        self.amoebatime = int(self.properties.pop("amoebatime", 999))
+        self.magicwalltime = int(self.properties.pop("magicwalltime", 999))
+        self.slimepermeability = float(self.properties.pop("slimepermeability", 1.0))
         colors = [BdcffParser.COLORNAMES.index(c) for c in self.properties.pop("colors").split()]
         self.color_border = 0
         self.color_screen = 0
@@ -87,7 +101,7 @@ class BdcffCave:
         out.write("Name={:s} {:s}\n".format("Intermission" if self.intermission else "Cave", self.name))
         out.write("Description={:s}\n".format(self.description))
         out.write("Intermission={:s}\n".format("true" if self.intermission else "false"))
-        out.write("CaveDelay={:d}\n".format(3 if self.intermission else 8))
+        out.write("CaveDelay={:d}\n".format(self.cavedelay))
         out.write("CaveTime={:d}\n".format(self.cavetime))
         out.write("DiamondsRequired={:d}\n".format(self.diamonds_required))
         out.write("DiamondValue={:d} {:d}\n".format(self.diamondvalue_normal, self.diamondvalue_extra))
@@ -106,6 +120,8 @@ class BdcffCave:
         out.write("\n[map]\n")
         if len(self.map.maplines) != self.height:
             raise BdcffFormatError("cave height differs from map")
+        if len(self.map.maplines) == 0:
+            raise BdcffFormatError("no map lines")
         for line in self.map.maplines:
             if len(line) != self.width:
                 raise BdcffFormatError("cave width differs from map")
@@ -122,19 +138,28 @@ class BdcffParser:
     COLORNAMES = ["Black", "White", "Red", "Cyan", "Purple", "Green", "Blue", "Yellow",
                   "Orange", "Brown", "LightRed", "Gray1", "Gray2", "LightGreen", "LightBlue", "Gray3"]
 
-    def __init__(self, filename: str) -> None:
+    def __init__(self, filename: Optional[str]=None) -> None:
         self.state = 0
         self.bdcff_version = ""
         self.game_properties = {}   # type: Dict[str, Any]
         self.caves = []     # type: List[BdcffCave]
         self.current_cave = None    # type: BdcffCave
-        with open(filename, "rt") as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith(';'):
-                    self.parse(line)
-        self.postprocess()
-        self.validate()
+        self.num_levels = 1
+        self.num_caves = 0
+        self.charset = self.fontset = "Original"
+        self.author = getpass.getuser()
+        self.www = ""
+        self.date = str(datetime.datetime.now().date())
+        self.name = "Unnamed"
+        self.description = ""
+        if filename:
+            with open(filename, "rt") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith(';'):
+                        self.parse(line)
+            self.postprocess()
+            self.validate()
 
     def write(self, out: TextIO) -> None:
         if self.num_levels != 1:
@@ -142,9 +167,11 @@ class BdcffParser:
         if self.num_caves != len(self.caves):
             raise BdcffFormatError("number of caves differs from game property")
         out.write("; written by Bouldercaves.Bdcff by Irmen de Jong\n")
-        out.write("; last modified {:s}\n".format(datetime.datetime.now().isoformat()))
+        out.write("; last modified {:s}\n".format(str(datetime.datetime.now().date())))
         out.write("\n[BDCFF]\n[game]\n")
         out.write("Name={:s}\n".format(self.name))
+        if self.description:
+            out.write("Description={:s}\n".format(self.name))
         out.write("Author={:s}\n".format(self.author))
         out.write("WWW={:s}\n".format(self.www))
         out.write("Date={:s}\n".format(self.date))
@@ -152,7 +179,7 @@ class BdcffParser:
         out.write("Fontset={:s}\n".format(self.fontset))
         out.write("Levels={:d}\n".format(self.num_levels))
         out.write("Caves={:d}\n".format(self.num_caves))
-        out.write("")
+        out.write("\n")
         for cave in self.caves:
             cave.write(out)
             out.write("")
@@ -177,8 +204,12 @@ class BdcffParser:
         del self.state
 
     def validate(self) -> None:
-        if self.charset != "Original" or self.fontset != "Original" or self.num_levels != 1 or self.num_caves != len(self.caves):
+        if self.charset != "Original" or self.fontset != "Original":
             raise BdcffFormatError("invalid or unsupported cave data")
+        if self.num_caves <= 0 or self.num_caves != len(self.caves):
+            raise BdcffParser("invalid number of caves")
+        if self.num_levels != 1:
+            raise BdcffParser("only supports 1 difficulty level")
 
     def parse(self, line: str) -> None:
         if line == '[BDCFF]' and self.state == 0:

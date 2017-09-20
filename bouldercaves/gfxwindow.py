@@ -341,7 +341,7 @@ class BoulderWindow(tkinter.Tk):
         self.configure(background="#{:06x}".format(bordercolorrgb))
         self.canvas.configure(background="#{:06x}".format(screencolorrgb))
 
-    def set_tile(self, x: int, y: int, obj: objects.GameObject) -> None:
+    def set_canvas_tile(self, x: int, y: int, obj: objects.GameObject) -> None:
         self.tilesheet[x, y] = obj.tile()
 
     def set_scorebar_tiles(self, x: int, y: int, tiles: Sequence[int]) -> None:

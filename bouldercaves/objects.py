@@ -26,7 +26,7 @@ class GameObject:
         self.sfps = sfps
         self.anim_end_callback = anim_end_callback
 
-    def __str__(self):
+    def __repr__(self):
         return "<{cls} {name} (#{tile}) at {oid}>".format(cls=self.__class__.__name__, name=self.name, tile=self._tile, oid=hex(id(self)))
 
     def tile(self, animframe: int = 0) -> int:

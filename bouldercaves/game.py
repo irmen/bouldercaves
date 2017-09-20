@@ -421,8 +421,8 @@ class GameState:
         self.reveal_frame = self.fps * self.reveal_duration
         self.flash = 0
         self.diamonds = 0
-        self.diamonds_needed = cave.diamonds_needed
-        self.diamondvalue_initial = cave.diamondvalue_initial
+        self.diamonds_needed = cave.diamonds_required
+        self.diamondvalue_initial = cave.diamondvalue_normal
         self.diamondvalue_extra = cave.diamondvalue_extra
         self.timeremaining = datetime.timedelta(seconds=cave.time)
         self.slime_permeability = cave.slime_permeability
@@ -437,7 +437,7 @@ class GameState:
         self.movement = self.MovementInfo()
         self.amoeba = {
             "size": 0,
-            "max": cave.amoebamaxsize,
+            "max": cave.amoebamaxsize,      # @todo use factor
             "slow": cave.amoeba_slowgrowthtime / self.update_timestep,
             "enclosed": False,
             "dead": None,
@@ -557,7 +557,7 @@ class GameState:
         if obj is objects.MAGICWALL:
             if not self.magicwall["active"]:
                 obj = objects.BRICK
-        self.gfxwindow.set_tile(cell.x, cell.y, obj)
+        self.gfxwindow.set_canvas_tile(cell.x, cell.y, obj)
         # animation is handled by the graphics refresh
 
     def clear_cell(self, cell: Cell) -> None:
