@@ -441,9 +441,9 @@ class CaveSet:
         if external_bdcff_file:
             self.mode = "bdcff"
             self.caves = bdcff.BdcffParser(external_bdcff_file)
-            self.name = self.caves.game_properties["name"]
-            self.author = self.caves.game_properties["author"]
-            self.date = self.caves.game_properties["date"]
+            self.name = self.caves.name
+            self.author = self.caves.author
+            self.date = self.caves.date
             self.cave_demo = None
             self.num_caves = len(self.caves.caves)
         else:

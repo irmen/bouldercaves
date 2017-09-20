@@ -7,6 +7,7 @@ Written by Irmen de Jong (irmen@razorvine.net)
 License: MIT open-source.
 """
 
+import os
 import sys
 import getpass
 import datetime
@@ -208,7 +209,7 @@ class EditorWindow(tkinter.Tk):
         tkinter.Button(lf, text="Save @todo").grid(column=1, row=0)   # @todo save
         tkinter.Button(lf, text="Randomize", command=self.randomize).grid(column=0, row=1)
         tkinter.Button(lf, text="Wipe", command=self.wipe).grid(column=1, row=1)
-        tkinter.Button(lf, text="Playtest @todo", command=self.wipe).grid(column=0, row=2)    # @todo playtest
+        tkinter.Button(lf, text="Playtest @todo", command=self.playtest).grid(column=0, row=2)
         lf.pack(fill=tkinter.X, pady=4)
         lf = tkinter.LabelFrame(buttonsframe, text="C-64 colors")
         c64colors_var = tkinter.IntVar()
@@ -421,6 +422,17 @@ class EditorWindow(tkinter.Tk):
             self.populate_imageselector()
             self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
             self.canvas.configure(background="#{:06x}".format(colors.border))
+
+    def playtest(self) -> None:
+        gamefile = os.path.expanduser("~/.bouldercaves/_playtest_cave.bdcff")
+        open(gamefile, "wt").writelines(["wott!"])
+        if self.save(gamefile):
+            # launch the game in a separate process
+            import subprocess
+            from .. import gfxwindow
+            env = os.environ.copy()
+            env["PYTHONPATH"] = sys.path[0]
+            subprocess.Popen([sys.executable, "-m", gfxwindow.__name__, "--synth", "--c64colors", "--game", gamefile], env=env)
 
 
 class RandomizeDialog(tkinter.simpledialog.Dialog):
