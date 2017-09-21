@@ -7,7 +7,7 @@ Written by Irmen de Jong (irmen@razorvine.net)
 License: MIT open-source.
 """
 
-# @todo SendyDash01 cave 6: fireflies should explode when hit by boulder...
+# @todo SendyDash01 cave 6: boulders on the top of the cave don't seem to fall through the slime...
 
 import datetime
 import random
@@ -622,6 +622,7 @@ class GameState:
                 elif obj is objects.BOULDER:
                     self.draw_single_cell(cell_under_wall, objects.DIAMOND)
                     audio.play_sample("diamond" + str(random.randint(1, 6)))
+                cell_under_wall.falling = True
         else:
             # magic wall is disabled, stuff falling on it just disappears (a sound is already played)
             self.clear_cell(cell)
@@ -635,6 +636,7 @@ class GameState:
                 obj = cell.obj
                 self.clear_cell(cell)
                 self.draw_single_cell(cell_under_wall, obj)
+                cell_under_wall.falling = True
 
     def cells_with_animations(self) -> List[Cell]:
         return [cell for cell in self.cave if cell.obj.sframes]

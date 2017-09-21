@@ -271,8 +271,8 @@ class RgbPalette:
 class Cave:
     def __init__(self, index: int, name: str, description: str, width: int, height: int) -> None:
         self.index = index
-        self.name = name
-        self.description = description
+        self.name = name or ""
+        self.description = description or ""
         self.author = ""
         self.www = ""
         self.date = str(datetime.datetime.now().date())
@@ -475,7 +475,10 @@ class CaveSet:
 
     def cave_from_bdcff(self, levelnumber: int, bdcff) -> Cave:
         caveclass = self.caveclass or Cave
-        cave = caveclass(levelnumber, bdcff.name, None, bdcff.width, bdcff.height)
+        cave = caveclass(levelnumber, bdcff.name, bdcff.description, bdcff.width, bdcff.height)
+        cave.www = self.caves.www
+        cave.author = self.caves.author
+        cave.date = self.caves.date
         cave.intermission = bdcff.intermission
         cave.magicwall_millingtime = bdcff.magicwalltime
         cave.amoeba_slowgrowthtime = bdcff.amoebatime

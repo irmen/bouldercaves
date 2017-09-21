@@ -25,6 +25,7 @@ from . import tiles, objects, bdcff
 
 
 # @todo add support for initial direction of objects
+# @todo fix cave size issues when editing smaller/larger caves/intermissions
 
 
 class ScrollableImageSelector(tkinter.Frame):
@@ -101,6 +102,7 @@ class Cave(BaseCave):
         self.cells_snapshot = []   # type: List[Tuple[GameObject, int]]
         if self.map:
             # convert the map that was loaded from the file to the cell structure that the editor uses
+            # @todo unify map/cells
             for ci, (obj, direction) in enumerate(self.map):
                 y, x = divmod(ci, self.width)
                 self[x, y] = (obj, obj.tile())  # @todo use direction
@@ -129,9 +131,10 @@ class Cave(BaseCave):
         self.cells_snapshot = self.cells.copy()
 
     def restore(self) -> None:
-        for y in range(self.height):
-            for x in range(self.width):
-                self[x, y] = self.cells_snapshot[x + self.width * y]
+        if self.cells_snapshot:
+            for y in range(self.height):
+                for x in range(self.width):
+                    self[x, y] = self.cells_snapshot[x + self.width * y]
 
 
 EDITOR_OBJECTS = {
@@ -222,9 +225,9 @@ class EditorWindow(tkinter.Tk):
         tkinter.Button(lf, text="Playtest", command=self.playtest).grid(column=0, row=2)
         lf.pack(fill=tkinter.X, pady=4)
         lf = tkinter.LabelFrame(buttonsframe, text="C-64 colors")
-        c64colors_var = tkinter.IntVar()
-        c64_check = tkinter.Checkbutton(lf, text="Enable palette", variable=c64colors_var,
-                                        selectcolor=self.cget("background"), command=lambda: self.c64_colors_switched(c64colors_var.get()))
+        self.c64colors_var = tkinter.IntVar()
+        c64_check = tkinter.Checkbutton(lf, text="Enable palette", variable=self.c64colors_var, selectcolor=self.cget("background"),
+                                        command=lambda: self.c64_colors_switched(self.c64colors_var.get()))
         c64_check.grid(column=0, row=0)
         self.c64random_button = tkinter.Button(lf, text="Random", state=tkinter.DISABLED, command=self.c64_colors_randomize)
         self.c64random_button.grid(column=0, row=1)
@@ -452,6 +455,11 @@ class EditorWindow(tkinter.Tk):
         cave = caveset.cave(cavenum)
         cave.init_for_editor(self)
         self.cave = cave
+        self.cavename_var.set(self.cave.name)
+        self.cavedescr_var.set(self.cave.description)
+        self.cavesetauthor_var.set(self.cave.author)
+        self.cavesetdate_var.set(self.cave.date)
+        self.cavesetwww_var.set(self.cave.www)
 
     def save(self, gamefile: Optional[str]=None) -> bool:
         if not self.sanitycheck():
@@ -535,8 +543,10 @@ class EditorWindow(tkinter.Tk):
             from . import game
             env = os.environ.copy()
             env["PYTHONPATH"] = sys.path[0]
-            subprocess.Popen([sys.executable, "-m", game.__name__, "--synth",
-                              "--c64colors", "--playtest", "--game", gamefile], env=env)
+            parameters = [sys.executable, "-m", game.__name__, "--synth", "--playtest", "--game", gamefile]
+            if self.c64colors_var.get():
+                parameters.append("--c64colors")
+            subprocess.Popen(parameters, env=env)
 
 
 class RandomizeDialog(tkinter.simpledialog.Dialog):
