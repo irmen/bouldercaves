@@ -110,12 +110,13 @@ class BoulderWindow(tkinter.Tk):
         self.game_update_dt = 0.0
         self.graphics_update_dt = 0.0
         self.graphics_frame = 0
-        cs = self.gamestate.caveset
-        if self.smallwindow:
-            fmt = "Playing caveset:\n\n{name}\n\nby {author}\n\n({date})"
-        else:
-            fmt = "Playing caveset:\n\n\x0f\x0f`{name}'\n\n\x0f\x0fby {author}\n\n\x0f\x0f\x0f\x0f({date})"
-        self.popup(fmt.format(name=cs.name, author=cs.author, date=cs.date), duration=3)
+        if not self.gamestate.playtesting:
+            cs = self.gamestate.caveset
+            if self.smallwindow:
+                fmt = "Playing caveset:\n\n{name}\n\nby {author}\n\n({date})"
+            else:
+                fmt = "Playing caveset:\n\n\x0f\x0f`{name}'\n\n\x0f\x0fby {author}\n\n\x0f\x0f\x0f\x0f({date})"
+            self.popup(fmt.format(name=cs.name, author=cs.author, date=cs.date), duration=3)
         self.tick_loop()
 
     def tick_loop(self) -> None:
@@ -531,6 +532,7 @@ def start(sargs: Sequence[str]=None) -> None:
     ap.add_argument("-y", "--synth", help="use synthesized sounds instead of samples", action="store_true")
     ap.add_argument("-l", "--level", help="select start level (cave number). When using this, no highscores will be recorded.", type=int, default=1)
     ap.add_argument("-e", "--editor", help="run the cave editor instead of the game.", action="store_true")
+    ap.add_argument("--playtest", help="playtest the cave.", action="store_true")
     args = ap.parse_args(sargs)
 
     if args.editor:
@@ -657,13 +659,17 @@ def start(sargs: Sequence[str]=None) -> None:
         audio.init_audio(samples, dummy=True)
     else:
         audio.init_audio(samples)
-    title = "Boulder Caves {version:s} {sound:s} - by Irmen de Jong"\
-        .format(version=__version__, sound="[using synthesizer]" if args.synth else "")
+    title = "Boulder Caves {version:s} {sound:s} {playtest:s} - by Irmen de Jong"\
+        .format(version=__version__,
+                sound="[using synthesizer]" if args.synth else "",
+                playtest="[playtesting]" if args.playtest else "")
     window = BoulderWindow(title, args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
     if args.game:
         window.gamestate.use_bdcff(args.game)
     if args.level:
         window.gamestate.use_startlevel(args.level)
+    if args.playtest:
+        window.gamestate.use_playtesting()
     cs = window.gamestate.caveset
     print("Playing caveset '{name}' (by {author}, {date})".format(name=cs.name, author=cs.author, date=cs.date))
     window.start()

@@ -534,8 +534,8 @@ class EditorWindow(tkinter.Tk):
             from .. import gfxwindow
             env = os.environ.copy()
             env["PYTHONPATH"] = sys.path[0]
-            # @todo playtest option to skip title screen and uncover tiles
-            subprocess.Popen([sys.executable, "-m", gfxwindow.__name__, "--synth", "--c64colors", "--game", gamefile], env=env)
+            subprocess.Popen([sys.executable, "-m", gfxwindow.__name__, "--synth",
+                              "--c64colors", "--playtest", "--game", gamefile], env=env)
 
 
 class RandomizeDialog(tkinter.simpledialog.Dialog):

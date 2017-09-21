@@ -279,6 +279,7 @@ class GameState:
         objects.EXPLOSION.anim_end_callback = self.end_explosion
         objects.DIAMONDBIRTH.anim_end_callback = self.end_diamondbirth
         self.highscores = HighScores(self.caveset.name)
+        self.playtesting = False
         # and start the game on the title screen.
         self.restart()
 
@@ -295,7 +296,7 @@ class GameState:
         self.level = -1
         self.level_name = self.level_description = "???"
         self.level_won = False
-        self.game_status = GameStatus.WAITING    # waiting / playing / lost / won
+        self.game_status = GameStatus.PLAYING if self.playtesting else GameStatus.WAITING
         self.intermission = False
         self.score = self.extralife_score = 0
         self.cheat_used = self.start_level_number > 1
@@ -404,6 +405,13 @@ class GameState:
         self.cheat_used = levelnumber > 1
         self.start_level_number = levelnumber
 
+    def use_playtesting(self):
+        # skip all intro popups and title screen and immediately drop into the level
+        self.cheat_used = True
+        self.playtesting = True   # @todo playtesting
+        self.level = self.start_level_number - 1
+        self.load_next_level(False)
+
     def load_level(self, levelnumber: int, level_intro_popup: bool=True) -> None:
         audio.silence_audio()
         self.gfxwindow.popup_close()    # make sure any open popup won't restore the old tiles
@@ -419,8 +427,8 @@ class GameState:
         self.level_won = False
         self.frame = 0
         self.bonusbg_frame = 0
-        self.game_status = GameStatus.REVEALING_PLAY
-        self.reveal_frame = self.fps * self.reveal_duration
+        self.game_status = GameStatus.PLAYING if self.playtesting else GameStatus.REVEALING_PLAY
+        self.reveal_frame = 0 if self.playtesting else self.fps * self.reveal_duration
         self.flash = 0
         self.diamonds = 0
         self.diamonds_needed = cave.diamonds_required
@@ -463,7 +471,7 @@ class GameState:
             audio.play_sample("diamond2")
             fmt = "Intermission {:s}\n\n{:s}" if self.intermission else "Cave {:s}\n\n{:s}"
             self.gfxwindow.popup(fmt.format(self.level_name, self.level_description), on_close=prepare_reveal)
-        else:
+        elif not self.playtesting:
             prepare_reveal()
 
     def tile_music_ended(self):
@@ -1015,6 +1023,8 @@ class GameState:
             fmt = "Intermission {:s}" if self.intermission else "Cave {:s}"
             if self.game_status == GameStatus.DEMO:
                 fmt += " [Demo]"
+            if self.playtesting:
+                fmt += " [Testing]"
             line_tiles = tiles.text2tiles(fmt.format(self.level_name).center(width))
         self.gfxwindow.set_scorebar_tiles(0, 1, line_tiles[:40])  # line 2
 
