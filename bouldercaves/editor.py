@@ -634,7 +634,8 @@ class PaletteDialog(tkinter.simpledialog.Dialog):
                 tkcolor = "#{:06x}".format(color)
                 rb = tkinter.Radiobutton(rf, variable=color_var, indicatoron=False, value=num,
                                          activebackground=tkcolor, command=self.color_chosen,
-                                         offrelief=tkinter.FLAT, bd=5, bg=tkcolor, selectcolor=tkcolor, width=2, height=1)
+                                         offrelief=tkinter.FLAT, relief=tkinter.FLAT, overrelief=tkinter.RIDGE,
+                                         bd=5, bg=tkcolor, selectcolor=tkcolor, width=2, height=1)
                 rb.pack(side=tkinter.LEFT)
                 if num == value:
                     rb.select()
