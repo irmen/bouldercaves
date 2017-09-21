@@ -2,6 +2,6 @@
 # $ python3 -m bouldercaves
 
 import sys
-from . import gfxwindow
+from . import game
 
-gfxwindow.start(sys.argv[1:])
+game.start(sys.argv[1:])

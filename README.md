@@ -102,7 +102,7 @@ in the 'caves' folder.
 1. install Python 3.5 or newer https://www.python.org/downloads/
 1. open a command prompt and type:
    ``pip install --user pillow sounddevice``
-1. double-click on the ``*.pyz`` file that you downloaded or on ``startgame.py``
+1. double-click on the ``*.pyz`` file that you downloaded, or on ``startgame.py``
 
 You can play the game without the ``sounddevice`` library if you disable sounds or use
 the sampled sounds version. However the sound quality is sub-par and no sound mixing

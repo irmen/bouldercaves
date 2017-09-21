@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
 import sys
-from bouldercaves import gfxwindow
+from bouldercaves import game
 
-gfxwindow.start(sys.argv[1:])
+game.start(sys.argv[1:])

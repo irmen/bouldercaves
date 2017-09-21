@@ -16,9 +16,9 @@ rm -f ${TMPFILE} *.pyz
 echo with samples...
 cat <<EOT > __main__.py
 import sys
-from bouldercaves import gfxwindow
+from bouldercaves import game
 
-gfxwindow.start(sys.argv[1:])
+game.start(sys.argv[1:])
 EOT
 
 7z a -bd -bso0 -tzip -mx=9 ${TMPFILE} bouldercaves __main__.py
@@ -31,9 +31,9 @@ rm ${TMPFILE}
 echo without samples...
 cat <<EOT > __main__.py
 import sys
-from bouldercaves import gfxwindow
+from bouldercaves import game
 
-gfxwindow.start(["--synth"] + sys.argv[1:])
+game.start(["--synth"] + sys.argv[1:])
 EOT
 
 7z a -bd -bso0 -tzip -mx=9 ${TMPFILE} '-xr!bouldercaves/sounds/*' bouldercaves __main__.py

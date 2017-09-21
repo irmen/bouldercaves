@@ -18,7 +18,7 @@ import tkinter.ttk
 import tkinter.filedialog
 import pkgutil
 from typing import Tuple, List, Dict, Optional
-from .gfxwindow import __version__
+from .game import __version__
 from .caves import colorpalette, C64Cave, Cave as BaseCave, CaveSet, RgbPalette, Palette, BDCFFOBJECTS
 from .objects import GameObject
 from . import tiles, objects, bdcff
@@ -532,10 +532,10 @@ class EditorWindow(tkinter.Tk):
         if self.save(gamefile):
             # launch the game in a separate process
             import subprocess
-            from . import gfxwindow
+            from . import game
             env = os.environ.copy()
             env["PYTHONPATH"] = sys.path[0]
-            subprocess.Popen([sys.executable, "-m", gfxwindow.__name__, "--synth",
+            subprocess.Popen([sys.executable, "-m", game.__name__, "--synth",
                               "--c64colors", "--playtest", "--game", gamefile], env=env)
 
 
