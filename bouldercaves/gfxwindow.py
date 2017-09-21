@@ -19,7 +19,7 @@ import pkgutil
 import time
 import getpass
 from typing import Tuple, Sequence, List, Iterable, Callable
-from .game import GameState, Direction, GameStatus, HighScores
+from .gamelogic import GameState, Direction, GameStatus, HighScores
 from .caves import colorpalette, Palette, RgbPalette
 from . import audio, synthsamples, tiles, objects
 
@@ -211,10 +211,10 @@ class BoulderWindow(tkinter.Tk):
         elif event.keysym == "F12":
             # launch the editor in a separate process
             import subprocess
-            from .editor import main
+            from . import editor
             env = os.environ.copy()
             env["PYTHONPATH"] = sys.path[0]
-            subprocess.Popen([sys.executable, "-m", main.__name__], env=env)
+            subprocess.Popen([sys.executable, "-m", editor.__name__], env=env)
 
     def repaint(self) -> None:
         self.graphics_frame += 1

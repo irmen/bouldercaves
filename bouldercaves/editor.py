@@ -18,10 +18,10 @@ import tkinter.ttk
 import tkinter.filedialog
 import pkgutil
 from typing import Tuple, List, Dict, Optional
-from ..gfxwindow import __version__
-from ..caves import colorpalette, C64Cave, Cave as BaseCave, CaveSet, RgbPalette, Palette, BDCFFOBJECTS
-from ..objects import GameObject
-from .. import tiles, objects, bdcff
+from .gfxwindow import __version__
+from .caves import colorpalette, C64Cave, Cave as BaseCave, CaveSet, RgbPalette, Palette, BDCFFOBJECTS
+from .objects import GameObject
+from . import tiles, objects, bdcff
 
 
 # @todo add support for initial direction of objects
@@ -165,7 +165,7 @@ class EditorWindow(tkinter.Tk):
         self.geometry("+200+40")
         title = "Boulder Caves Editor {version:s} - by Irmen de Jong".format(version=__version__)
         self.wm_title(title)
-        self.appicon = tkinter.PhotoImage(data=pkgutil.get_data(__name__, "../gfx/gdash_icon_48.gif"))
+        self.appicon = tkinter.PhotoImage(data=pkgutil.get_data(__name__, "gfx/gdash_icon_48.gif"))
         self.wm_iconphoto(self, self.appicon)
         if sys.platform == "win32":
             # tell windows to use a new toolbar icon
@@ -189,6 +189,7 @@ class EditorWindow(tkinter.Tk):
         tkinter.Label(f, text="caveset Author:").grid(column=0, row=2, sticky=tkinter.E)
         tkinter.Label(f, text="caveset WWW:").grid(column=0, row=3, sticky=tkinter.E)
         tkinter.Label(f, text="caveset Date:").grid(column=0, row=4, sticky=tkinter.E)
+        # @todo add the other cave properties
         self.cavename_var = tkinter.StringVar(value="A: test")
         self.cavedescr_var = tkinter.StringVar(value="A test cave.")
         self.cavesetauthor_var = tkinter.StringVar(value=getpass.getuser())
@@ -531,7 +532,7 @@ class EditorWindow(tkinter.Tk):
         if self.save(gamefile):
             # launch the game in a separate process
             import subprocess
-            from .. import gfxwindow
+            from . import gfxwindow
             env = os.environ.copy()
             env["PYTHONPATH"] = sys.path[0]
             subprocess.Popen([sys.executable, "-m", gfxwindow.__name__, "--synth",

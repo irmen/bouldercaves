@@ -1,4 +1,4 @@
 #! /usr/bin/env python3
-from bouldercaves.editor import main
+from bouldercaves import editor
 
-main.start()
+editor.start()

@@ -12,7 +12,7 @@ import io
 import pkgutil
 from typing import Tuple, Union, Iterable, Sequence
 from PIL import Image
-from .caves import Cave, colorpalette, RgbPalette
+from .caves import RgbPalette
 
 
 class Tilesheet:

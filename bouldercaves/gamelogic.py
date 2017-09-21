@@ -406,10 +406,12 @@ class GameState:
         self.start_level_number = levelnumber
 
     def use_playtesting(self):
-        # skip all intro popups and title screen and immediately drop into the level
+        # enable playtest mode, used from the editor.
+        # skips all intro popups and title screen and immediately drops into the level.
         self.cheat_used = True
-        self.playtesting = True   # @todo playtesting
+        self.playtesting = True
         self.level = self.start_level_number - 1
+        self.reveal_duration = 0.0
         self.load_next_level(False)
 
     def load_level(self, levelnumber: int, level_intro_popup: bool=True) -> None:
