@@ -71,8 +71,8 @@ class BdcffCave:
         colors = [BdcffParser.COLORNAMES.index(c) for c in self.properties.pop("colors").split()]
         self.color_border = 0
         self.color_screen = 0
-        self.color_amoeba = -1
-        self.color_slime = -1
+        self.color_amoeba = 5
+        self.color_slime = 6
         if len(colors) == 3:
             self.color_fg1, self.color_fg2, self.color_fg3 = colors
         elif len(colors) == 5:

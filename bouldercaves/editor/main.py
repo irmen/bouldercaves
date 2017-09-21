@@ -38,7 +38,7 @@ class ScrollableImageSelector(tkinter.Frame):
         tkinter.ttk.Style(self).configure("Treeview", rowheight=24, background="#201000", foreground="#e0e0e0")
         sy = tkinter.Scrollbar(self, orient=tkinter.VERTICAL, command=self.treeview.yview)
         sy.pack(side=tkinter.RIGHT, expand=1, fill=tkinter.Y)
-        self.treeview["yscrollcommand"] = sy.set
+        self.treeview.configure(yscrollcommand=sy.set)
         self.treeview.pack(expand=1, fill=tkinter.Y)
         self.treeview.bind("<<TreeviewSelect>>", self.on_selected)
         self.treeview.bind("<Double-Button-1>", self.on_selected_doubleclick)
@@ -95,11 +95,17 @@ class ScrollableImageSelector(tkinter.Frame):
 
 
 class Cave(BaseCave):
-    def __init__(self, width: int, height: int, editor: 'EditorWindow') -> None:
-        super().__init__(0, "", "", width, height)
-        self.cells = [(objects.EMPTY, objects.EMPTY.tile())] * width * height
-        self.cells_snapshot = []   # type: List[Tuple[GameObject, int]]
+    def init_for_editor(self, editor: 'EditorWindow') -> None:
         self.editor = editor
+        self.cells = [(objects.EMPTY, objects.EMPTY.tile())] * self.width * self.height
+        self.cells_snapshot = []   # type: List[Tuple[GameObject, int]]
+        if self.map:
+            # convert the map that was loaded from the file to the cell structure that the editor uses
+            for ci, (obj, direction) in enumerate(self.map):
+                y, x = divmod(ci, self.width)
+                self[x, y] = (obj, obj.tile())  # @todo use direction
+            if len(self.cells) != self.width * self.height:
+                raise ValueError("map conversion error")
 
     def __setitem__(self, xy: Tuple[int, int], thing: Tuple[GameObject, int]) -> None:
         x, y = xy
@@ -139,7 +145,7 @@ EDITOR_OBJECTS = {
     objects.FIREFLY: objects.FIREFLY.tile(1),
     objects.HEXPANDINGWALL: objects.HEXPANDINGWALL.tile(),
     objects.INBOXBLINKING: objects.ROCKFORD.tile(),
-    objects.MAGICWALL: objects.MAGICWALL.tile(),
+    objects.MAGICWALL: objects.MAGICWALL.tile(2),
     objects.OUTBOXCLOSED: objects.OUTBOXBLINKING.tile(1),
     objects.SLIME: objects.SLIME.tile(1),
     objects.STEEL: objects.STEEL.tile(),
@@ -157,7 +163,7 @@ class EditorWindow(tkinter.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.geometry("+200+40")
-        title = "Boulder Caves Editor {version:s} - created by Irmen de Jong - irmen@razorvine.net".format(version=__version__)
+        title = "Boulder Caves Editor {version:s} - by Irmen de Jong".format(version=__version__)
         self.wm_title(title)
         self.appicon = tkinter.PhotoImage(data=pkgutil.get_data(__name__, "../gfx/gdash_icon_48.gif"))
         self.wm_iconphoto(self, self.appicon)
@@ -173,8 +179,7 @@ class EditorWindow(tkinter.Tk):
         self.canvas.grid(row=0, column=0)
         sy = tkinter.Scrollbar(cf, orient=tkinter.VERTICAL, command=self.canvas.yview)
         sx = tkinter.Scrollbar(cf, orient=tkinter.HORIZONTAL, command=self.canvas.xview)
-        self.canvas["xscrollcommand"] = sx.set
-        self.canvas["yscrollcommand"] = sy.set
+        self.canvas.configure(xscrollcommand=sx.set, yscrollcommand=sy.set)
         sy.grid(row=0, column=1, sticky=tkinter.N + tkinter.S)
         sx.grid(row=1, column=0, sticky=tkinter.E + tkinter.W)
         cf.pack()
@@ -252,7 +257,8 @@ class EditorWindow(tkinter.Tk):
 
     def init_new_cave(self, only_steel_border=False):
         if not only_steel_border:
-            self.cave = Cave(self.playfield_columns, self.playfield_rows, self)
+            self.cave = Cave(0, self.cavename_var.get(), self.cavedescr_var.get(), self.playfield_columns, self.playfield_rows)
+            self.cave.init_for_editor(self)
         steel = (objects.STEEL, objects.STEEL.tile())
         self.cave.horiz_line(0, 0, self.playfield_columns, steel)
         self.cave.horiz_line(0, self.playfield_rows - 1, self.playfield_columns, steel)
@@ -435,19 +441,15 @@ class EditorWindow(tkinter.Tk):
                                                                  ("boulderdash", ".bd"),
                                                                  ("text", ".txt")],
                                                       parent=self.buttonsframe)
-        caveset = CaveSet(gamefile)
+        caveset = CaveSet(gamefile, caveclass=Cave)
         if caveset.num_caves > 1:
-            message = ["Currently you can only edit a single cave.", "The selected file contains multiple caves:", ""]
-            for num, cavename in enumerate(caveset.cave_names(), start=1):
-                message.append("{:d} --> {:s}".format(num, cavename))
-            message.append("")
-            message.append("Type the number of the cave to load from this file:")
-            cavenum = tkinter.simpledialog.askinteger("Which cave to load?", "\n".join(message),
-                                                      initialvalue=1, minvalue=1, maxvalue=caveset.num_caves)
+            cavenum = CaveSelectionDialog(self.buttonsframe, caveset.cave_names(), self).result
+            if cavenum is None:
+                return
         else:
             cavenum = 1
-        cave = caveset.cave(cavenum)   # @todo use our own Cave subclass
-        print("SELECTED CAVE", cave, cave.name)   # XXX
+        cave = caveset.cave(cavenum)
+        cave.init_for_editor(self)
         self.cave = cave
 
     def save(self, gamefile: Optional[str]=None) -> bool:
@@ -537,7 +539,7 @@ class EditorWindow(tkinter.Tk):
 
 
 class RandomizeDialog(tkinter.simpledialog.Dialog):
-    def __init__(self, parent, title: str, editor, initial_values: Tuple) -> None:
+    def __init__(self, parent, title: str, editor: EditorWindow, initial_values: Tuple) -> None:
         self.editor = editor
         self.initial_values = initial_values
         super().__init__(parent=parent, title=title)
@@ -611,7 +613,7 @@ class RandomizeDialog(tkinter.simpledialog.Dialog):
 
 
 class PaletteDialog(tkinter.simpledialog.Dialog):
-    def __init__(self, parent, title: str, editor, colors: Palette) -> None:
+    def __init__(self, parent, title: str, editor: EditorWindow, colors: Palette) -> None:
         self.editor = editor
         self.colors = colors
         self.result = None  # type: Palette
@@ -653,6 +655,33 @@ class PaletteDialog(tkinter.simpledialog.Dialog):
                        self.color_vars["slime"].get(),
                        self.color_vars["screen"].get(),
                        self.color_vars["border"].get())
+
+
+class CaveSelectionDialog(tkinter.simpledialog.Dialog):
+    def __init__(self, parent, cavenames: List[str], editor: EditorWindow) -> None:
+        self.editor = editor
+        self.cavenames = cavenames
+        self.result = None
+        super().__init__(parent=parent, title="Select the cave to load")
+
+    def body(self, master: tkinter.Widget) -> tkinter.Widget:
+        tkinter.Label(master, text="Currently you can only edit a single cave.\nThe selected file contains multiple caves:").pack()
+        f = tkinter.Frame(master)
+        self.lb = tkinter.Listbox(f, bd=1, font="monospace", height=min(25, len(self.cavenames)),
+                                  width=max(10, max(len(name) for name in self.cavenames)))
+        for name in self.cavenames:
+            self.lb.insert(tkinter.END, name)
+        sy = tkinter.Scrollbar(f, orient=tkinter.VERTICAL, command=self.lb.yview)
+        self.lb.configure(yscrollcommand=sy.set)
+        self.lb.pack(side=tkinter.LEFT)
+        sy.pack(side=tkinter.RIGHT, expand=1, fill=tkinter.Y)
+        f.pack(pady=8)
+        tkinter.Label(master, text="Select the single cave to load from this caveset file.").pack()
+        return self.lb
+
+    def apply(self) -> None:
+        selection = self.lb.curselection()
+        self.result = (selection[0] + 1) if selection else None
 
 
 def start() -> None:

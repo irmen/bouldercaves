@@ -23,7 +23,7 @@ from .game import GameState, Direction, GameStatus, HighScores
 from .caves import colorpalette, Palette, RgbPalette
 from . import audio, synthsamples, tiles, objects
 
-__version__ = "2.7"
+__version__ = "3.0"
 
 
 class BoulderWindow(tkinter.Tk):
@@ -51,6 +51,7 @@ class BoulderWindow(tkinter.Tk):
         if self.scalexy not in (1, 1.5, 2, 2.5, 3):
             raise ValueError("invalid scalexy factor", self.scalexy)
         self.geometry("+200+40")
+        self.resizable(0, 0)
         self.configure(borderwidth=16, background="black")
         self.wm_title(title)
         self.appicon = tkinter.PhotoImage(data=pkgutil.get_data(__name__, "gfx/gdash_icon_48.gif"))
@@ -656,7 +657,7 @@ def start(sargs: Sequence[str]=None) -> None:
         audio.init_audio(samples, dummy=True)
     else:
         audio.init_audio(samples)
-    title = "Boulder Caves {version:s} {sound:s} - created by Irmen de Jong - irmen@razorvine.net"\
+    title = "Boulder Caves {version:s} {sound:s} - by Irmen de Jong"\
         .format(version=__version__, sound="[using synthesizer]" if args.synth else "")
     window = BoulderWindow(title, args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
     if args.game:

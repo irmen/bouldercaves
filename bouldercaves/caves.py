@@ -438,7 +438,8 @@ class C64Cave(Cave):
 
 
 class CaveSet:
-    def __init__(self, external_bdcff_file: str=None) -> None:
+    def __init__(self, external_bdcff_file: str=None, caveclass: type=None) -> None:
+        self.caveclass = caveclass
         if external_bdcff_file:
             self.mode = "bdcff"
             self.caves = bdcff.BdcffParser(external_bdcff_file)
@@ -465,13 +466,16 @@ class CaveSet:
 
     def cave(self, levelnumber: int) -> Cave:
         if self.mode == "builtin":
+            if self.caveclass is not None:
+                raise TypeError("for built-in caves you cannot specify a custom cave class")
             return C64Cave.decode_from_lvl(levelnumber)
         elif self.mode == "bdcff":
             return self.cave_from_bdcff(levelnumber, self.caves.caves[levelnumber - 1])
         raise ValueError("invalid caveset mode")
 
     def cave_from_bdcff(self, levelnumber: int, bdcff) -> Cave:
-        cave = Cave(levelnumber, bdcff.name, None, bdcff.width, bdcff.height)
+        caveclass = self.caveclass or Cave
+        cave = caveclass(levelnumber, bdcff.name, None, bdcff.width, bdcff.height)
         cave.intermission = bdcff.intermission
         cave.magicwall_millingtime = bdcff.magicwalltime
         cave.amoeba_slowgrowthtime = bdcff.amoebatime

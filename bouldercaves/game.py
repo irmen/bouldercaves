@@ -7,6 +7,8 @@ Written by Irmen de Jong (irmen@razorvine.net)
 License: MIT open-source.
 """
 
+# @todo SendyDash01 cave 6: fireflies should explode when hit by boulder...
+
 import datetime
 import random
 import json
