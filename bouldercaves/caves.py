@@ -9,9 +9,8 @@ License: MIT open-source.
 """
 
 import random
-import datetime
 from typing import Sequence, List, Tuple
-from .objects import Direction
+from .objects import Direction, GameObject
 from . import objects, bdcff
 
 
@@ -279,7 +278,7 @@ class Cave:
         self.intermission = False
         self.width = width
         self.height = height
-        self.map = []       # type: List[Tuple]
+        self.map = []       # type: List[Tuple[GameObject, Direction]]
         defaults = bdcff.BdcffCave()
         self.magicwall_millingtime = defaults.magicwalltime
         self.amoeba_slowgrowthtime = defaults.amoebatime

@@ -20,7 +20,7 @@ import pkgutil
 from typing import Tuple, List, Dict, Optional
 from .game import __version__
 from .caves import colorpalette, C64Cave, Cave as BaseCave, CaveSet, RgbPalette, Palette, BDCFFOBJECTS
-from .objects import GameObject
+from .objects import GameObject, Direction
 from . import tiles, objects, bdcff
 
 
@@ -32,7 +32,7 @@ class ScrollableImageSelector(tkinter.Frame):
     def __init__(self, master: tkinter.Widget, listener: 'EditorWindow') -> None:
         super().__init__(master)
         self.listener = listener
-        self.treeview = tkinter.ttk.Treeview(self, columns=("tile",), displaycolumns=("tile",), height="5")
+        self.treeview = tkinter.ttk.Treeview(self, columns=("tile",), displaycolumns=("tile",), height="5", selectmode=tkinter.BROWSE)
         self.treeview.heading("tile", text="Tile")
         self.treeview.column("#0", stretch=False, minwidth=40, width=40)
         self.treeview.column("tile", stretch=True, width=120)
@@ -44,9 +44,7 @@ class ScrollableImageSelector(tkinter.Frame):
         self.treeview.bind("<<TreeviewSelect>>", self.on_selected)
         self.treeview.bind("<Double-Button-1>", self.on_selected_doubleclick)
         self.selected_object = objects.BOULDER
-        self.selected_tile = objects.BOULDER.tile()
         self.selected_erase_object = objects.EMPTY
-        self.selected_erase_tile = objects.EMPTY.tile()
         f = tkinter.Frame(master)
         tkinter.Label(f, text=" Draw: \n(Lmb)").grid(row=0, column=0)
         self.draw_label = tkinter.Label(f)
@@ -62,12 +60,10 @@ class ScrollableImageSelector(tkinter.Frame):
         item = self.treeview.item(item)
         selected_name = item["values"][0].lower()
         self.selected_erase_object = objects.EMPTY
-        self.selected_erase_tile = objects.EMPTY.tile()
         for obj, displaytile in EDITOR_OBJECTS.items():
             if obj.name.lower() == selected_name:
                 self.selected_erase_object = obj
-                self.selected_erase_tile = displaytile
-                self.erase_label.configure(image=self.listener.tile_images[self.selected_erase_tile])
+                self.erase_label.configure(image=self.listener.tile_images[EDITOR_OBJECTS[obj]])
                 self.listener.tile_erase_selection_changed(obj, displaytile)
                 break
 
@@ -76,12 +72,10 @@ class ScrollableImageSelector(tkinter.Frame):
         item = self.treeview.item(item)
         selected_name = item["values"][0].lower()
         self.selected_object = objects.BOULDER
-        self.selected_tile = objects.BOULDER.tile()
         for obj, displaytile in EDITOR_OBJECTS.items():
             if obj.name.lower() == selected_name:
                 self.selected_object = obj
-                self.selected_tile = displaytile
-                self.draw_label.configure(image=self.listener.tile_images[self.selected_tile])
+                self.draw_label.configure(image=self.listener.tile_images[EDITOR_OBJECTS[obj]])
                 self.listener.tile_selection_changed(obj, displaytile)
                 break
 
@@ -91,50 +85,55 @@ class ScrollableImageSelector(tkinter.Frame):
         for image, name in rows:
             self.treeview.insert("", tkinter.END, image=image, values=(name,))
         self.treeview.configure(height=min(16, len(rows)))
-        self.draw_label.configure(image=self.listener.tile_images[self.selected_tile])
-        self.erase_label.configure(image=self.listener.tile_images[self.selected_erase_tile])
+        self.draw_label.configure(image=self.listener.tile_images[EDITOR_OBJECTS[self.selected_object]])
+        self.erase_label.configure(image=self.listener.tile_images[EDITOR_OBJECTS[self.selected_erase_object]])
 
 
 class Cave(BaseCave):
     def init_for_editor(self, editor: 'EditorWindow') -> None:
         self.editor = editor
-        self.cells = [(objects.EMPTY, objects.EMPTY.tile())] * self.width * self.height
-        self.cells_snapshot = []   # type: List[Tuple[GameObject, int]]
-        if self.map:
-            # convert the map that was loaded from the file to the cell structure that the editor uses
-            # @todo unify map/cells
-            for ci, (obj, direction) in enumerate(self.map):
-                y, x = divmod(ci, self.width)
-                self[x, y] = (obj, obj.tile())  # @todo use direction
-            if len(self.cells) != self.width * self.height:
-                raise ValueError("map conversion error")
+        if not self.map:
+            self.map = [(objects.EMPTY, Direction.NOWHERE)] * self.width * self.height
+        self.snapshot()
+        # draw the map into the canvas.
+        for y in range(0, self.height):
+            for x in range(0, self.width):
+                self.editor.set_canvas_tile(x, y, EDITOR_OBJECTS[self.map[x + self.width * y][0]])
 
-    def __setitem__(self, xy: Tuple[int, int], thing: Tuple[GameObject, int]) -> None:
+    def __setitem__(self, xy: Tuple[int, int], thing: Tuple[GameObject, Direction]) -> None:
         x, y = xy
-        obj, displaytile = thing
-        self.cells[x + self.width * y] = (obj, displaytile)
-        self.editor.set_canvas_tile(x, y, displaytile)
+        obj, direction = thing
+        assert isinstance(obj, GameObject) and isinstance(direction, Direction)
+        if direction == Direction.NOWHERE:
+            if obj in (objects.BUTTERFLY, objects.ALTBUTTERFLY):
+                direction = Direction.DOWN      # @todo also support other default directions
+            elif obj in (objects.FIREFLY, objects.ALTFIREFLY):
+                direction = Direction.LEFT      # @todo also support other default directions
+        self.map[x + self.width * y] = (obj, direction)
+        self.editor.set_canvas_tile(x, y, EDITOR_OBJECTS[obj])
 
-    def __getitem__(self, xy: Tuple[int, int]) -> Tuple[GameObject, int]:
+    def __getitem__(self, xy: Tuple[int, int]) -> Tuple[GameObject, Direction]:
         x, y = xy
-        return self.cells[x + self.width * y]
+        return self.map[x + self.width * y]
 
-    def horiz_line(self, x: int, y: int, length: int, thing: Tuple[GameObject, int]) -> None:
+    def horiz_line(self, x: int, y: int, length: int, thing: Tuple[GameObject, Direction]) -> None:
         for xx in range(x, x + length):
             self[xx, y] = thing
 
-    def vert_line(self, x: int, y: int, length: int, thing: Tuple[GameObject, int]) -> None:
+    def vert_line(self, x: int, y: int, length: int, thing: Tuple[GameObject, Direction]) -> None:
         for yy in range(y, y + length):
             self[x, yy] = thing
 
     def snapshot(self) -> None:
-        self.cells_snapshot = self.cells.copy()
+        self.map_snapshot = self.map.copy()
 
     def restore(self) -> None:
-        if self.cells_snapshot:
+        if self.map_snapshot:
             for y in range(self.height):
                 for x in range(self.width):
-                    self[x, y] = self.cells_snapshot[x + self.width * y]
+                    obj, direction = self.map_snapshot[x + self.width * y]
+                    self[x, y] = (obj, direction)
+                    self.editor.set_canvas_tile(x, y, EDITOR_OBJECTS[obj])
 
 
 # the objects available in the editor, with their tile number that is displayed
@@ -305,13 +304,13 @@ class EditorWindow(tkinter.Tk):
         if not only_steel_border:
             self.cave = Cave(0, self.cavename_var.get(), self.cavedescr_var.get(), self.playfield_columns, self.playfield_rows)
             self.cave.init_for_editor(self)
-        steel = (objects.STEEL, objects.STEEL.tile())
+        steel = (objects.STEEL, Direction.NOWHERE)
         self.cave.horiz_line(0, 0, self.playfield_columns, steel)
         self.cave.horiz_line(0, self.playfield_rows - 1, self.playfield_columns, steel)
         self.cave.vert_line(0, 1, self.playfield_rows - 2, steel)
         self.cave.vert_line(self.playfield_columns - 1, 1, self.playfield_rows - 2, steel)
         if not only_steel_border:
-            self.flood_fill(2, 2, (objects.DIRT, EDITOR_OBJECTS[objects.DIRT]))
+            self.flood_fill(2, 2, (objects.DIRT, Direction.NOWHERE))
 
     def populate_imageselector(self):
         rows = []
@@ -327,7 +326,7 @@ class EditorWindow(tkinter.Tk):
             current = self.canvas.find_withtag(tkinter.CURRENT)
             if current:
                 tx, ty = self.canvas_tag_to_tilexy[current[0]]
-                self.flood_fill(tx, ty, (self.imageselector.selected_object, self.imageselector.selected_tile))
+                self.flood_fill(tx, ty, (self.imageselector.selected_object, Direction.NOWHERE))
         elif event.char == 's':
             self.snapshot()
         elif event.char == 'r':
@@ -342,7 +341,7 @@ class EditorWindow(tkinter.Tk):
         if current:
             if self.imageselector.selected_object:
                 x, y = self.canvas_tag_to_tilexy[current[0]]
-                self.cave[x, y] = (self.imageselector.selected_object, self.imageselector.selected_tile)
+                self.cave[x, y] = (self.imageselector.selected_object, Direction.NOWHERE)
 
     def mousebutton_middle(self, event) -> None:
         pass
@@ -351,7 +350,7 @@ class EditorWindow(tkinter.Tk):
         current = self.canvas.find_withtag(tkinter.CURRENT)
         if current:
             x, y = self.canvas_tag_to_tilexy[current[0]]
-            self.cave[x, y] = (self.imageselector.selected_erase_object, self.imageselector.selected_erase_tile)
+            self.cave[x, y] = (self.imageselector.selected_erase_object, Direction.NOWHERE)
 
     def mouse_motion(self, event) -> None:
         cx = self.canvas.canvasx(event.x)
@@ -361,10 +360,10 @@ class EditorWindow(tkinter.Tk):
             x, y = self.canvas_tag_to_tilexy[current[0]]
             if event.state & 0x100:
                 # left mouse button drag
-                self.cave[x, y] = (self.imageselector.selected_object, self.imageselector.selected_tile)
+                self.cave[x, y] = (self.imageselector.selected_object, Direction.NOWHERE)
             elif event.state & 0x600:
                 # right / middle mouse button drag
-                self.cave[x, y] = (self.imageselector.selected_erase_object, self.imageselector.selected_erase_tile)
+                self.cave[x, y] = (self.imageselector.selected_erase_object, Direction.NOWHERE)
 
     def create_tile_images(self, colors: RgbPalette) -> None:
         source_images = tiles.load_sprites(self.c64colors, colors, scale=2)
@@ -381,12 +380,13 @@ class EditorWindow(tkinter.Tk):
         self.canvas.delete(tkinter.ALL)
         self.c_tiles.clear()
         self.canvas_tag_to_tilexy.clear()
+        selected_tile = EDITOR_OBJECTS[self.imageselector.selected_object]
         for y in range(self.playfield_rows):
             for x in range(self.playfield_columns):
                 sx, sy = tiles.tile2pixels(x, y)
-                tilenum = self.cave[x, y][1]
-                tile = self.canvas.create_image(sx * 2, sy * 2, image=self.tile_images[tilenum],
-                                                activeimage=self.tile_images[self.imageselector.selected_tile],
+                obj, direction = self.cave[x, y]
+                tile = self.canvas.create_image(sx * 2, sy * 2, image=self.tile_images[EDITOR_OBJECTS[obj]],
+                                                activeimage=self.tile_images[selected_tile],
                                                 anchor=tkinter.NW, tags="tile")
                 self.c_tiles.append(tile)
                 self.canvas_tag_to_tilexy[tile] = (x, y)
@@ -403,7 +403,7 @@ class EditorWindow(tkinter.Tk):
         c_tile = self.canvas.find_closest(x * 32, y * 32)
         self.canvas.itemconfigure(c_tile, image=self.tile_images[tile])
 
-    def flood_fill(self, x: int, y: int, thing: Tuple[GameObject, int]) -> None:
+    def flood_fill(self, x: int, y: int, thing: Tuple[GameObject, Direction]) -> None:
         target = self.cave[x, y][0]
         if target == thing[0]:
             return
@@ -445,6 +445,7 @@ class EditorWindow(tkinter.Tk):
             self.apply_new_palette(original_palette.rgb())
 
     def do_random_fill(self, rseed: int, randomprobs: Tuple[int, int, int, int], randomobjs: Tuple[str, str, str, str]) -> None:
+        editor_objects_by_name = {obj.name.lower(): obj for obj in EDITOR_OBJECTS}
         randomseeds = [0, rseed]
         for y in range(1, self.playfield_rows - 1):
             for x in range(0, self.playfield_columns):
@@ -453,10 +454,7 @@ class EditorWindow(tkinter.Tk):
                 for randomobj, randomprob in zip(randomobjs, randomprobs):
                     if randomseeds[0] < randomprob:
                         objname = randomobj.lower()
-
-                for obj, displaytile in EDITOR_OBJECTS.items():
-                    if obj.name.lower() == objname:
-                        self.cave[x, y] = (obj, displaytile)
+                self.cave[x, y] = (editor_objects_by_name[objname], Direction.NOWHERE)
         self.init_new_cave(only_steel_border=True)
         self.randomize_initial_values = (rseed, randomprobs, randomobjs)
 
@@ -545,12 +543,11 @@ class EditorWindow(tkinter.Tk):
         cave.color_border, cave.color_screen, cave.color_fg1, cave.color_fg2, cave.color_fg3, cave.color_amoeba, cave.color_slime = \
             c.border, c.screen, c.fg1, c.fg2, c.fg3, c.amoeba, c.slime
         BDCFFSYMBOL = {(obj, direction): symbol for symbol, (obj, direction) in BDCFFOBJECTS.items()}
-        BDCFFSYMBOL_NO_DIR = {obj: symbol for symbol, (obj, _) in BDCFFOBJECTS.items()}
         for y in range(0, self.cave.height):
             mapline = ""
             for x in range(0, self.cave.width):
                 obj, direction = self.cave[x, y]
-                mapline += BDCFFSYMBOL_NO_DIR[obj]   # @todo use direction
+                mapline += BDCFFSYMBOL[obj, direction]
             cave.map.maplines.append(mapline)
         caveset.caves.append(cave)
         gamefile = gamefile or tkinter.filedialog.asksaveasfilename(title="Save single cave as", defaultextension=".bdcff",
@@ -568,8 +565,8 @@ class EditorWindow(tkinter.Tk):
         # check that the level is sane:
         # edge must be all steel wall, or inbox/outbox.
         # we should have at least 1 inbox and at least 1 outbox.
-        inbox_count = len([x for x, _ in self.cave.cells if x == objects.INBOXBLINKING])
-        outbox_count = len([x for x, _ in self.cave.cells if x in (objects.OUTBOXCLOSED, objects.OUTBOXBLINKING)])
+        inbox_count = len([x for x, _ in self.cave.map if x == objects.INBOXBLINKING])
+        outbox_count = len([x for x, _ in self.cave.map if x in (objects.OUTBOXCLOSED, objects.OUTBOXBLINKING)])
         enclosed_ok = True
         edge_objs_allowed = {objects.STEEL, objects.INBOXBLINKING, objects.OUTBOXBLINKING, objects.OUTBOXCLOSED}
         for x in range(0, self.cave.width):
@@ -592,6 +589,7 @@ class EditorWindow(tkinter.Tk):
         return True
 
     def playtest(self) -> None:
+        print("\n\nPLAYTESTING: saving temporary cave file...")
         gamefile = os.path.expanduser("~/.bouldercaves/_playtest_cave.bdcff")
         if self.save(gamefile):
             # launch the game in a separate process
@@ -602,6 +600,7 @@ class EditorWindow(tkinter.Tk):
             parameters = [sys.executable, "-m", game.__name__, "--synth", "--playtest", "--game", gamefile]
             if self.c64colors_var.get():
                 parameters.append("--c64colors")
+            print("PLAYTESTING: launching game in playtest mode...\n")
             subprocess.Popen(parameters, env=env)
 
     def set_defaults(self) -> None:
