@@ -54,7 +54,7 @@ class BdcffCave:
         self.description = self.properties.pop("description", "")
         if not self.description:
             self.description = self.properties.pop("remark", "")
-        if self.name.startswith(("Cave ", "Intermission ")):
+        if self.name.lower().startswith(("cave ", "intermission ")):
             self.name = self.name.split(" ", maxsplit=1)[1]
         self.cavedelay = int(self.properties.pop("cavedelay").split()[0])
         self.cavetime = int(self.properties.pop("cavetime").split()[0])
@@ -94,15 +94,18 @@ class BdcffCave:
             pwidth = int(pwidth)
             pheight = int(pheight)
             if pwidth != self.width or pheight != self.height:
-                raise BdcffFormatError("cave width or height doesn't match map, in cave "+self.name)
+                raise BdcffFormatError("cave width or height doesn't match map, in cave " + self.name)
         if self.properties:
-            print("\nWARNING: unrecognised cave properties in cave "+self.name+" :")
+            print("\nWARNING: unrecognised cave properties in cave " + self.name + " :")
             print(self.properties, "\n")
         del self.properties
 
     def write(self, out: TextIO) -> None:
         out.write("[cave]\n")
-        out.write("Name={:s} {:s}\n".format("Intermission" if self.intermission else "Cave", self.name))
+        if self.name.lower().startswith(("cave ", "intermission ")):
+            out.write("Name={:s}\n".format(self.name))
+        else:
+            out.write("Name={:s} {:s}\n".format("Intermission" if self.intermission else "Cave", self.name))
         out.write("Description={:s}\n".format(self.description))
         out.write("Intermission={:s}\n".format("true" if self.intermission else "false"))
         out.write("CaveDelay={:d}\n".format(self.cavedelay))

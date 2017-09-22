@@ -178,6 +178,9 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.add_extra_time(10)
 
     def restart(self):
+        if self.gamestate.playtesting:
+            print("Exiting game because of playtest mode (returning to editor).")
+            raise SystemExit
         self.create_canvas_playfield_and_tilesheet(40, 22)
         self.scrollxypixels(0, 0)
         self.gamestate.restart()

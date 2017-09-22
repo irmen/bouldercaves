@@ -7,13 +7,11 @@ Written by Irmen de Jong (irmen@razorvine.net)
 License: MIT open-source.
 """
 
-# @todo SendyDash02 cave 42: initially trapped amoeba should be dormant? now it's immediately converted to diamonds...
-
 import datetime
 import random
 import json
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Sequence, Generator
 from .objects import Direction
 from . import caves, audio, user_data_dir, tiles, objects
 
@@ -45,11 +43,11 @@ class HighScores:
     def __iter__(self):
         yield from self.scores
 
-    def save(self):
+    def save(self) -> None:
         with open(user_data_dir + "highscores-{:s}.json".format(self.name), "wt") as out:
             json.dump(self.scores, out)
 
-    def load(self):
+    def load(self) -> None:
         try:
             with open(user_data_dir + "highscores-{:s}.json".format(self.name), "rt") as scorefile:
                 self.scores = json.load(scorefile)
@@ -64,7 +62,7 @@ class HighScores:
                 return pos
         return None
 
-    def add(self, name, score):
+    def add(self, name: str, score: int) -> None:
         pos = self.score_pos(score)
         if not pos:
             raise ValueError("score is not a new high score")
@@ -216,13 +214,13 @@ class GameState:
             else:
                 return Direction.NOWHERE
 
-        def move_done(self):
+        def move_done(self) -> None:
             pass
 
     class DemoMovementInfo(MovementInfo):
         # movement controller that doesn't respond to user input,
         # and instead plays a prerecorded sequence of moves.
-        def __init__(self, demo_moves) -> None:
+        def __init__(self, demo_moves: Sequence[int]) -> None:
             super().__init__()
             self.demo_direction = Direction.NOWHERE
             self.demo_moves = self.decompressed(demo_moves)
@@ -240,7 +238,7 @@ class GameState:
         def direction(self, value: Direction) -> None:
             pass
 
-        def move_done(self):
+        def move_done(self) -> None:
             try:
                 self.demo_direction = next(self.demo_moves)
                 if self.demo_direction == Direction.LEFT:
@@ -251,7 +249,7 @@ class GameState:
                 self.demo_finished = True
                 self.demo_direction = Direction.NOWHERE
 
-        def decompressed(self, demo):
+        def decompressed(self, demo: Sequence[int]) -> Generator[Direction, None, None]:
             for step in demo:
                 d = step & 0x0f
                 if d == 0:
@@ -283,7 +281,7 @@ class GameState:
         # and start the game on the title screen.
         self.restart()
 
-    def destroy(self):
+    def destroy(self) -> None:
         self.highscores.save()
 
     def restart(self) -> None:
@@ -324,8 +322,8 @@ class GameState:
             "max": 0,
             "slow": 0.0,
             "enclosed": False,
-            "dead": None,
-            "sound_active": False
+            "dormant": True,
+            "dead": None
         }
         self.timeremaining = datetime.timedelta(0)
         self.timelimit = None   # type: Optional[datetime.datetime]
@@ -405,7 +403,7 @@ class GameState:
         self.cheat_used = levelnumber > 1
         self.start_level_number = levelnumber
 
-    def use_playtesting(self):
+    def use_playtesting(self) -> None:
         # enable playtest mode, used from the editor.
         # skips all intro popups and title screen and immediately drops into the level.
         self.cheat_used = True
@@ -452,8 +450,8 @@ class GameState:
             "max": cave.amoebafactor * self.width * self.height,
             "slow": cave.amoeba_slowgrowthtime / self.update_timestep,
             "enclosed": False,
-            "dead": None,
-            "sound_active": False
+            "dormant": True,
+            "dead": None
         }
         # clear the previous cave data and replace with data from new cave
         self.game.clear_tilesheet()
@@ -464,8 +462,9 @@ class GameState:
         rgb = cave.colors.rgb()
         self.game.create_colored_tiles(rgb)
         self.game.set_screen_colors(rgb.screen, rgb.border)
+        self.check_initial_amoeba_dormant()
 
-        def prepare_reveal():
+        def prepare_reveal() -> None:
             self.game.prepare_reveal()
             audio.play_sample("cover", repeat=True)
 
@@ -476,7 +475,20 @@ class GameState:
         elif not self.playtesting:
             prepare_reveal()
 
-    def tile_music_ended(self):
+    def check_initial_amoeba_dormant(self) -> None:
+        if self.amoeba["dormant"]:
+            for cell in self.cave:
+                if cell.isamoeba():
+                    if self.get(cell, Direction.UP).isempty() or self.get(cell, Direction.DOWN).isempty() \
+                            or self.get(cell, Direction.RIGHT).isempty() or self.get(cell, Direction.LEFT).isempty() \
+                            or self.get(cell, Direction.UP).isdirt() or self.get(cell, Direction.DOWN).isdirt() \
+                            or self.get(cell, Direction.RIGHT).isdirt() or self.get(cell, Direction.LEFT).isdirt():
+                        # amoeba can grow, so is not dormant
+                        self.amoeba["dormant"] = False
+                        audio.play_sample("amoeba", repeat=True)  # start playing amoeba sound
+                        return
+
+    def tile_music_ended(self) -> None:
         # do one of two things: play the demo, or show the highscore list for a short time
         self.demo_or_highscore = (not self.demo_or_highscore) and self.caveset.cave_demo
         if self.demo_or_highscore:
@@ -484,7 +496,7 @@ class GameState:
         else:
             self.show_highscores()
 
-    def start_demo(self):
+    def start_demo(self) -> None:
         if self.game_status == GameStatus.WAITING:
             if self.caveset.cave_demo:
                 self.level = 0
@@ -495,7 +507,7 @@ class GameState:
             else:
                 self.game.popup("This cave set doesn't have a demo.", duration=3)
 
-    def show_highscores(self):
+    def show_highscores(self) -> None:
         def reset_game_status():
             self.game_status = GameStatus.WAITING
         if self.game_status == GameStatus.WAITING:
@@ -511,7 +523,7 @@ class GameState:
                     txt.append("\x0f{:d}\x0f {:\x0f<7s}\x0f {:_>6d}".format(pos, name, score))
             self.game.popup("\n".join(txt), 12, on_close=reset_game_status)
 
-    def pause(self):
+    def pause(self) -> None:
         if self.game_status == GameStatus.PLAYING:
             self.time_paused = datetime.datetime.now()
             self.game_status = GameStatus.PAUSED
@@ -521,7 +533,7 @@ class GameState:
                 self.timelimit = self.timelimit + pause_duration
             self.game_status = GameStatus.PLAYING
 
-    def suicide(self):
+    def suicide(self) -> None:
         if self.rockford_cell:
             self.explode(self.rockford_cell)
         else:
@@ -532,7 +544,8 @@ class GameState:
             self.cheat_used = True
             self.load_level(self.level % self.caveset.num_caves + 1)
 
-    def draw_rectangle(self, obj: objects.GameObject, x1: int, y1: int, width: int, height: int, fillobject: objects.GameObject=None) -> None:
+    def draw_rectangle(self, obj: objects.GameObject, x1: int, y1: int, width: int, height: int,
+                       fillobject: objects.GameObject=None) -> None:
         self.draw_line(obj, x1, y1, width, Direction.RIGHT)
         self.draw_line(obj, x1, y1 + height - 1, width, Direction.RIGHT)
         self.draw_line(obj, x1, y1 + 1, height - 2, Direction.DOWN)
@@ -705,7 +718,7 @@ class GameState:
             audio.play_sample(self.fall_sound_to_play)
             self.fall_sound_to_play = ""
         if self.amoeba["dead"] is None:
-            if self.amoeba["enclosed"]:
+            if self.amoeba["enclosed"] and not self.amoeba["dormant"]:
                 self.amoeba["dead"] = objects.DIAMOND
                 audio.silence_audio("amoeba")
                 audio.play_sample("diamond1")
@@ -714,9 +727,6 @@ class GameState:
                 audio.silence_audio("amoeba")
                 audio.play_sample("boulder")
             elif self.amoeba["slow"] > 0:
-                if not self.amoeba["sound_active"]:
-                    self.amoeba["sound_active"] = True
-                    audio.play_sample("amoeba", repeat=True)    # start playing amoeba sound
                 self.amoeba["slow"] -= 1
         if self.magicwall["active"]:
             self.magicwall["time"] -= 1
@@ -912,6 +922,10 @@ class GameState:
                     or self.get(cell, Direction.UP).isdirt() or self.get(cell, Direction.DOWN).isdirt() \
                     or self.get(cell, Direction.RIGHT).isdirt() or self.get(cell, Direction.LEFT).isdirt():
                 self.amoeba["enclosed"] = False
+                if self.amoeba["dormant"]:
+                    # amoeba can grow, so is not dormant anymore
+                    self.amoeba["dormant"] = False
+                    audio.play_sample("amoeba", repeat=True)  # start playing amoeba sound
             if self.timelimit:
                 grow = random.randint(1, 128) < 4 if self.amoeba["slow"] else random.randint(1, 4) == 1
                 direction = random.choice([Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT])
