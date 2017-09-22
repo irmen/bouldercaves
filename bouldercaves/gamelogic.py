@@ -1003,7 +1003,7 @@ class GameState:
             self.game.set_scorebar_tiles(0, 1, tiles.text2tiles("F1\x04New game! F4\x04Scores F9\x04Demo".center(width)))
             if not self.game.smallwindow:
                 left = [objects.MEGABOULDER.tile(), objects.FLYINGDIAMOND.tile(), objects.DIAMOND.tile(), objects.ROCKFORD.pushleft.tile()]
-                right = [objects.ROCKFORD.pushright.tile(), objects.MEGABOULDER.tile(), objects.FLYINGDIAMOND.tile(), objects.DIAMOND.tile()]
+                right = [objects.ROCKFORD.pushright.tile(), objects.DIAMOND.tile(), objects.FLYINGDIAMOND.tile(), objects.MEGABOULDER.tile()]
                 self.game.set_scorebar_tiles(0, 0, left)
                 self.game.set_scorebar_tiles(0, 1, left)
                 self.game.set_scorebar_tiles(width - len(right), 0, right)
