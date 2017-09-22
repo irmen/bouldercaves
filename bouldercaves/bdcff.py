@@ -66,10 +66,10 @@ class BdcffCave:
             dv = dve = dvalue
         self.diamondvalue_normal = int(dv)
         self.diamondvalue_extra = int(dve)
-        self.amoebatime = int(self.properties.pop("amoebatime", self.amoebatime).split()[0])
-        self.amoebafactor = float(self.properties.pop("amoebathreshold", self.amoebafactor))
-        self.magicwalltime = int(self.properties.pop("magicwalltime", self.magicwalltime).split()[0])
-        self.slimepermeability = float(self.properties.pop("slimepermeability", self.slimepermeability))
+        self.amoebatime = int(self.properties.pop("amoebatime", str(self.amoebatime)).split()[0])
+        self.amoebafactor = float(self.properties.pop("amoebathreshold", str(self.amoebafactor)))
+        self.magicwalltime = int(self.properties.pop("magicwalltime", str(self.magicwalltime)).split()[0])
+        self.slimepermeability = float(self.properties.pop("slimepermeability", str(self.slimepermeability)))
         colors = [BdcffParser.COLORNAMES.index(c) for c in self.properties.pop("colors").split()]
         self.color_border = 0
         self.color_screen = 0

@@ -7,7 +7,6 @@ Written by Irmen de Jong (irmen@razorvine.net)
 License: MIT open-source.
 """
 
-# @todo SendyDash01 cave 6: boulders on the top of the cave don't seem to fall through the slime...
 # @todo SendyDash02 cave 42: initially trapped amoeba should be dormant? now it's immediately converted to diamonds...
 
 import datetime
@@ -810,12 +809,16 @@ class GameState:
             self.load_level(level, level_intro_popup=intro_popup)
 
     def update_canfall(self, cell: Cell) -> None:
-        # if the cell below this one is empty, the object starts to fall
-        if self.get(cell, Direction.DOWN).isempty():
+        # if the cell below this one is empty, or slime, the object starts to fall
+        # (in case of slime, it only falls through ofcourse if the space below the slime is empty)
+        cellbelow = self.get(cell, Direction.DOWN)
+        if cellbelow.isempty():
             if not cell.falling:
                 self.fall_sound(cell)
                 cell.falling = True
-        elif self.get(cell, Direction.DOWN).isrounded():
+        elif cellbelow.isslime():
+            cell.falling = True
+        elif cellbelow.isrounded():
             if self.get(cell, Direction.LEFT).isempty() and self.get(cell, Direction.LEFTDOWN).isempty():
                 self.move(cell, Direction.LEFT).falling = True
             elif self.get(cell, Direction.RIGHT).isempty() and self.get(cell, Direction.RIGHTDOWN).isempty():
