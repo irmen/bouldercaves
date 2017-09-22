@@ -81,6 +81,11 @@ and another one ()that is much smaller) without the sound files because it uses 
 ![a level](screenshots/screenshot3.png?raw=true "Screenshot of the game runnig in 'authentic' C-64 mode")
 
 
+## Screenshot of the Editor
+
+![The editor in acation](screenshots/screenshot4.png?raw=true "Screenshot of the cave editor with a C-64 color palette")
+
+
 ## How to install and run this game
 
 All platforms: if you just want to *play* the game and are not interested in the code,
