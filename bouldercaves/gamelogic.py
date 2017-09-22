@@ -755,8 +755,8 @@ class GameState:
                     self.restart()  # go back to title screen when demo finishes
                 else:
                     self.load_next_level()
-        elif self.timelimit and self.update_timestep * (self.frame - self.rockford_found_frame) > 5:
-            # after 5 seconds with dead rockford we reload the current level
+        elif self.timelimit and self.update_timestep * (self.frame - self.rockford_found_frame) > 10:
+            # after 10 seconds with dead rockford we reload the current level
             self.life_lost()
 
     def focus_cell(self) -> Cell:

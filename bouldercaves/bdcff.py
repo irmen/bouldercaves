@@ -70,6 +70,9 @@ class BdcffCave:
         self.amoebafactor = float(self.properties.pop("amoebathreshold", str(self.amoebafactor)))
         self.magicwalltime = int(self.properties.pop("magicwalltime", str(self.magicwalltime)).split()[0])
         self.slimepermeability = float(self.properties.pop("slimepermeability", str(self.slimepermeability)))
+        if self.properties.pop("slimepermeabilityc64", "") not in ("", "0"):
+            # @todo support SlimePermeabilityC64 see http://www.boulder-dash.nl/forum/viewtopic.php?p=2583#2583
+            raise BdcffFormatError("doesn't support SlimePermeabilityC64 cave property at this time")
         colors = [BdcffParser.COLORNAMES.index(c) for c in self.properties.pop("colors").split()]
         self.color_border = 0
         self.color_screen = 0

@@ -137,6 +137,8 @@ class Cave(BaseCave):
                     self[x, y] = self.cells_snapshot[x + self.width * y]
 
 
+# the objects available in the editor, with their tile number that is displayed
+# (not all objects are properly recognizable in the editor by their default tile)
 EDITOR_OBJECTS = {
     objects.AMOEBA: objects.AMOEBA.tile(),
     objects.BOULDER: objects.BOULDER.tile(),
@@ -175,6 +177,8 @@ class EditorWindow(tkinter.Tk):
             import ctypes
             myappid = 'net.Razorvine.Bouldercaves.editor'  # arbitrary string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        self.playfield_columns = self.visible_columns
+        self.playfield_rows = self.visible_rows
         rightframe = tkinter.Frame(self)
         cf = tkinter.Frame(rightframe)
         w, h = tiles.tile2pixels(self.visible_columns, self.visible_rows)
@@ -186,24 +190,64 @@ class EditorWindow(tkinter.Tk):
         sy.grid(row=0, column=1, sticky=tkinter.N + tkinter.S)
         sx.grid(row=1, column=0, sticky=tkinter.E + tkinter.W)
         cf.pack()
-        f = tkinter.Frame(rightframe)
-        tkinter.Label(f, text="Cave name:").grid(column=0, row=0, sticky=tkinter.E)
-        tkinter.Label(f, text="Cave description:").grid(column=0, row=1, sticky=tkinter.E)
-        tkinter.Label(f, text="caveset Author:").grid(column=0, row=2, sticky=tkinter.E)
-        tkinter.Label(f, text="caveset WWW:").grid(column=0, row=3, sticky=tkinter.E)
-        tkinter.Label(f, text="caveset Date:").grid(column=0, row=4, sticky=tkinter.E)
-        # @todo add the other cave properties
+        bf = tkinter.Frame(rightframe)
+        f = tkinter.Frame(bf)
+        tkinter.Label(f, text="Cave name:").grid(column=0, row=0, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="Cave description:").grid(column=0, row=1, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="caveset Author:").grid(column=0, row=2, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="caveset WWW:").grid(column=0, row=3, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="caveset Date:").grid(column=0, row=4, sticky=tkinter.E, pady=2)
         self.cavename_var = tkinter.StringVar(value="A: test")
         self.cavedescr_var = tkinter.StringVar(value="A test cave.")
         self.cavesetauthor_var = tkinter.StringVar(value=getpass.getuser())
         self.cavesetwww_var = tkinter.StringVar()
         self.cavesetdate_var = tkinter.StringVar(value=datetime.datetime.now().date())
-        tkinter.Entry(f, textvariable=self.cavename_var).grid(column=1, row=0)
-        tkinter.Entry(f, textvariable=self.cavedescr_var).grid(column=1, row=1)
-        tkinter.Entry(f, textvariable=self.cavesetauthor_var).grid(column=1, row=2)
-        tkinter.Entry(f, textvariable=self.cavesetwww_var).grid(column=1, row=3)
-        tkinter.Entry(f, textvariable=self.cavesetdate_var).grid(column=1, row=4)
-        f.pack(side=tkinter.LEFT)
+        self.caveintermission_var = tkinter.BooleanVar()
+        tkinter.Entry(f, textvariable=self.cavename_var).grid(column=1, row=0, pady=2)
+        tkinter.Entry(f, textvariable=self.cavedescr_var).grid(column=1, row=1, pady=2)
+        tkinter.Entry(f, textvariable=self.cavesetauthor_var).grid(column=1, row=2, pady=2)
+        tkinter.Entry(f, textvariable=self.cavesetwww_var).grid(column=1, row=3, pady=2)
+        tkinter.Entry(f, textvariable=self.cavesetdate_var).grid(column=1, row=4, pady=2)
+        tkinter.Checkbutton(f, text=" this is an Intermission.", variable=self.caveintermission_var,
+                            selectcolor=self.cget("background")).grid(column=1, row=5, pady=2)
+        f.pack(side=tkinter.LEFT, anchor=tkinter.N)
+        defaults = bdcff.BdcffCave()
+        f = tkinter.Frame(bf)
+        tkinter.Label(f, text="Time limit [{:d}] :".format(defaults.cavetime)).grid(column=0, row=0, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="Amoeba slow time [{:d}] :".format(defaults.amoebatime)).grid(column=0, row=1, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="Magic wall time [{:d}] :".format(defaults.magicwalltime)).grid(column=0, row=2, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="Amoeba limit factor [{:.4f}] :".format(defaults.amoebafactor)).grid(column=0, row=3, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="Slime permeability [{:.4f}] :".format(defaults.slimepermeability)).grid(column=0, row=4, sticky=tkinter.E, pady=2)
+        self.cavetimelimit_var = tkinter.IntVar(value=defaults.cavetime)
+        self.caveamoebatime_var = tkinter.IntVar(value=defaults.amoebatime)
+        self.cavemagicwalltime_var = tkinter.IntVar(value=defaults.magicwalltime)
+        self.caveamoebafactor_var = tkinter.DoubleVar(value=defaults.amoebafactor)
+        self.caveslimepermeability_var = tkinter.DoubleVar(value=defaults.slimepermeability)
+        tkinter.Entry(f, width=8, textvariable=self.cavetimelimit_var).grid(column=1, row=0, pady=2)
+        tkinter.Entry(f, width=8, textvariable=self.caveamoebatime_var).grid(column=1, row=1, pady=2)
+        tkinter.Entry(f, width=8, textvariable=self.cavemagicwalltime_var).grid(column=1, row=2, pady=2)
+        tkinter.Entry(f, width=8, textvariable=self.caveamoebafactor_var).grid(column=1, row=3, pady=2)
+        tkinter.Entry(f, width=8, textvariable=self.caveslimepermeability_var).grid(column=1, row=4, pady=2)
+        f.pack(side=tkinter.LEFT, padx=16, anchor=tkinter.N)
+        f = tkinter.Frame(bf)
+        self.cavediamondsrequired_var = tkinter.IntVar(value=defaults.diamonds_required)
+        self.cavediamondvaluenorm_var = tkinter.IntVar(value=defaults.diamondvalue_normal)
+        self.cavediamondvalueextra_var = tkinter.IntVar(value=defaults.diamondvalue_extra)
+        self.cavewidth_var = tkinter.IntVar(value=self.playfield_columns)
+        self.caveheight_var = tkinter.IntVar(value=self.playfield_rows)
+        tkinter.Label(f, text="Diamonds required [{:d}] :".format(defaults.diamonds_required)).grid(column=0, row=0, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="Diamond value normal [{:d}] :".format(defaults.diamondvalue_normal)).grid(column=0, row=1, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="Diamond value extra [{:d}] :".format(defaults.diamondvalue_extra)).grid(column=0, row=2, sticky=tkinter.E, pady=(2, 16))
+        tkinter.Label(f, text="Cave Width [{:d}] :".format(self.playfield_columns)).grid(column=0, row=3, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="Cave Height [{:d}] :".format(self.playfield_rows)).grid(column=0, row=4, sticky=tkinter.E, pady=2)
+        tkinter.Entry(f, width=8, textvariable=self.cavediamondsrequired_var).grid(column=1, row=0, pady=2)
+        tkinter.Entry(f, width=8, textvariable=self.cavediamondvaluenorm_var).grid(column=1, row=1, pady=2)
+        tkinter.Entry(f, width=8, textvariable=self.cavediamondvalueextra_var).grid(column=1, row=2, pady=(2, 16))
+        tkinter.Entry(f, width=8, textvariable=self.cavewidth_var, state=tkinter.DISABLED).grid(column=1, row=3, pady=2)
+        tkinter.Entry(f, width=8, textvariable=self.caveheight_var, state=tkinter.DISABLED).grid(column=1, row=4, pady=2)
+        f.pack(side=tkinter.LEFT, padx=16, anchor=tkinter.N)
+
+        bf.pack(side=tkinter.BOTTOM, fill=tkinter.X)
         rightframe.pack(side=tkinter.RIGHT, padx=4, pady=4, fill=tkinter.BOTH, expand=1)
 
         buttonsframe = tkinter.Frame(self)
@@ -223,10 +267,11 @@ class EditorWindow(tkinter.Tk):
         tkinter.Button(lf, text="Randomize", command=self.randomize).grid(column=0, row=1)
         tkinter.Button(lf, text="Wipe", command=self.wipe).grid(column=1, row=1)
         tkinter.Button(lf, text="Playtest", command=self.playtest).grid(column=0, row=2)
+        tkinter.Button(lf, text="Defaults", command=self.set_defaults).grid(column=1, row=2)
         lf.pack(fill=tkinter.X, pady=4)
-        lf = tkinter.LabelFrame(buttonsframe, text="C-64 colors")
+        lf = tkinter.LabelFrame(buttonsframe, text="Commodore-64 colors")
         self.c64colors_var = tkinter.IntVar()
-        c64_check = tkinter.Checkbutton(lf, text="Enable palette", variable=self.c64colors_var, selectcolor=self.cget("background"),
+        c64_check = tkinter.Checkbutton(lf, text="Enable retro palette", variable=self.c64colors_var, selectcolor=self.cget("background"),
                                         command=lambda: self.c64_colors_switched(self.c64colors_var.get()))
         c64_check.grid(column=0, row=0)
         self.c64random_button = tkinter.Button(lf, text="Random", state=tkinter.DISABLED, command=self.c64_colors_randomize)
@@ -244,12 +289,9 @@ class EditorWindow(tkinter.Tk):
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.c_tiles = []      # type: List[str]
         self.tile_images = []  # type: List[tkinter.PhotoImage]
-        self.playfield_rows = self.playfield_columns = 0
         self.canvas_tag_to_tilexy = {}      # type: Dict[int, Tuple[int, int]]
         self.c64colors = False
         self.create_tile_images(Palette().rgb())
-        self.playfield_columns = 40
-        self.playfield_rows = 22
         self.wipe(False)
         self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
         w, h = tiles.tile2pixels(self.playfield_columns, self.playfield_rows)
@@ -455,11 +497,24 @@ class EditorWindow(tkinter.Tk):
         cave = caveset.cave(cavenum)
         cave.init_for_editor(self)
         self.cave = cave
-        self.cavename_var.set(self.cave.name)
-        self.cavedescr_var.set(self.cave.description)
-        self.cavesetauthor_var.set(self.cave.author)
-        self.cavesetdate_var.set(self.cave.date)
-        self.cavesetwww_var.set(self.cave.www)
+        self.set_cave_properties(self.cave)
+
+    def set_cave_properties(self, cave: Cave) -> None:
+        self.cavename_var.set(cave.name)
+        self.cavedescr_var.set(cave.description)
+        self.cavesetauthor_var.set(cave.author or getpass.getuser())
+        self.cavesetdate_var.set(cave.date or str(datetime.datetime.now().date()))
+        self.cavesetwww_var.set(cave.www)
+        self.cavediamondsrequired_var.set(cave.diamonds_required)
+        self.cavediamondvaluenorm_var.set(cave.diamondvalue_normal)
+        self.cavediamondvalueextra_var.set(cave.diamondvalue_extra)
+        self.caveamoebafactor_var.set(cave.amoebafactor)
+        self.caveamoebatime_var.set(cave.amoeba_slowgrowthtime)
+        self.cavemagicwalltime_var.set(cave.magicwall_millingtime)
+        self.caveintermission_var.set(cave.intermission)
+        self.cavetimelimit_var.set(cave.time)
+        self.caveslimepermeability_var.set(cave.slime_permeability)
+        self.caveintermission_var.set(cave.intermission)
 
     def save(self, gamefile: Optional[str]=None) -> bool:
         if not self.sanitycheck():
@@ -476,18 +531,19 @@ class EditorWindow(tkinter.Tk):
         cave.description = self.cavedescr_var.get()
         cave.width = self.cave.width
         cave.height = self.cave.height
-        cave.cavetime = self.cave.time
-        cave.diamonds_required = self.cave.diamonds_required
-        cave.diamondvalue_normal = self.cave.diamondvalue_normal
-        cave.diamondvalue_extra = self.cave.diamondvalue_extra
-        cave.amoebatime = self.cave.amoeba_slowgrowthtime
-        cave.magicwalltime = self.cave.magicwall_millingtime
-        cave.slimepermeability = self.cave.slime_permeability
-        cave.intermission = self.cave.intermission
+        cave.cavetime = self.cavetimelimit_var.get()
+        cave.diamonds_required = self.cavediamondsrequired_var.get()
+        cave.diamondvalue_normal = self.cavediamondvaluenorm_var.get()
+        cave.diamondvalue_extra = self.cavediamondvalueextra_var.get()
+        cave.amoebatime = self.caveamoebatime_var.get()
+        cave.amoebafactor = self.caveamoebafactor_var.get()
+        cave.magicwalltime = self.cavemagicwalltime_var.get()
+        cave.slimepermeability = self.caveslimepermeability_var.get()
+        cave.intermission = self.caveintermission_var.get()
+        cave.cavedelay = 3 if cave.intermission else 8
         c = self.cave.colors
         cave.color_border, cave.color_screen, cave.color_fg1, cave.color_fg2, cave.color_fg3, cave.color_amoeba, cave.color_slime = \
             c.border, c.screen, c.fg1, c.fg2, c.fg3, c.amoeba, c.slime
-        cave.amoebafactor = self.cave.amoebafactor
         BDCFFSYMBOL = {(obj, direction): symbol for symbol, (obj, direction) in BDCFFOBJECTS.items()}
         BDCFFSYMBOL_NO_DIR = {obj: symbol for symbol, (obj, _) in BDCFFOBJECTS.items()}
         for y in range(0, self.cave.height):
@@ -547,6 +603,11 @@ class EditorWindow(tkinter.Tk):
             if self.c64colors_var.get():
                 parameters.append("--c64colors")
             subprocess.Popen(parameters, env=env)
+
+    def set_defaults(self) -> None:
+        if not tkinter.messagebox.askokcancel("Confirm", "Set all cave parameters to defaults?", parent=self.buttonsframe):
+            return
+        self.set_cave_properties(Cave(0, "Test.", "A test cave.", self.visible_columns, self.visible_rows))
 
 
 class RandomizeDialog(tkinter.simpledialog.Dialog):

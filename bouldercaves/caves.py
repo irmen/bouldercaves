@@ -275,7 +275,7 @@ class Cave:
         self.description = description or ""
         self.author = ""
         self.www = ""
-        self.date = str(datetime.datetime.now().date())
+        self.date = ""
         self.intermission = False
         self.width = width
         self.height = height

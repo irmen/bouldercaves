@@ -164,6 +164,8 @@ class BoulderWindow(tkinter.Tk):
                 self.restart()
             elif self.gamestate.game_status in (GameStatus.DEMO, GameStatus.HIGHSCORE):
                 self.restart()
+            elif self.gamestate.game_status == GameStatus.PLAYING and not self.gamestate.rockford_cell:
+                self.gamestate.suicide()
             else:
                 if self.gamestate.lives < 0:
                     self.restart()
