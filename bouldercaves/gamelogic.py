@@ -8,6 +8,7 @@ License: MIT open-source.
 """
 
 # @todo SendyDash01 cave 6: boulders on the top of the cave don't seem to fall through the slime...
+# @todo SendyDash02 cave 42: initially trapped amoeba should be dormant? now it's immediately converted to diamonds...
 
 import datetime
 import random
