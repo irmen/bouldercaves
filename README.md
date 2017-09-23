@@ -35,9 +35,11 @@ the screen fast enough, try adjusting the parameters on the command line.
 - Extra diamonds grant bonus points, and time left is added to your score as well.
 - Avoid monsters or use them to your advantage.
 - Some brick walls are not simply what they seem. 
-- Amoeba grows and grows but it is often worthwhile to contain it. 
+- Amoeba grows and grows but it is often worthwhile to contain it. Sometimes you have
+  to set it free first.
+- Slime is permeable to boulders and diamonds but you cannot go through it yourself.  
 - *Intermission* levels are bonus stages where you have one chance to complete them.
-You won't lose a life here if you die.
+You won't lose a life here if you die, but you only have one attempt at solving it.
 - A small high score table is saved. 
 
 

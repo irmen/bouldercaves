@@ -25,6 +25,7 @@ from . import tiles, objects, bdcff
 
 
 # @todo add support for initial direction of objects
+# @todo add support for custom RGB colors in the palette
 # @todo fix cave size issues when editing smaller/larger caves/intermissions
 
 

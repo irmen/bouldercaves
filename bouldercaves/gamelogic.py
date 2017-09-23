@@ -147,6 +147,7 @@ class GameState:
                                 objects.DIRTBALL, objects.COCONUT, objects.ROCKETLAUNCHER}
 
     class MovementInfo:
+        # @todo add recording of gameplay to use as a user played demo instead of just the hardcoded one
         def __init__(self) -> None:
             self.direction = Direction.NOWHERE
             self.lastXdir = Direction.NOWHERE
