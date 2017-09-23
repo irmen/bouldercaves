@@ -9,6 +9,7 @@ License: MIT open-source.
 
 import os
 import sys
+import random
 import getpass
 import datetime
 import tkinter
@@ -16,17 +17,18 @@ import tkinter.messagebox
 import tkinter.simpledialog
 import tkinter.ttk
 import tkinter.filedialog
+import tkinter.colorchooser
 import pkgutil
 from typing import Tuple, List, Dict, Optional
 from .game import __version__
-from .caves import colorpalette, C64Cave, Cave as BaseCave, CaveSet, RgbPalette, Palette, BDCFFOBJECTS
+from .caves import colorpalette, C64Cave, Cave as BaseCave, CaveSet, Palette, BDCFFOBJECTS
 from .objects import GameObject, Direction
 from . import tiles, objects, bdcff
 
-
-# @todo add support for initial direction of objects
-# @todo add support for custom RGB colors in the palette
+# @todo add xy rulers
+# @todo add snapping to xy with shift to draw straight lines
 # @todo fix cave size issues when editing smaller/larger caves/intermissions
+# @todo add support for initial direction of objects
 
 
 class ScrollableImageSelector(tkinter.Frame):
@@ -182,7 +184,7 @@ class EditorWindow(tkinter.Tk):
         rightframe = tkinter.Frame(self)
         cf = tkinter.Frame(rightframe)
         w, h = tiles.tile2pixels(self.visible_columns, self.visible_rows)
-        self.canvas = tkinter.Canvas(cf, width=w * 2, height=h * 2, borderwidth=16, background="black", highlightthickness=0)
+        self.canvas = tkinter.Canvas(cf, width=w * 2, height=h * 2, borderwidth=16, background="black", highlightthickness=1)
         self.canvas.grid(row=0, column=0)
         sy = tkinter.Scrollbar(cf, orient=tkinter.VERTICAL, command=self.canvas.yview)
         sx = tkinter.Scrollbar(cf, orient=tkinter.HORIZONTAL, command=self.canvas.xview)
@@ -258,8 +260,10 @@ class EditorWindow(tkinter.Tk):
         lf.pack(expand=1, fill=tkinter.BOTH)
         lf = tkinter.LabelFrame(buttonsframe, text="Keyboard commands")
         tkinter.Label(lf, text="F - flood fill").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="R - drop 10 objects randomly").pack(anchor=tkinter.W, padx=4)
         tkinter.Label(lf, text="S - make snapshot").pack(anchor=tkinter.W, padx=4)
-        tkinter.Label(lf, text="R - restore snapshot").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="U - restore snapshot").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="(activate map first)").pack(anchor=tkinter.W, padx=4)
         lf.pack(fill=tkinter.X, pady=4)
         lf = tkinter.LabelFrame(buttonsframe, text="Misc. edit")
         tkinter.Button(lf, text="Load", command=self.load).grid(column=0, row=0)
@@ -280,8 +284,8 @@ class EditorWindow(tkinter.Tk):
         lf.pack(fill=tkinter.X, pady=4)
         buttonsframe.pack(side=tkinter.LEFT, anchor=tkinter.N)
         self.buttonsframe = buttonsframe
-        self.bind("<KeyPress>", self.keypress)
-        self.bind("<KeyRelease>", self.keyrelease)
+        self.canvas.bind("<KeyPress>", self.keypress)
+        self.canvas.bind("<KeyRelease>", self.keyrelease)
         self.canvas.bind("<Button-1>", self.mousebutton_left)
         self.canvas.bind("<Button-2>", self.mousebutton_middle)
         self.canvas.bind("<Button-3>", self.mousebutton_right)
@@ -291,7 +295,7 @@ class EditorWindow(tkinter.Tk):
         self.tile_images = []  # type: List[tkinter.PhotoImage]
         self.canvas_tag_to_tilexy = {}      # type: Dict[int, Tuple[int, int]]
         self.c64colors = False
-        self.create_tile_images(Palette().rgb())
+        self.create_tile_images(Palette())
         self.wipe(False)
         self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
         w, h = tiles.tile2pixels(self.playfield_columns, self.playfield_rows)
@@ -328,9 +332,15 @@ class EditorWindow(tkinter.Tk):
             if current:
                 tx, ty = self.canvas_tag_to_tilexy[current[0]]
                 self.flood_fill(tx, ty, (self.imageselector.selected_object, Direction.NOWHERE))
+        elif event.char == 'r':
+            obj, direction = self.imageselector.selected_object, Direction.NOWHERE
+            for _ in range(10):
+                x = random.randrange(1, self.cave.width - 1)
+                y = random.randrange(1, self.cave.height - 1)
+                self.cave[x, y] = (obj, direction)
         elif event.char == 's':
             self.snapshot()
-        elif event.char == 'r':
+        elif event.char == 'u':
             self.restore()
 
     def keyrelease(self, event) -> None:
@@ -366,7 +376,7 @@ class EditorWindow(tkinter.Tk):
                 # right / middle mouse button drag
                 self.cave[x, y] = (self.imageselector.selected_erase_object, Direction.NOWHERE)
 
-    def create_tile_images(self, colors: RgbPalette) -> None:
+    def create_tile_images(self, colors: Palette) -> None:
         source_images = tiles.load_sprites(self.c64colors, colors, scale=2)
         self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
         source_images = tiles.load_sprites(self.c64colors, colors, scale=1)
@@ -443,7 +453,7 @@ class EditorWindow(tkinter.Tk):
             self.cave.colors = palette
         else:
             self.cave.colors = original_palette
-            self.apply_new_palette(original_palette.rgb())
+            self.apply_new_palette(original_palette)
 
     def do_random_fill(self, rseed: int, randomprobs: Tuple[int, int, int, int], randomobjs: Tuple[str, str, str, str]) -> None:
         editor_objects_by_name = {obj.name.lower(): obj for obj in EDITOR_OBJECTS}
@@ -459,24 +469,24 @@ class EditorWindow(tkinter.Tk):
         self.init_new_cave(only_steel_border=True)
         self.randomize_initial_values = (rseed, randomprobs, randomobjs)
 
-    def c64_colors_switched(self, switch) -> None:
+    def c64_colors_switched(self, switch: bool) -> None:
         self.c64random_button.configure(state=tkinter.NORMAL if switch else tkinter.DISABLED)
         self.c64colors = bool(switch)
-        self.create_tile_images(self.cave.colors.rgb())
+        self.create_tile_images(self.cave.colors)
         self.populate_imageselector()
         self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
 
     def c64_colors_randomize(self) -> None:
         if self.c64colors:
             self.cave.colors.randomize()
-            self.apply_new_palette(self.cave.colors.rgb())
+            self.apply_new_palette(self.cave.colors)
 
-    def apply_new_palette(self, colors: RgbPalette) -> None:
+    def apply_new_palette(self, colors: Palette) -> None:
         if self.c64colors:
             self.create_tile_images(colors)
             self.populate_imageselector()
             self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
-            self.canvas.configure(background="#{:06x}".format(colors.border))
+            self.canvas.configure(background="#{:06x}".format(colors.rgb_border))
 
     def load(self):
         if not tkinter.messagebox.askokcancel("Confirm", "Load cave and lose current one?", parent=self.buttonsframe):
@@ -497,6 +507,7 @@ class EditorWindow(tkinter.Tk):
         cave.init_for_editor(self)
         self.cave = cave
         self.set_cave_properties(self.cave)
+        self.c64_colors_switched(self.c64colors)  # make sure tiles are redrawn
 
     def set_cave_properties(self, cave: Cave) -> None:
         self.cavename_var.set(cave.name)
@@ -689,32 +700,55 @@ class PaletteDialog(tkinter.simpledialog.Dialog):
         self.editor = editor
         self.colors = colors
         self.result = None  # type: Palette
+        self.palettergbbuttons = {}   # type: Dict[str, tkinter.Button]
+        self.color_vars = {}   # type: Dict[str, tkinter.Variable]
         super().__init__(parent=parent, title=title)
 
     def body(self, master: tkinter.Widget) -> Optional[tkinter.Widget]:
-        self.color_vars = {}   # type: Dict[str, tkinter.Variable]
         colors = [("fg1", self.colors.fg1), ("fg2", self.colors.fg2), ("fg3", self.colors.fg3),
                   ("amoeba", self.colors.amoeba), ("slime", self.colors.slime),
                   ("screen", self.colors.screen), ("border", self.colors.border)]
         for colornum, (name, value) in enumerate(colors):
-            color_var = tkinter.IntVar(value=value)
+            color_var = tkinter.StringVar(value=value)
             self.color_vars[name] = color_var
             tkinter.Label(master, text="{:s} color: ".format(name.title())).grid(row=colornum, sticky=tkinter.E)
             rf = tkinter.Frame(master)
             for num, color in enumerate(colorpalette):
                 tkcolor = "#{:06x}".format(color)
                 rb = tkinter.Radiobutton(rf, variable=color_var, indicatoron=False, value=num,
-                                         activebackground=tkcolor, command=self.color_chosen,
+                                         activebackground=tkcolor, command=lambda n=name: self.palette_color_chosen(n),
                                          offrelief=tkinter.FLAT, relief=tkinter.FLAT, overrelief=tkinter.RIDGE,
                                          bd=5, bg=tkcolor, selectcolor=tkcolor, width=2, height=1)
                 rb.pack(side=tkinter.LEFT)
                 if num == value:
                     rb.select()
             rf.grid(row=colornum, column=1, pady=4, sticky=tkinter.W)
+            tkinter.Label(master, text="RGB:").grid(row=colornum, column=2)
+            rgbb = tkinter.Button(master, text="rgb", command=lambda n=name: self.rgb_color_chosen(n))
+            rgbb.grid(row=colornum, column=3)
+            if type(value) is str:
+                fgtkcolor = "#{:06x}".format(0xffffff ^ int(value[1:], 16))
+                rgbb.configure(text="RGB", bg=value, fg=fgtkcolor)
+            self.palettergbbuttons[name] = rgbb
         return None
 
-    def color_chosen(self) -> None:
-        self.editor.apply_new_palette(self.palette.rgb())
+    def palette_color_chosen(self, colorname: str) -> None:
+        # reset the rgb button of this color row
+        dummybutton = tkinter.Button(self)
+        self.palettergbbuttons[colorname].configure(text="rgb", bg=dummybutton.cget("bg"), fg=dummybutton.cget("fg"))
+        self.editor.apply_new_palette(self.palette)
+
+    def rgb_color_chosen(self, colorname: str) -> None:
+        color = self.color_vars[colorname].get()
+        if not color.startswith("#"):
+            color = "#{:06x}".format(colorpalette[int(color)])
+        rgbcolor = tkinter.colorchooser.askcolor(title="Choose a RGB color", parent=self, initialcolor=color)
+        if rgbcolor[1] is not None:
+            tkcolor = rgbcolor[1]
+            fgtkcolor = "#{:06x}".format(0xffffff ^ int(tkcolor[1:], 16))
+            self.color_vars[colorname].set(tkcolor)
+            self.palettergbbuttons[colorname].configure(text="RGB", bg=tkcolor, fg=fgtkcolor)
+            self.editor.apply_new_palette(self.palette)
 
     def apply(self) -> None:
         self.result = self.palette

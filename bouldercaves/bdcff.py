@@ -14,7 +14,7 @@ License: MIT open-source.
 import sys
 import datetime
 import getpass
-from typing import Dict, List, Any, TextIO, Optional
+from typing import Dict, List, Any, TextIO, Optional, Union
 
 
 class BdcffFormatError(Exception):
@@ -76,11 +76,16 @@ class BdcffCave:
             # SlimePermeabilityC64 see http://www.boulder-dash.nl/forum/viewtopic.php?p=2583#2583
             # we sort of simulate the behavior here by setting the factor depending on the number of bits.
             self.slimepermeability = bin(slimep64).count('1') / 8.0
-        try:
-            colors = [BdcffParser.COLORNAMES.index(c) for c in self.properties.pop("colors").split()]
-            # @todo support '#RRGGBB' colors
-        except (ValueError, LookupError) as x:
-            raise BdcffFormatError("color format unsupported: "+str(x))
+        colors = []
+        for c in self.properties.pop("colors").split():
+            try:
+                color = BdcffParser.COLORNAMES.index(c)
+                colors.append(color)
+            except (ValueError, LookupError) as x:
+                if c.startswith('#'):
+                    colors.append(c)
+                else:
+                    raise BdcffFormatError("color format unsupported: " + str(x))
         self.color_border = 0
         self.color_screen = 0
         self.color_amoeba = 5
@@ -130,14 +135,20 @@ class BdcffCave:
         out.write("MagicWallTime={:d}\n".format(self.magicwalltime))
         out.write("SlimePermeability={:.3f}\n".format(self.slimepermeability))
         out.write("Size={:d} {:d}\n".format(self.width, self.height))
+
+        def outputcolor(color: Union[int, str]) -> str:
+            if type(color) is int:
+                return BdcffParser.COLORNAMES[color]
+            return color
+
         out.write("Colors={:s} {:s} {:s} {:s} {:s} {:s} {:s}\n".format(
-            BdcffParser.COLORNAMES[self.color_border],
-            BdcffParser.COLORNAMES[self.color_screen],
-            BdcffParser.COLORNAMES[self.color_fg1],
-            BdcffParser.COLORNAMES[self.color_fg2],
-            BdcffParser.COLORNAMES[self.color_fg3],
-            BdcffParser.COLORNAMES[self.color_amoeba],
-            BdcffParser.COLORNAMES[self.color_slime]))
+            outputcolor(self.color_border),
+            outputcolor(self.color_screen),
+            outputcolor(self.color_fg1),
+            outputcolor(self.color_fg2),
+            outputcolor(self.color_fg3),
+            outputcolor(self.color_amoeba),
+            outputcolor(self.color_slime)))
         out.write("\n[map]\n")
         if len(self.map.maplines) != self.height:
             raise BdcffFormatError("cave height differs from map")
@@ -283,7 +294,7 @@ class BdcffParser:
         elif self.state == self.SECT_OBJECTS and line.startswith(("[Level", "[/Level")):
             raise BdcffFormatError("no support for multiple levels in [objects]")
         elif line.startswith('[') and line.endswith(']'):
-            raise BdcffFormatError("invalid tag: " + line + " state="+str(self.state))
+            raise BdcffFormatError("invalid tag: " + line + " state=" + str(self.state))
         else:
             self.process_line(line)
 

@@ -9,7 +9,7 @@ License: MIT open-source.
 """
 
 import random
-from typing import Sequence, List, Tuple
+from typing import Sequence, List, Tuple, Union
 from .objects import Direction, GameObject
 from . import objects, bdcff
 
@@ -198,7 +198,26 @@ colorpalette_contrast = (  # this is a Commodore-64 palette with more contrast
     0x959595,  # 15 = light grey
 )
 
-colorpalette = (  # this is a lighter Commodore-64 palette
+colorpalette_pepto = (  # this is Pepto's Commodore-64 palette  http://www.pepto.de/projects/colorvic/
+    0x000000,  # 0 = black
+    0xFFFFFF,  # 1 = white
+    0x813338,  # 2 = red
+    0x75cec8,  # 3 = cyan
+    0x8e3c97,  # 4 = purple
+    0x56ac4d,  # 5 = green
+    0x2e2c9b,  # 6 = blue
+    0xedf171,  # 7 = yellow
+    0x8e5029,  # 8 = orange
+    0x553800,  # 9 = brown
+    0xc46c71,  # 10 = light red
+    0x4a4a4a,  # 11 = dark grey
+    0x7b7b7b,  # 12 = medium grey
+    0xa9ff9f,  # 13 = light green
+    0x706deb,  # 14 = light blue
+    0xb2b2b2,  # 15 = light grey
+)
+
+colorpalette_light = (  # this is a lighter Commodore-64 palette
     0x000000,  # 0 = black
     0xFFFFFF,  # 1 = white
     0x984B43,  # 2 = red
@@ -217,16 +236,18 @@ colorpalette = (  # this is a lighter Commodore-64 palette
     0xADADAD,  # 15 = light grey
 )
 
+colorpalette = colorpalette_pepto           # select desired color palette here
+
 
 class Palette:
     def __init__(self, fg1: int=8, fg2: int=11, fg3: int=1, amoeba: int=5, slime: int=6, screen: int=0, border: int=0) -> None:
-        self.fg1 = fg1
-        self.fg2 = fg2
-        self.fg3 = fg3
-        self.amoeba = amoeba
-        self.slime = slime
-        self.screen = screen
-        self.border = border
+        self.fg1 = self._color(fg1)
+        self.fg2 = self._color(fg2)
+        self.fg3 = self._color(fg3)
+        self.amoeba = self._color(amoeba)
+        self.slime = self._color(slime)
+        self.screen = self._color(screen)
+        self.border = self._color(border)
 
     def __str__(self):
         return "<Palette fg1={fg1}, fg2={fg2}, fg3={fg3}, amoeba={amoeba}, slime={slime}, screen={screen}, border={border}>"\
@@ -234,9 +255,6 @@ class Palette:
 
     def copy(self) -> 'Palette':
         return Palette(self.fg1, self.fg2, self.fg3, self.amoeba, self.slime, self.screen, self.border)
-
-    def rgb(self) -> 'RgbPalette':
-        return RgbPalette(self)
 
     def randomize(self) -> None:
         available = list(range(1, len(colorpalette)))
@@ -252,19 +270,48 @@ class Palette:
         available.remove(self.amoeba)
         self.screen = self.border = 0
 
+    def _color(self, color: Union[int, str]) -> Union[int, str]:
+        if type(color) is int or color.startswith('#'):
+            return color
+        c = int(color)
+        if 0 <= c <= len(colorpalette):
+            return c
+        raise ValueError("invalid palette color: " + str(color))
 
-class RgbPalette:
-    def __init__(self, palette: Palette=None) -> None:
-        if palette:
-            self.fg1 = colorpalette[palette.fg1]
-            self.fg2 = colorpalette[palette.fg2]
-            self.fg3 = colorpalette[palette.fg3]
-            self.amoeba = colorpalette[palette.amoeba]
-            self.slime = colorpalette[palette.slime]
-            self.screen = colorpalette[palette.screen]
-            self.border = colorpalette[palette.border]
-        else:
-            self.fg1 = self.fg2 = self.fg3 = self.amoeba = self.slime = self.screen = self.border = 0
+    def _rgb(self, color: Union[int, str]) -> int:
+        if type(color) is int:
+            return colorpalette[color]
+        if color.startswith('#'):
+            return int(color[1:], 16)
+        return colorpalette[int(color)]
+
+    @property
+    def rgb_fg1(self):
+        return self._rgb(self.fg1)
+
+    @property
+    def rgb_fg2(self):
+        return self._rgb(self.fg2)
+
+    @property
+    def rgb_fg3(self):
+        return self._rgb(self.fg3)
+
+    @property
+    def rgb_amoeba(self):
+        return self._rgb(self.amoeba)
+
+    @property
+    def rgb_slime(self):
+        return self._rgb(self.slime)
+
+    @property
+    def rgb_screen(self):
+        return self._rgb(self.screen)
+
+    @property
+    def rgb_border(self):
+        return self._rgb(self.border)
 
 
 class Cave:
@@ -492,8 +539,14 @@ class CaveSet:
         cave.colors.fg3 = bdcff.color_fg3
         cave.colors.amoeba = bdcff.color_amoeba
         cave.colors.slime = bdcff.color_slime
-        cave.colors.screen = bdcff.color_screen if bdcff.color_screen >= 0 else 0
-        cave.colors.border = bdcff.color_border if bdcff.color_border >= 0 else 0
+        if type(bdcff.color_screen) is int:
+            cave.colors.screen = bdcff.color_screen if bdcff.color_screen >= 0 else 0
+        else:
+            cave.colors.screen = bdcff.color_screen
+        if type(bdcff.color_border) is int:
+            cave.colors.border = bdcff.color_border if bdcff.color_border >= 0 else 0
+        else:
+            cave.colors.border = bdcff.color_border
         # convert the bdcff map
         cave.map = [BDCFFOBJECTS[x] for line in bdcff.map.maplines for x in line]
         return cave

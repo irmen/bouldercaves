@@ -169,6 +169,7 @@ class SampleMixer:
     Real-time audio sample mixer. Simply adds a number of samples, clipping if values become too large.
     Produces (via a generator method) chunks of audio stream data to be fed to the sound output stream.
     """
+    # @todo add option to only play ONE instance of a sample at the same time, this will simplifly the sound handling in the game logic (see fall_sound_to_play)
     def __init__(self, chunksize: int) -> None:
         self.active_samples = {}   # type: Dict[int, Tuple[str, Generator[memoryview, None, None]]]
         self.chunksize = chunksize

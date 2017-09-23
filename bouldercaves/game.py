@@ -20,7 +20,7 @@ import time
 import getpass
 from typing import Tuple, Sequence, List, Iterable, Callable
 from .gamelogic import GameState, Direction, GameStatus, HighScores
-from .caves import colorpalette, Palette, RgbPalette
+from .caves import colorpalette, Palette
 from . import audio, synthsamples, tiles, objects
 
 __version__ = "3.0"
@@ -205,9 +205,8 @@ class BoulderWindow(tkinter.Tk):
             colors = Palette()
             colors.randomize()
             print("random colors:", colors)
-            rgb = colors.rgb()
-            self.create_colored_tiles(rgb)
-            self.set_screen_colors(rgb.screen, rgb.border)
+            self.create_colored_tiles(colors)
+            self.set_screen_colors(colors.rgb_screen, colors.rgb_border)
             self.tilesheet.all_dirty()
         elif event.keysym == "F4":
             self.gamestate.show_highscores()
@@ -301,7 +300,7 @@ class BoulderWindow(tkinter.Tk):
         for index, tile in self.tilesheet.dirty():
             self.canvas.itemconfigure(self.c_tiles[index], image=self.tile_images[tile])
 
-    def create_colored_tiles(self, colors: RgbPalette) -> None:
+    def create_colored_tiles(self, colors: Palette) -> None:
         if self.c64colors:
             source_images = tiles.load_sprites(self.c64colors, colors, scale=self.scalexy)
             for i, image in enumerate(source_images):
@@ -309,7 +308,7 @@ class BoulderWindow(tkinter.Tk):
 
     def create_tile_images(self) -> None:
         initial_palette = Palette(2, 4, 13, 5, 6)
-        source_images = tiles.load_sprites(self.c64colors, initial_palette.rgb(), scale=self.scalexy)
+        source_images = tiles.load_sprites(self.c64colors, initial_palette, scale=self.scalexy)
         self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
         source_images = tiles.load_font(self.scalexy if self.smallwindow else 2 * self.scalexy)
         self.tile_images.extend([tkinter.PhotoImage(data=image) for image in source_images])

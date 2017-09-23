@@ -147,7 +147,6 @@ class GameState:
                                 objects.DIRTBALL, objects.COCONUT, objects.ROCKETLAUNCHER}
 
     class MovementInfo:
-        # @todo add recording of gameplay to use as a user played demo instead of just the hardcoded one
         def __init__(self) -> None:
             self.direction = Direction.NOWHERE
             self.lastXdir = Direction.NOWHERE
@@ -460,9 +459,8 @@ class GameState:
         for i, (gobj, direction) in enumerate(cave.map):
             y, x = divmod(i, cave.width)
             self.draw_single(gobj, x, y, initial_direction=direction)
-        rgb = cave.colors.rgb()
-        self.game.create_colored_tiles(rgb)
-        self.game.set_screen_colors(rgb.screen, rgb.border)
+        self.game.create_colored_tiles(cave.colors)
+        self.game.set_screen_colors(cave.colors.rgb_screen, cave.colors.rgb_border)
         self.check_initial_amoeba_dormant()
 
         def prepare_reveal() -> None:

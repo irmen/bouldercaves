@@ -12,7 +12,7 @@ import io
 import pkgutil
 from typing import Tuple, Union, Iterable, Sequence
 from PIL import Image
-from .caves import RgbPalette
+from .caves import Palette
 
 
 class Tilesheet:
@@ -118,7 +118,7 @@ def text2tiles(text: str) -> Sequence[int]:
     return [num_sprites + ord(c) for c in text]
 
 
-def load_sprites(c64colors=False, colors: RgbPalette=None, scale: float=1.0) -> Sequence[bytes]:
+def load_sprites(c64colors=False, colors: Palette=None, scale: float=1.0) -> Sequence[bytes]:
     tiles_filename = "c64_gfx.png" if c64colors else "boulder_rush.png"
     sprite_src_images = []
     with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/" + tiles_filename))) as tile_image:
@@ -133,12 +133,12 @@ def load_sprites(c64colors=False, colors: RgbPalette=None, scale: float=1.0) -> 
             pc4 = palette.index((0, 255, 0))        # green, amoeba color
             pc5 = palette.index((0, 0, 255))        # blue, slime color
             pc_bg = palette.index((0, 0, 0))        # black, background color
-            palette[pc1] = (colors.fg1 >> 16, (colors.fg1 & 0xff00) >> 8, colors.fg1 & 0xff)
-            palette[pc2] = (colors.fg2 >> 16, (colors.fg2 & 0xff00) >> 8, colors.fg2 & 0xff)
-            palette[pc3] = (colors.fg3 >> 16, (colors.fg3 & 0xff00) >> 8, colors.fg3 & 0xff)
-            palette[pc4] = (colors.amoeba >> 16, (colors.amoeba & 0xff00) >> 8, colors.amoeba & 0xff)
-            palette[pc5] = (colors.slime >> 16, (colors.slime & 0xff00) >> 8, colors.slime & 0xff)
-            palette[pc_bg] = (colors.screen >> 16, (colors.screen & 0xff00) >> 8, colors.screen & 0xff)
+            palette[pc1] = (colors.rgb_fg1 >> 16, (colors.rgb_fg1 & 0xff00) >> 8, colors.rgb_fg1 & 0xff)
+            palette[pc2] = (colors.rgb_fg2 >> 16, (colors.rgb_fg2 & 0xff00) >> 8, colors.rgb_fg2 & 0xff)
+            palette[pc3] = (colors.rgb_fg3 >> 16, (colors.rgb_fg3 & 0xff00) >> 8, colors.rgb_fg3 & 0xff)
+            palette[pc4] = (colors.rgb_amoeba >> 16, (colors.rgb_amoeba & 0xff00) >> 8, colors.rgb_amoeba & 0xff)
+            palette[pc5] = (colors.rgb_slime >> 16, (colors.rgb_slime & 0xff00) >> 8, colors.rgb_slime & 0xff)
+            palette[pc_bg] = (colors.rgb_screen >> 16, (colors.rgb_screen & 0xff00) >> 8, colors.rgb_screen & 0xff)
             palettevalues = []
             for rgb in palette:
                 palettevalues.extend(rgb)
