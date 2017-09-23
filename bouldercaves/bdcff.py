@@ -35,6 +35,7 @@ class BdcffCave:
         # create a cave with the defaults from the Bdcff specification
         self.properties = {}
         self.map = self.Map()
+        self.objects = []
         self.intermission = False
         self.cavetime = 200
         self.cavedelay = 8
@@ -70,10 +71,16 @@ class BdcffCave:
         self.amoebafactor = float(self.properties.pop("amoebathreshold", str(self.amoebafactor)))
         self.magicwalltime = int(self.properties.pop("magicwalltime", str(self.magicwalltime)).split()[0])
         self.slimepermeability = float(self.properties.pop("slimepermeability", str(self.slimepermeability)))
-        if self.properties.pop("slimepermeabilityc64", "") not in ("", "0"):
-            # @todo support SlimePermeabilityC64 see http://www.boulder-dash.nl/forum/viewtopic.php?p=2583#2583
-            raise BdcffFormatError("doesn't support SlimePermeabilityC64 cave property at this time")
-        colors = [BdcffParser.COLORNAMES.index(c) for c in self.properties.pop("colors").split()]
+        slimep64 = int(self.properties.pop("slimepermeabilityc64", "-1").split()[0])
+        if slimep64 >= 0:
+            # SlimePermeabilityC64 see http://www.boulder-dash.nl/forum/viewtopic.php?p=2583#2583
+            # we sort of simulate the behavior here by setting the factor depending on the number of bits.
+            self.slimepermeability = bin(slimep64).count('1') / 8.0
+        try:
+            colors = [BdcffParser.COLORNAMES.index(c) for c in self.properties.pop("colors").split()]
+            # @todo support '#RRGGBB' colors
+        except (ValueError, LookupError) as x:
+            raise BdcffFormatError("color format unsupported: "+str(x))
         self.color_border = 0
         self.color_screen = 0
         self.color_amoeba = 5
@@ -88,6 +95,9 @@ class BdcffCave:
         else:
             raise BdcffFormatError("invalid color spec: " + str(colors))
         self.intermission = self.properties.pop("intermission", "false") == "true"
+        if self.objects:
+            print(self.objects)
+            raise BdcffFormatError("cave uses [objects] to create the map, we only support [map] right now")
         self.map.postprocess()
         self.height = self.map.height
         self.width = self.map.width
@@ -146,6 +156,10 @@ class BdcffParser:
     SECT_GAME = 2
     SECT_CAVE = 3
     SECT_MAP = 4
+    SECT_HIGHSCOREG = 5
+    SECT_HIGHSCORE = 6
+    SECT_OBJECTS = 7
+    SECT_REPLAY = 8
     COLORNAMES = ["Black", "White", "Red", "Cyan", "Purple", "Green", "Blue", "Yellow",
                   "Orange", "Brown", "LightRed", "Gray1", "Gray2", "LightGreen", "LightBlue", "Gray3"]
 
@@ -201,7 +215,9 @@ class BdcffParser:
         self.num_caves = int(self.game_properties.pop("caves", 0))
         self.name = self.game_properties.pop("name")
         self.description = self.game_properties.pop("description", "")
-        self.author = self.game_properties.pop("author", "")
+        if not self.description:
+            self.description = self.game_properties.pop("remark", "")
+        self.author = self.game_properties.pop("author", "<unknown>")
         self.www = self.game_properties.pop("www", "")
         self.date = self.game_properties.pop("date", "")
         self.charset = self.game_properties.pop("charset", "Original")
@@ -229,6 +245,17 @@ class BdcffParser:
             self.state = self.SECT_BDCFF
         elif line == '[game]' and self.state == self.SECT_BDCFF:
             self.state = self.SECT_GAME
+        elif line == '[highscore]' and self.state == self.SECT_GAME:
+            self.state = self.SECT_HIGHSCOREG
+            # we're ignoring the highscore table from the game file, as we use our own
+        elif line == '[highscore]' and self.state == self.SECT_CAVE:
+            self.state = self.SECT_HIGHSCORE
+            # we're ignoring the highscore table from the game file, as we use our own
+        elif line == '[/highscore]':
+            if self.state == self.SECT_HIGHSCOREG:
+                self.state = self.SECT_GAME
+            elif self.state == self.SECT_HIGHSCORE:
+                self.state = self.SECT_CAVE
         elif line == '[cave]' and self.state == self.SECT_GAME:
             self.current_cave = BdcffCave()
             self.caves.append(self.current_cave)
@@ -237,6 +264,15 @@ class BdcffParser:
             self.state = self.SECT_MAP
         elif line == '[/map]' and self.state == self.SECT_MAP:
             self.state = self.SECT_CAVE
+        elif line == '[objects]' and self.state == self.SECT_CAVE:
+            self.state = self.SECT_OBJECTS
+        elif line == '[/objects]' and self.state == self.SECT_OBJECTS:
+            self.state = self.SECT_CAVE
+        elif line == '[replay]' and self.state == self.SECT_CAVE:
+            self.state = self.SECT_REPLAY
+            # we ignore the cave replays they're in a format we don't support
+        elif line == '[/replay]' and self.state == self.SECT_REPLAY:
+            self.state = self.SECT_CAVE
         elif line == '[/cave]' and self.state == self.SECT_CAVE:
             self.current_cave = None
             self.state = self.SECT_GAME
@@ -244,8 +280,10 @@ class BdcffParser:
             self.state = self.SECT_BDCFF
         elif line == '[/BDCFF]' and self.state == self.SECT_BDCFF:
             pass
+        elif self.state == self.SECT_OBJECTS and line.startswith(("[Level", "[/Level")):
+            raise BdcffFormatError("no support for multiple levels in [objects]")
         elif line.startswith('[') and line.endswith(']'):
-            raise BdcffFormatError("invalid tag: " + line)
+            raise BdcffFormatError("invalid tag: " + line + " state="+str(self.state))
         else:
             self.process_line(line)
 
@@ -256,6 +294,8 @@ class BdcffParser:
             else:
                 raise BdcffFormatError("bdcff parse error, state=" + str(self.state) + " line=" + line)
         elif self.state == self.SECT_GAME:
+            if line.startswith("TitleScreen"):
+                return
             prop, value = line.split("=")
             self.game_properties[prop.lower()] = value
         elif self.state == self.SECT_CAVE:
@@ -263,6 +303,11 @@ class BdcffParser:
             self.current_cave.properties[prop.lower()] = value
         elif self.state == self.SECT_MAP:
             self.current_cave.map.maplines.append(line)
+        elif self.state == self.SECT_OBJECTS:
+            instruction, arguments = line.split('=')
+            self.current_cave.objects.append((instruction, arguments))
+        elif self.state in (self.SECT_HIGHSCORE, self.SECT_HIGHSCOREG, self.SECT_REPLAY):
+            return
         else:
             raise BdcffFormatError("bdcff parse error, state=" + str(self.state) + " line=" + line)
 
