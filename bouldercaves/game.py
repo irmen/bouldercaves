@@ -583,37 +583,37 @@ def start(sargs: Sequence[str]=None) -> None:
     audio.norm_samplewidth = 2
     audio.norm_channels = 2
     samples = {
-        "music": "bdmusic.ogg",
-        "cover": "cover.ogg",
-        "crack": "crack.ogg",
-        "boulder": "boulder.ogg",
-        "finished": "finished.ogg",
-        "explosion": "explosion.ogg",
-        "voodoo_explosion": "voodoo_explosion.ogg",
-        "extra_life": "bonus_life.ogg",
-        "walk_empty": "walk_empty.ogg",
-        "walk_dirt": "walk_dirt.ogg",
-        "collect_diamond": "collectdiamond.ogg",
-        "box_push": "box_push.ogg",
-        "amoeba": "amoeba.ogg",
-        "slime": "slime.ogg",
-        "magic_wall": "magic_wall.ogg",
-        "game_over": "game_over.ogg",
-        "diamond1": "diamond1.ogg",
-        "diamond2": "diamond2.ogg",
-        "diamond3": "diamond3.ogg",
-        "diamond4": "diamond4.ogg",
-        "diamond5": "diamond5.ogg",
-        "diamond6": "diamond6.ogg",
-        "timeout1": "timeout1.ogg",
-        "timeout2": "timeout2.ogg",
-        "timeout3": "timeout3.ogg",
-        "timeout4": "timeout4.ogg",
-        "timeout5": "timeout5.ogg",
-        "timeout6": "timeout6.ogg",
-        "timeout7": "timeout7.ogg",
-        "timeout8": "timeout8.ogg",
-        "timeout9": "timeout9.ogg",
+        "music": ("bdmusic.ogg", 1),
+        "cover": ("cover.ogg", 1),
+        "crack": ("crack.ogg", 2),
+        "boulder": ("boulder.ogg", 4),
+        "finished": ("finished.ogg", 1),
+        "explosion": ("explosion.ogg", 2),
+        "voodoo_explosion": ("voodoo_explosion.ogg", 2),
+        "extra_life": ("bonus_life.ogg", 1),
+        "walk_empty": ("walk_empty.ogg", 2),
+        "walk_dirt": ("walk_dirt.ogg", 2),
+        "collect_diamond": ("collectdiamond.ogg", 4),  # @todo instead of multiple sounds, abort the current one and replay a new one
+        "box_push": ("box_push.ogg", 2),
+        "amoeba": ("amoeba.ogg", 1),
+        "slime": ("slime.ogg", 1),
+        "magic_wall": ("magic_wall.ogg", 1),
+        "game_over": ("game_over.ogg", 1),
+        "diamond1": ("diamond1.ogg", 1),
+        "diamond2": ("diamond2.ogg", 1),
+        "diamond3": ("diamond3.ogg", 1),
+        "diamond4": ("diamond4.ogg", 1),
+        "diamond5": ("diamond5.ogg", 1),
+        "diamond6": ("diamond6.ogg", 1),
+        "timeout1": ("timeout1.ogg", 1),
+        "timeout2": ("timeout2.ogg", 1),
+        "timeout3": ("timeout3.ogg", 1),
+        "timeout4": ("timeout4.ogg", 1),
+        "timeout5": ("timeout5.ogg", 1),
+        "timeout6": ("timeout6.ogg", 1),
+        "timeout7": ("timeout7.ogg", 1),
+        "timeout8": ("timeout8.ogg", 1),
+        "timeout9": ("timeout9.ogg", 1),
     }
 
     if args.synth:
@@ -656,7 +656,9 @@ def start(sargs: Sequence[str]=None) -> None:
         missing = samples.keys() - synthesized.keys()
         if missing:
             raise SystemExit("Synths missing for: " + str(missing))
-        samples.update(synthesized)     # type: ignore
+        for name, sample in synthesized.items():
+            max_simul = samples[name][1]
+            samples[name] = (sample, max_simul)
 
     if args.nosound:
         print("No sound output selected.")

@@ -30,7 +30,8 @@ import tempfile
 import threading
 import time
 import wave
-from typing import BinaryIO, ByteString, Callable, Generator, List, Union, Dict, Tuple, Any
+from collections import defaultdict
+from typing import BinaryIO, Callable, Generator, Union, Dict, Tuple
 from . import user_data_dir
 
 
@@ -169,36 +170,58 @@ class SampleMixer:
     Real-time audio sample mixer. Simply adds a number of samples, clipping if values become too large.
     Produces (via a generator method) chunks of audio stream data to be fed to the sound output stream.
     """
-    # @todo add option to only play ONE instance of a sample at the same time, this will simplifly the sound handling in the game logic (see fall_sound_to_play)
     def __init__(self, chunksize: int) -> None:
         self.active_samples = {}   # type: Dict[int, Tuple[str, Generator[memoryview, None, None]]]
+        self.sample_counts = defaultdict(int)  # type: Dict[str, int]
         self.chunksize = chunksize
         self.mixed_chunks = self.chunks()
+        self.add_lock = threading.Lock()
+        self._sid = 0
 
-    def add_sample(self, sample: Sample, repeat: bool=False, sid=None) -> None:
-        sample_chunks = sample.chunked_data(chunksize=self.chunksize, repeat=repeat)
-        sid = sid or id(sample_chunks)
-        self.active_samples[sid] = (sample.name, sample_chunks)
-        return sid
+    def add_sample(self, sample: Sample, repeat: bool=False, sid: int=None) -> Union[int, None]:
+        if not self.allow_sample(sample, repeat):
+            return None
+        with self.add_lock:
+            sample_chunks = sample.chunked_data(chunksize=self.chunksize, repeat=repeat)
+            self._sid += 1
+            sid = sid or self._sid
+            self.active_samples[sid] = (sample.name, sample_chunks)
+            self.sample_counts[sample.name] += 1
+            return sid
+
+    def allow_sample(self, sample: Sample, repeat: bool=False) -> bool:
+        if repeat and self.sample_counts[sample.name] >= 1:  # don't allow more than one repeating sample
+            return False
+        if self.sample_counts[sample.name] >= 4:  # same sample max 4 times simultaneously
+            return False
+        if sum(self.sample_counts.values()) >= 8:  # mixing max 8 samples simultaneously
+            return False
+        return True
 
     def clear_sources(self) -> None:
         # clears all sources
-        self.active_samples.clear()
+        with self.add_lock:
+            self.active_samples.clear()
+            self.sample_counts.clear()
 
     def clear_source(self, sid_or_name: Union[int, str]) -> None:
         # clear a single sample source by its sid or all sources with the sample name
         if isinstance(sid_or_name, int):
-            del self.active_samples[sid_or_name]
+            self.remove_sample(sid_or_name)
         else:
-            for sid, (name, _) in list(self.active_samples.items()):
+            with self.add_lock:
+                active_samples = list(self.active_samples.items())
+            for sid, (name, _) in active_samples:
                 if name == sid_or_name:
-                    del self.active_samples[sid]
+                    self.remove_sample(sid)
 
     def chunks(self) -> Generator[memoryview, None, None]:
         silence = b"\0" * self.chunksize
         while True:
             chunks_to_mix = []
-            for i, (name, s) in list(self.active_samples.items()):
+            with self.add_lock:
+                active_samples = list(self.active_samples.items())
+            for i, (name, s) in active_samples:
                 try:
                     chunk = next(s)
                     if len(chunk) > self.chunksize:
@@ -208,7 +231,7 @@ class SampleMixer:
                         chunk = memoryview(chunk.tobytes() + silence[:self.chunksize - len(chunk)])
                     chunks_to_mix.append(chunk)
                 except StopIteration:
-                    del self.active_samples[i]
+                    self.remove_sample(i)
             chunks_to_mix = chunks_to_mix or [memoryview(silence)]
             assert all(len(c) == self.chunksize for c in chunks_to_mix)
             mixed = chunks_to_mix[0]
@@ -217,6 +240,15 @@ class SampleMixer:
                     mixed = audioop.add(mixed, to_mix, norm_channels)
                 mixed = memoryview(mixed)
             yield mixed
+
+    def remove_sample(self, sid: int) -> None:
+        with self.add_lock:
+            name = self.active_samples[sid][0]
+            del self.active_samples[sid]
+            self.sample_counts[name] -= 1
+
+    def set_limit(self,samplename: str, max_simultaneously: int) -> None:
+        print("SET LIMIT", samplename, max_simultaneously)   # @todo enforce limit!   and get rid of fall_sound_to_play
 
 
 class AudioApi:
@@ -257,6 +289,9 @@ class AudioApi:
     def query_api_version(self) -> str:
         return "unknown"
 
+    def set_sample_play_limit(self, samplename: str, max_simultaneously: int) -> None:
+        pass
+
 
 class PyAudio(AudioApi):
     """Api to the somewhat older pyaudio library (that uses portaudio)"""
@@ -264,13 +299,15 @@ class PyAudio(AudioApi):
         super().__init__()
         global pyaudio
         import pyaudio
+        thread_ready = threading.Event()
 
         def audio_thread():
             audio = pyaudio.PyAudio()
-            mixer = SampleMixer(chunksize=self.chunksize())
+            self.mixer = SampleMixer(chunksize=self.chunksize())
             try:
                 audio_format = audio.get_format_from_width(self.samplewidth) if self.samplewidth != 4 else pyaudio.paInt32
                 stream = audio.open(format=audio_format, channels=self.nchannels, rate=self.samplerate, output=True)
+                thread_ready.set()
                 try:
                     while True:
                         try:
@@ -278,17 +315,17 @@ class PyAudio(AudioApi):
                             if job == "stop":
                                 break
                             elif job == "silence":
-                                mixer.clear_sources()
+                                self.mixer.clear_sources()
                                 continue
                             elif isinstance(job, tuple):
                                 if job[0] == "stopsample":
-                                    mixer.clear_source(job[1])
+                                    self.mixer.clear_source(job[1])
                                 continue
                         except queue.Empty:
                             pass
                         else:
-                            mixer.add_sample(job["sample"], job["repeat"], job["id"])
-                        data = next(mixer.mixed_chunks)
+                            self.mixer.add_sample(job["sample"], job["repeat"], job["id"])
+                        data = next(self.mixer.mixed_chunks)
                         if isinstance(data, memoryview):
                             data = data.tobytes()   # PyAudio stream can't deal with memoryview
                         stream.write(data)
@@ -299,9 +336,13 @@ class PyAudio(AudioApi):
 
         outputter = threading.Thread(target=audio_thread, name="audio-pyaudio", daemon=True)
         outputter.start()
+        thread_ready.wait()
 
     def query_api_version(self):
         return pyaudio.get_portaudio_version_text()
+
+    def set_sample_play_limit(self, samplename: str, max_simultaneously: int) -> None:
+        self.mixer.set_limit(samplename, max_simultaneously)
 
 
 class SounddeviceThread(AudioApi):
@@ -321,12 +362,14 @@ class SounddeviceThread(AudioApi):
             dtype = "int32"
         else:
             raise ValueError("invalid sample width")
+        thread_ready = threading.Event()
 
         def audio_thread():
-            mixer = SampleMixer(chunksize=self.chunksize())
+            self.mixer = SampleMixer(chunksize=self.chunksize())
             try:
                 stream = sounddevice.RawOutputStream(self.samplerate, channels=self.nchannels, dtype=dtype)
                 stream.start()
+                thread_ready.set()
                 try:
                     while True:
                         try:
@@ -334,17 +377,17 @@ class SounddeviceThread(AudioApi):
                             if job == "stop":
                                 break
                             elif job == "silence":
-                                mixer.clear_sources()
+                                self.mixer.clear_sources()
                                 continue
                             elif isinstance(job, tuple):
                                 if job[0] == "stopsample":
-                                    mixer.clear_source(job[1])
+                                    self.mixer.clear_source(job[1])
                                 continue
                         except queue.Empty:
                             pass
                         else:
-                            mixer.add_sample(job["sample"], job["repeat"], job["id"])
-                        data = next(mixer.mixed_chunks)
+                            self.mixer.add_sample(job["sample"], job["repeat"], job["id"])
+                        data = next(self.mixer.mixed_chunks)
                         stream.write(data)
                 finally:
                     stream.close()
@@ -353,9 +396,13 @@ class SounddeviceThread(AudioApi):
 
         self.output_thread = threading.Thread(target=audio_thread, name="audio-sounddevice", daemon=True)
         self.output_thread.start()
+        thread_ready.wait()
 
     def query_api_version(self):
         return sounddevice.get_portaudio_version()[1]
+
+    def set_sample_play_limit(self, samplename: str, max_simultaneously: int) -> None:
+        self.mixer.set_limit(samplename, max_simultaneously)
 
 
 class Sounddevice(AudioApi):
@@ -393,6 +440,9 @@ class Sounddevice(AudioApi):
 
     def stop(self, sid: int) -> None:
         self.mixer.clear_source(sid)
+
+    def set_sample_play_limit(self, samplename: str, max_simultaneously: int) -> None:
+        self.mixer.set_limit(samplename, max_simultaneously)
 
     def close(self):
         self.silence()
@@ -490,7 +540,7 @@ class Output:
     def close(self):
         self.audio_api.close()
 
-    def silence(self, sid_or_name: None):
+    def silence(self, sid_or_name=None):
         if sid_or_name:
             self.audio_api.stop(sid_or_name)
         else:
@@ -501,27 +551,30 @@ class Output:
         global samples
         return self.audio_api.play(samples[samplename], repeat=repeat)
 
+    def set_sample_play_limit(self, samplename: str, max_simultaneously: int) -> None:
+        self.audio_api.set_sample_play_limit(samplename, max_simultaneously)
+
 
 samples = {}    # type: Dict[str, Union[str, Sample]]
 output = None
 
 
-def init_audio(samples_to_load, dummy=False):
+def init_audio(samples_to_load, dummy=False, preferred_api=None) -> Output:
     global output, samples
     samples.clear()
     if dummy:
         output = Output(DummyAudio())
     else:
-        output = Output()
+        output = Output(preferred_api)
     if isinstance(output.audio_api, DummyAudio):
         if not dummy:
             print("No audio output available. Install 'sounddevice' or 'pyaudio' library to hear things.")
         for name, filename in samples_to_load.items():
             samples[name] = DummySample(name)
-        return
-    if any(isinstance(sample, str) for sample in samples_to_load.values()):
+        return output
+    if any(isinstance(sample, str) for sample, _ in samples_to_load.values()):
         print("Loading sound files...")
-    for name, filename in samples_to_load.items():
+    for name, (filename, max_simultaneously) in samples_to_load.items():
         if isinstance(filename, Sample):
             samples[name] = filename
         else:
@@ -532,9 +585,11 @@ def init_audio(samples_to_load, dummy=False):
                 samples[name] = DummySample(name, filename)
             else:
                 samples[name] = Sample(name, filedata=data)
+        output.set_sample_play_limit(name, max_simultaneously)
     print("Sound API initialized:", output.audio_api)
     if isinstance(output.audio_api, Winsound):
         print("Winsound is used as fallback. For better audio, it is recommended to install the 'sounddevice' or 'pyaudio' library instead.")
+    return output
 
 
 def play_sample(samplename, repeat=False):
@@ -555,27 +610,27 @@ if __name__ == "__main__":
     for _ in range(60):
         print(next(chunks).tobytes())
     norm_samplerate = 22050
-    init_audio({
-        "explosion": "explosion.ogg",
-        "amoeba": "amoeba.ogg",
-        "game_over": "game_over.ogg",
+    output = init_audio({
+        "explosion": ("explosion.ogg", 99),
+        "amoeba": ("amoeba.ogg", 99),
+        "game_over": ("game_over.ogg", 99)
     })
-    with Output(Sounddevice()) as output:
-        print("PLAY SAMPLED SOUNDS...", output.audio_api)
-        print("CHUNK", output.audio_api.chunksize())
-        amoeba_sid = output.play_sample("amoeba", repeat=True)
-        time.sleep(3)
-        print("PLAY ANOTHER SOUND!")
-        sid = output.play_sample("game_over", repeat=False)
-        time.sleep(0.5)
-        print("STOPPING AMOEBA!")
-        output.silence("amoeba")
-        time.sleep(0.5)
-        print("PLAY ANOTHER SOUND!")
-        sid = output.play_sample("explosion", repeat=True)
-        time.sleep(4)
-        print("STOP SOUND!")
-        output.silence()
-        time.sleep(2)
-        print("SHUTDOWN!")
+    print("PLAY SAMPLED SOUNDS...", output.audio_api)
+    print("CHUNK", output.audio_api.chunksize())
+    amoeba_sid = output.play_sample("amoeba", repeat=True)
+    time.sleep(3)
+    print("PLAY ANOTHER SOUND!")
+    sid = output.play_sample("game_over", repeat=False)
+    time.sleep(0.5)
+    print("STOPPING AMOEBA!")
+    output.silence("amoeba")
+    time.sleep(0.5)
+    print("PLAY ANOTHER SOUND!")
+    sid = output.play_sample("explosion", repeat=True)
+    time.sleep(4)
+    print("STOP SOUND!")
+    output.silence()
+    time.sleep(2)
+    print("SHUTDOWN!")
+    output.close()
     time.sleep(0.5)
