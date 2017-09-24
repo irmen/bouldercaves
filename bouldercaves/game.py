@@ -431,7 +431,6 @@ class BoulderWindow(tkinter.Tk):
                     self.scrollxypixels(viewx, viewy)
 
     def popup(self, text: str, duration: float=5.0, on_close: Callable=None) -> None:
-        # @todo fix popup when cave size is too small (intermission) -> grow intermission to full cave? also: center it on the screen
         self.popup_close()
         self.scroll_focuscell_into_view(immediate=True)   # snap the view to the focus cell otherwise popup may appear off-screen
         lines = []

@@ -417,6 +417,8 @@ class GameState:
         self.game.popup_close()    # make sure any open popup won't restore the old tiles
         self.cheat_used |= self.start_level_number > 1
         cave = self.caveset.cave(levelnumber)
+        if cave.width < self.game.visible_columns or cave.height < self.game.visible_columns:
+            cave.resize(self.game.visible_columns, self.game.visible_rows)
         self._create_cave(cave.width, cave.height)
         self.game.create_canvas_playfield_and_tilesheet(cave.width, cave.height)
         self.level_name = cave.name

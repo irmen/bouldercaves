@@ -8,6 +8,7 @@ Written by Irmen de Jong (irmen@razorvine.net)
 License: GNU GPL 3.0, see LICENSE
 """
 
+import math
 import random
 from typing import Sequence, List, Tuple, Union
 from .objects import Direction, GameObject
@@ -336,6 +337,22 @@ class Cave:
         self.slime_permeability = defaults.slimepermeability
         self.time = defaults.cavetime
         self.colors = Palette()
+
+    def resize(self, target_width: int, target_height: int) -> None:
+        # make the map bigger, place the original in the center
+        map2 = []
+        filler = [(objects.EMPTY, Direction.NOWHERE)] * target_width
+        for y in range(math.floor((target_height - self.height) / 2)):
+            map2.extend(filler)
+        for y in range(self.height):
+            map2.extend(filler[:math.floor((target_width-self.width)/2)])
+            map2.extend(self.map[y * self.width: y * self.width + self.width])
+            map2.extend(filler[:math.ceil((target_width-self.width)/2)])
+        for y in range(math.ceil((target_height - self.height) / 2)):
+            map2.extend(filler)
+        assert len(map2) == target_width * target_height
+        self.width, self.height = target_width, target_height
+        self.map = map2
 
 
 class C64Cave(Cave):
