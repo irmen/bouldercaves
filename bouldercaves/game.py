@@ -45,7 +45,7 @@ class BoulderWindow(tkinter.Tk):
         self.update_timestep = 1 / fps
         self.scalexy = scale
         self.c64colors = c64colors
-        if self.visible_columns <= 0 or self.visible_columns > 128 or self.visible_rows <= 0 or self.visible_rows > 128:
+        if self.visible_columns <= 4 or self.visible_columns > 100 or self.visible_rows <= 4 or self.visible_rows > 100:
             raise ValueError("invalid visible size")
         if self.scalexy not in (1, 1.5, 2, 2.5, 3):
             raise ValueError("invalid scalexy factor", self.scalexy)
@@ -316,8 +316,8 @@ class BoulderWindow(tkinter.Tk):
         # create the images on the canvas for all tiles (fixed position):
         if width == self.playfield_columns and height == self.playfield_rows:
             return
-        if width < 4 or width > 200 or height < 4 or height > 200:
-            raise ValueError("invalid playfield/cave width or height")
+        if width < 4 or width > 100 or height < 4 or height > 100:
+            raise ValueError("invalid playfield/cave width or height (4-100)")
         self.playfield_columns = width
         self.playfield_rows = height
         self.canvas.delete(tkinter.ALL)
@@ -407,7 +407,7 @@ class BoulderWindow(tkinter.Tk):
         if focus_cell:
             x, y = focus_cell.x, focus_cell.y
             curx, cury = self.view_x / 16 + self.visible_columns / 2, self.view_y / 16 + self.visible_rows / 2
-            if not self.scrolling_into_view and abs(curx - x) < 6 and abs(cury - y) < 3:
+            if not self.scrolling_into_view and abs(curx - x) < self.visible_columns // 3 and abs(cury - y) < self.visible_rows // 3:
                 return  # don't always keep it exactly in the center at all times, add some movement slack area
             # scroll the view to the focus cell
             viewx, viewy = tiles.tile2pixels(x - self.visible_columns // 2, y - self.visible_rows // 2)
@@ -422,8 +422,8 @@ class BoulderWindow(tkinter.Tk):
                 else:
                     # interpolate towards the new view position
                     self.scrolling_into_view = True
-                    dx = (viewx - self.view_x) / self.update_fps * 1.5
-                    dy = (viewy - self.view_y) / self.update_fps * 1.5
+                    dx = (viewx - self.view_x) / self.update_fps * 2.0
+                    dy = (viewy - self.view_y) / self.update_fps * 2.0
                     if dx:
                         viewx = int(self.view_x + math.copysign(max(1, abs(dx)), dx))
                     if dy:

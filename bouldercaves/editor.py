@@ -315,9 +315,12 @@ class EditorWindow(tkinter.Tk):
         self.populate_imageselector()
         self.randomize_initial_values = None   # type: Tuple
 
+    def _use_active_image(self):
+        return self.playfield_columns * self.playfield_rows <= 4096
+
     def init_new_cave(self, width: int, height: int) -> False:
-        if width < 4 or width > 200 or height < 4 or height > 200:
-            raise ValueError("invalid playfield/cave width or height (4-200)")
+        if width < 4 or width > 100 or height < 4 or height > 100:
+            raise ValueError("invalid playfield/cave width or height (4-100)")
         self.playfield_columns = width
         self.playfield_rows = height
         self.cave = Cave(0, self.cavename_var.get(), self.cavedescr_var.get(), width, height)
@@ -412,8 +415,14 @@ class EditorWindow(tkinter.Tk):
                 elif event.state & 0x600:
                     # right / middle mouse button drag
                     self.cave[x, y] = (self.imageselector.selected_erase_object, Direction.NOWHERE)
+                else:
+                    if not self._use_active_image():
+                        orig_tile = EDITOR_OBJECTS[self.cave[x, y][0]]
+                        self.canvas.itemconfigure(current[0], image=self.tile_images[EDITOR_OBJECTS[self.imageselector.selected_object]])
+                        self.after(60, lambda ot=orig_tile, ci=current[0]: self.canvas.itemconfigure(ci, image=self.tile_images[ot]))
             else:
-                orig_tile = self.cave[x, y][0].tile()
+                # show the 'denied' tile briefly
+                orig_tile = EDITOR_OBJECTS[self.cave[x, y][0]]
                 self.canvas.itemconfigure(current[0], image=self.tile_images[objects.EDIT_CROSS.tile()])
                 self.after(60, lambda: self.canvas.itemconfigure(current[0], image=self.tile_images[orig_tile]))
 
@@ -433,34 +442,34 @@ class EditorWindow(tkinter.Tk):
 
     def create_canvas_playfield(self, width: int, height: int) -> None:
         # create the images on the canvas for all tiles (fixed position)
-        if width < 4 or width > 200 or height < 4 or height > 200:
-            raise ValueError("invalid playfield/cave width or height (4-200)")
+        if width < 4 or width > 100 or height < 4 or height > 100:
+            raise ValueError("invalid playfield/cave width or height (4-100)")
         self.playfield_columns = width
         self.playfield_rows = height
         self.canvas.delete(tkinter.ALL)
         self.c_tiles.clear()
         self.canvas_tag_to_tilexy.clear()
         selected_tile = EDITOR_OBJECTS[self.imageselector.selected_object]
+        active_image = self.tile_images[selected_tile] if self._use_active_image() else None
         for y in range(self.playfield_rows):
             for x in range(self.playfield_columns):
                 sx, sy = tiles.tile2pixels(x, y)
                 obj, direction = self.cave[x, y]
-                tile = self.canvas.create_image(sx * self.canvas_scale, sy * self.canvas_scale,
-                                                image=self.tile_images[EDITOR_OBJECTS[obj]],
-                                                activeimage=self.tile_images[selected_tile],
-                                                anchor=tkinter.NW, tags="tile")
-                self.c_tiles.append(tile)
-                self.canvas_tag_to_tilexy[tile] = (x, y)
+                ctile = self.canvas.create_image(sx * self.canvas_scale, sy * self.canvas_scale,
+                                                 image=self.tile_images[EDITOR_OBJECTS[obj]],
+                                                 activeimage=active_image, anchor=tkinter.NW, tags="tile")
+                self.c_tiles.append(ctile)
+                self.canvas_tag_to_tilexy[ctile] = (x, y)
 
     def tile_selection_changed(self, object: GameObject, tile: int) -> None:
-        # @todo don't use activeimage it's too expensive to update it all the time, change it with the mousemove event
         self.canvas.focus_set()
-        self.config(cursor="watch")
-        self.update()
-        image = self.tile_images[tile]
-        for c_tile in self.c_tiles:
-            self.canvas.itemconfigure(c_tile, activeimage=image)
-        self.config(cursor="")
+        if self._use_active_image():
+            self.config(cursor="watch")
+            self.update()
+            image = self.tile_images[tile]
+            for c_tile in self.c_tiles:
+                self.canvas.itemconfigure(c_tile, activeimage=image)
+            self.config(cursor="")
 
     def tile_erase_selection_changed(self, object: GameObject, tile: int) -> None:
         pass

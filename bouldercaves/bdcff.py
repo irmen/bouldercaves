@@ -129,8 +129,8 @@ class BdcffCave:
         if self.objects:
             print(self.objects)
             raise BdcffFormatError("cave uses [objects] to create the map, we only support [map] right now")
-        if self.width < 4 or self.width > 200 or self.height < 4 or self.height > 200:
-            raise BdcffFormatError("invalid width and/or height")
+        if self.width < 4 or self.width > 100 or self.height < 4 or self.height > 100:
+            raise BdcffFormatError("invalid width and/or height (4-100)")
         if self.slimepermeability < 0 or self.slimepermeability > 1:
             raise BdcffFormatError("invalid SlimePermeability")
         if self.amoebafactor < 0 or self. amoebafactor > 1:
