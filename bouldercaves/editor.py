@@ -694,13 +694,13 @@ class RandomizeDialog(tkinter.simpledialog.Dialog):
 
 
 class PaletteDialog(tkinter.simpledialog.Dialog):
-    # @todo replace RGB button by radiobutton which CAN be styled on OSX
     def __init__(self, parent, title: str, editor: EditorWindow, colors: Palette) -> None:
         self.editor = editor
         self.colors = colors
         self.result = None  # type: Palette
-        self.palettergbbuttons = {}   # type: Dict[str, tkinter.Button]
+        self.palettergblabels = {}   # type: Dict[str, tkinter.Label]
         self.color_vars = {}   # type: Dict[str, tkinter.Variable]
+        self.rgb_vars = {}   # type: Dict[str, tkinter.Variable]
         super().__init__(parent=parent, title=title)
 
     def body(self, master: tkinter.Widget) -> Optional[tkinter.Widget]:
@@ -721,20 +721,23 @@ class PaletteDialog(tkinter.simpledialog.Dialog):
                 rb.pack(side=tkinter.LEFT)
                 if num == value:
                     rb.select()
-            rf.grid(row=colornum, column=1, pady=4, sticky=tkinter.W)
-            tkinter.Label(master, text="RGB:").grid(row=colornum, column=2)
-            rgbb = tkinter.Button(master, text="rgb", command=lambda n=name: self.rgb_color_chosen(n))
-            rgbb.grid(row=colornum, column=3)
+            tkinter.Label(rf, text=" or: ").pack(side=tkinter.LEFT)
+            tkinter.Button(rf, text="select", command=lambda n=name: self.rgb_color_chosen(n)).pack(side=tkinter.LEFT)
+            rgb_var = tkinter.IntVar()
+            self.rgb_vars[name] = rgb_var
+            rgb_label = tkinter.Label(rf, text="any RGB color")
             if type(value) is str:
                 fgtkcolor = "#{:06x}".format(0xffffff ^ int(value[1:], 16))
-                rgbb.configure(text="RGB", bg=value, fg=fgtkcolor)
-            self.palettergbbuttons[name] = rgbb
+                rgb_label.configure(bg=value, fg=fgtkcolor)
+            rgb_label.pack(side=tkinter.LEFT, expand=True, fill=tkinter.Y)
+            self.palettergblabels[name] = rgb_label
+            rf.grid(row=colornum, column=1, pady=4, sticky=tkinter.W)
         return None
 
     def palette_color_chosen(self, colorname: str) -> None:
         # reset the rgb button of this color row
-        dummybutton = tkinter.Button(self)
-        self.palettergbbuttons[colorname].configure(text="rgb", bg=dummybutton.cget("bg"), fg=dummybutton.cget("fg"))
+        dummylabel = tkinter.Label(self)
+        self.palettergblabels[colorname].configure(bg=dummylabel.cget("bg"), fg=dummylabel.cget("fg"))
         self.editor.apply_new_palette(self.palette)
 
     def rgb_color_chosen(self, colorname: str) -> None:
@@ -746,7 +749,7 @@ class PaletteDialog(tkinter.simpledialog.Dialog):
             tkcolor = rgbcolor[1]
             fgtkcolor = "#{:06x}".format(0xffffff ^ int(tkcolor[1:], 16))
             self.color_vars[colorname].set(tkcolor)
-            self.palettergbbuttons[colorname].configure(text="RGB", bg=tkcolor, fg=fgtkcolor)
+            self.palettergblabels[colorname].configure(bg=tkcolor, fg=fgtkcolor)
             self.editor.apply_new_palette(self.palette)
 
     def apply(self) -> None:

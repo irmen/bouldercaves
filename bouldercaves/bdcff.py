@@ -108,9 +108,6 @@ class BdcffCave:
         else:
             raise BdcffFormatError("invalid color spec: " + str(colors))
         self.intermission = self.properties.pop("intermission", "false") == "true"
-        if self.objects:
-            print(self.objects)
-            raise BdcffFormatError("cave uses [objects] to create the map, we only support [map] right now")
         self.map.postprocess()
         self.height = self.map.height
         self.width = self.map.width
@@ -121,10 +118,31 @@ class BdcffCave:
             pheight = int(pheight)
             if pwidth != self.width or pheight != self.height:
                 raise BdcffFormatError("cave width or height doesn't match map, in cave " + self.name)
+        self.properties.pop("cavedelay", 0)
+        self.properties.pop("frametime", 0)
         if self.properties:
             print("\nWARNING: unrecognised cave properties in cave " + self.name + " :")
             print(self.properties, "\n")
         del self.properties
+
+    def validate(self):
+        if self.objects:
+            print(self.objects)
+            raise BdcffFormatError("cave uses [objects] to create the map, we only support [map] right now")
+        if self.width < 4 or self.width > 200 or self.height < 4 or self.height > 200:
+            raise BdcffFormatError("invalid width and/or height")
+        if self.slimepermeability < 0 or self.slimepermeability > 1:
+            raise BdcffFormatError("invalid SlimePermeability")
+        if self.amoebafactor < 0 or self. amoebafactor > 1:
+            raise BdcffFormatError("invalid AmoebaFactor")
+        if self.cavetime <= 1 or self.cavetime > 999 or \
+                self.magicwalltime < 0 or self.magicwalltime > 999 or\
+                self.amoebatime < 0 or self.amoebatime > 999:
+            raise BdcffFormatError("invalid time property")
+        if self.diamondvalue_normal < 0 or self.diamondvalue_normal > 99 or self.diamondvalue_extra < 0 or self.diamondvalue_extra > 99:
+            raise BdcffFormatError("invalid diamond value")
+        if self.diamonds_required < -999 or self.diamonds_required > 999:
+            raise BdcffFormatError("invalid DiamondsRequired")
 
     def write(self, out: TextIO) -> None:
         out.write("[cave]\n")
@@ -231,7 +249,7 @@ class BdcffParser:
         out.write("\n[/game]\n[/BDCFF]\n")
 
     def postprocess(self) -> None:
-        self.num_levels = int(self.game_properties.pop("levels"))
+        self.num_levels = int(self.game_properties.pop("levels", 1))
         self.num_caves = int(self.game_properties.pop("caves", 0))
         self.name = self.game_properties.pop("name")
         self.description = self.game_properties.pop("description", "")
@@ -248,6 +266,7 @@ class BdcffParser:
         del self.game_properties
         for cave in self.caves:
             cave.postprocess()
+            cave.validate()
         self.num_caves = self.num_caves or len(self.caves)
         del self.current_cave
         del self.state

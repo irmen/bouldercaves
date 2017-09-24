@@ -16,8 +16,6 @@ from .objects import Direction
 from . import caves, audio, user_data_dir, tiles, objects
 
 
-# @todo fix explosions of Firefly, butterfly etc. They should be consumed by nearby explosion, but not cause chain reaction
-
 class GameStatus(Enum):
     WAITING = 1
     REVEALING_PLAY = 2
@@ -578,7 +576,7 @@ class GameState:
         cell.obj = obj
         cell.direction = initial_direction
         cell.frame = self.frame   # make sure the new cell is not immediately scanned
-        cell.anim_start_gfx_frame = self.graphics_frame_counter   # default behavior is to start anims from the first frame
+        cell.anim_start_gfx_frame = self.graphics_frame_counter   # this makes sure that (new) anims start from the first frame
         cell.falling = False
         if obj is objects.MAGICWALL:
             if not self.magicwall["active"]:
@@ -904,6 +902,8 @@ class GameState:
             audio.play_sample("crack")
 
     def update_outboxclosed(self, cell: Cell) -> None:
+        if not self.rockford_cell:
+            return   # do nothing if rockford hasn't appeared yet
         if self.diamonds >= self.diamonds_needed:
             if cell.obj is not objects.OUTBOXBLINKING:
                 audio.play_sample("crack")
@@ -965,7 +965,7 @@ class GameState:
                 self.movement.stop_all()
             self.movement.move_done()
         if cell is not self.rockford_cell:
-            # rockford has moved, tweak his walk animation so it keeps going and is not reset to the start frame
+            # rockford has moved, tweak his walk animation so it keeps going and is not reset to the first anim frame
             cell.anim_start_gfx_frame = 0
         self.rockford_cell = cell
 
@@ -1091,6 +1091,10 @@ class GameState:
             self.draw_single_cell(cell, objects.ROCKFORD)
             self.timelimit = datetime.datetime.now() + self.timeremaining
             self.inbox_cell = None
+            if self.diamonds_needed <= 0:
+                # need to subtract this from the current number of diamonds in the cave
+                numdiamonds = sum([1 for c in self.cave if c.isdiamond()])
+                self.diamonds_needed = max(0, numdiamonds + self.diamonds_needed)
 
     def end_explosion(self, cell: Cell) -> None:
         # a normal explosion ends with an empty cell
@@ -1116,9 +1120,7 @@ class GameState:
             if direction == Direction.NOWHERE:
                 continue
             cell = self.cave[explosioncell.x + explosioncell.y * self.width + self._dirxy[direction]]
-            if cell.isexplodable():
-                self.explode(cell, Direction.NOWHERE)
-            elif cell.isconsumable():
+            if cell.isconsumable():
                 if cell.obj is objects.VOODOO:
                     explosion_sample = "voodoo_explosion"
                     self.draw_single_cell(cell, objects.GRAVESTONE)
