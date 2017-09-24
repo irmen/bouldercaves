@@ -469,24 +469,34 @@ class EditorWindow(tkinter.Tk):
         c_tile = self.canvas.find_closest(x * 16 * self.canvas_scale, y * 16 * self.canvas_scale)
         self.canvas.itemconfigure(c_tile, image=self.tile_images[tile])
 
-    def flood_fill(self, x: int, y: int, thing: Tuple[GameObject, Direction]) -> None:
-        # @todo optimize flood fill this into a scanline version
-        target = self.cave[x, y][0]
-        if target == thing[0]:
+    def flood_fill(self, x: int, y: int, newthing: Tuple[GameObject, Direction]) -> None:
+        # scanline floodfill algorithm using a stack
+        oldthing = self.cave[x, y][0]
+        if oldthing == newthing[0]:
             return
-        stack = [(x, y)]
         self.config(cursor="watch")
         self.update()
+        stack = [(x, y)]
         while stack:
             x, y = stack.pop()
-            t = self.cave[x, y][0]
-            if t != target:
-                continue
-            self.cave[x, y] = thing
-            stack.append((x - 1, y))
-            stack.append((x + 1, y))
-            stack.append((x, y - 1))
-            stack.append((x, y + 1))
+            x1 = x
+            while x1 >= 0 and self.cave[x1, y][0] == oldthing:
+                x1 -= 1
+            x1 += 1
+            span_above = span_below = False
+            while x1 < self.cave.width and self.cave[x1, y][0] == oldthing:
+                self.cave[x1, y] = newthing
+                if not span_above and y > 0 and self.cave[x1, y-1][0] == oldthing:
+                    stack.append((x1, y-1))
+                    span_above = True
+                elif span_above and y > 0 and self.cave[x1, y-1][0] != oldthing:
+                    span_above = False
+                if not span_below and y < self.cave.height - 1 and self.cave[x1, y+1][0] == oldthing:
+                    stack.append((x1, y+1))
+                    span_below = True
+                elif span_below and y < self.cave.height - 1 and self.cave[x1, y+1][0] != oldthing:
+                    span_below = False
+                x1 += 1
         self.config(cursor="")
 
     def snapshot(self) -> None:
