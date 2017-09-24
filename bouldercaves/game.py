@@ -25,7 +25,7 @@ from . import audio, synthsamples, tiles, objects, bdcff
 __version__ = "4.0"
 
 
-# @todo fix outbox not opening in time????
+# @todo fix outbox not opening in time when it is above rockford????
 
 class BoulderWindow(tkinter.Tk):
     update_fps = 30
@@ -433,7 +433,7 @@ class BoulderWindow(tkinter.Tk):
                     self.scrollxypixels(viewx, viewy)
 
     def popup(self, text: str, duration: float=5.0, on_close: Callable=None) -> None:
-        # @todo fix popup when cave size is too small (intermission) -> grow intermission to full cave?
+        # @todo fix popup when cave size is too small (intermission) -> grow intermission to full cave? also: center it on the screen
         self.popup_close()
         self.scroll_focuscell_into_view(immediate=True)   # snap the view to the focus cell otherwise popup may appear off-screen
         lines = []

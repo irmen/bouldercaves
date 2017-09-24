@@ -24,7 +24,6 @@ from .caves import colorpalette, C64Cave, Cave as BaseCave, CaveSet, Palette, BD
 from .objects import GameObject, Direction
 from . import tiles, objects, bdcff
 
-# @todo fix cave size issues when editing smaller/larger caves/intermissions
 # @todo add support for initial direction of objects
 
 
@@ -458,6 +457,7 @@ class EditorWindow(tkinter.Tk):
         self.canvas.itemconfigure(c_tile, image=self.tile_images[tile])
 
     def flood_fill(self, x: int, y: int, thing: Tuple[GameObject, Direction]) -> None:
+        # @todo fix recursion depth error in flood fill with larger caves
         target = self.cave[x, y][0]
         if target == thing[0]:
             return
