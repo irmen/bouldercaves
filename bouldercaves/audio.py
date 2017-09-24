@@ -177,6 +177,7 @@ class SampleMixer:
         self.mixed_chunks = self.chunks()
         self.add_lock = threading.Lock()
         self._sid = 0
+        self.sample_limits = defaultdict(int)  # type: Dict[str, int]
 
     def add_sample(self, sample: Sample, repeat: bool=False, sid: int=None) -> Union[int, None]:
         if not self.allow_sample(sample, repeat):
@@ -192,7 +193,8 @@ class SampleMixer:
     def allow_sample(self, sample: Sample, repeat: bool=False) -> bool:
         if repeat and self.sample_counts[sample.name] >= 1:  # don't allow more than one repeating sample
             return False
-        if self.sample_counts[sample.name] >= 4:  # same sample max 4 times simultaneously
+        max_samples = self.sample_limits[sample.name] or 4
+        if self.sample_counts[sample.name] >= max_samples:  # same sample max 4 times simultaneously
             return False
         if sum(self.sample_counts.values()) >= 8:  # mixing max 8 samples simultaneously
             return False
@@ -247,8 +249,8 @@ class SampleMixer:
             del self.active_samples[sid]
             self.sample_counts[name] -= 1
 
-    def set_limit(self,samplename: str, max_simultaneously: int) -> None:
-        print("SET LIMIT", samplename, max_simultaneously)   # @todo enforce limit!
+    def set_limit(self, samplename: str, max_simultaneously: int) -> None:
+        self.sample_limits[samplename] = max_simultaneously
 
 
 class AudioApi:

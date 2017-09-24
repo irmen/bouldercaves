@@ -1057,6 +1057,7 @@ class GameState:
             audio.play_sample("diamond" + str(random.randint(1, 6)))
 
     def collect_diamond(self) -> None:
+        audio.silence_audio("collect_diamond")
         audio.play_sample("collect_diamond")
         self.diamonds += 1
         points = self.diamondvalue_extra if self.diamonds > self.diamonds_needed else self.diamondvalue_initial

@@ -694,6 +694,7 @@ class RandomizeDialog(tkinter.simpledialog.Dialog):
 
 
 class PaletteDialog(tkinter.simpledialog.Dialog):
+    # @todo replace RGB button by radiobutton which CAN be styled on OSX
     def __init__(self, parent, title: str, editor: EditorWindow, colors: Palette) -> None:
         self.editor = editor
         self.colors = colors

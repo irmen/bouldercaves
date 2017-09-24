@@ -134,8 +134,8 @@ class BdcffCave:
             out.write("Name={:s} {:s}\n".format("Intermission" if self.intermission else "Cave", self.name))
         out.write("Description={:s}\n".format(self.description))
         out.write("Intermission={:s}\n".format("true" if self.intermission else "false"))
-        out.write("FrameTime=150\n")  # XXX
-        out.write("CaveDelay={:d}\n".format(3 if self.intermission else 8))  # XXX
+        out.write("FrameTime=150\n")
+        out.write("CaveDelay={:d}\n".format(3 if self.intermission else 8))
         out.write("CaveTime={:d}\n".format(self.cavetime))
         out.write("DiamondsRequired={:d}\n".format(self.diamonds_required))
         out.write("DiamondValue={:d} {:d}\n".format(self.diamondvalue_normal, self.diamondvalue_extra))
