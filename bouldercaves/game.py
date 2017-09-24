@@ -5,7 +5,7 @@ This module contains the GUI window logic, handles keyboard input
 and screen drawing via tkinter bitmaps.
 
 Written by Irmen de Jong (irmen@razorvine.net)
-License: MIT open-source.
+License: GNU GPL 3.0, see LICENSE
 """
 
 import os
@@ -528,7 +528,8 @@ def start(sargs: Sequence[str]=None) -> None:
     if sargs is None:
         sargs = sys.argv[1:]
     import argparse
-    ap = argparse.ArgumentParser(description="Boulder Caves - a Boulder Dash (tm) clone")
+    ap = argparse.ArgumentParser(description="Boulder Caves - a Boulder Dash (tm) clone",
+                                 epilog="This software is licensed under the GNU GPL 3.0, see https://www.gnu.org/licenses/gpl.html")
     ap.add_argument("-g", "--game", help="specify cave data file to play, leave empty to play original built-in BD1 caves")
     ap.add_argument("-f", "--fps", type=int, help="frames per second (default=%(default)d)", default=30)
     ap.add_argument("-s", "--size", type=int, help="graphics size (default=%(default)d)", default=3, choices=(1, 2, 3, 4, 5))
@@ -540,6 +541,7 @@ def start(sargs: Sequence[str]=None) -> None:
     ap.add_argument("--editor", help="run the cave editor instead of the game.", action="store_true")
     ap.add_argument("--playtest", help="playtest the cave.", action="store_true")
     args = ap.parse_args(sargs)
+    print("This software is licensed under the GNU GPL 3.0, see https://www.gnu.org/licenses/gpl.html")
 
     if args.editor:
         from . import editor

@@ -16,7 +16,8 @@ High level api functions:
   silence_audio
   shutdown_audio
 
-Written by Irmen de Jong (irmen@razorvine.net) - License: MIT open-source.
+Written by Irmen de Jong (irmen@razorvine.net)
+License: GNU GPL 3.0, see LICENSE
 """
 
 import audioop   # type: ignore

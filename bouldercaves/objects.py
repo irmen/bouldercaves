@@ -4,7 +4,7 @@ Boulder Caves - a Boulder Dash (tm) clone.
 This module contains the objects definitions.
 
 Written by Irmen de Jong (irmen@razorvine.net)
-License: MIT open-source.
+License: GNU GPL 3.0, see LICENSE
 """
 
 from enum import Enum

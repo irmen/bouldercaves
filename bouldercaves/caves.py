@@ -5,7 +5,7 @@ More info including the decoding algorithm:
 https://www.elmerproductions.com/sp/peterb/rawCaveData.html#rawCaveDataFormat
 
 Written by Irmen de Jong (irmen@razorvine.net)
-License: MIT open-source.
+License: GNU GPL 3.0, see LICENSE
 """
 
 import random

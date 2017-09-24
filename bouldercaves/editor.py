@@ -4,7 +4,7 @@ Boulder Caves Editor.
 Cave Set editor
 
 Written by Irmen de Jong (irmen@razorvine.net)
-License: MIT open-source.
+License: GNU GPL 3.0, see LICENSE
 """
 
 import os
@@ -857,6 +857,7 @@ class CaveSelectionDialog(tkinter.simpledialog.Dialog):
 
 
 def start() -> None:
+    print("This software is licensed under the GNU GPL 3.0, see https://www.gnu.org/licenses/gpl.html")
     window = EditorWindow()
     window.mainloop()
 

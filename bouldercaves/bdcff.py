@@ -8,7 +8,7 @@ http://www.emeraldmines.net/BDCFF/
 http://www.gratissaugen.de/erbsen/bdcff.html
 
 Written by Irmen de Jong (irmen@razorvine.net)
-License: MIT open-source.
+License: GNU GPL 3.0, see LICENSE
 """
 
 import sys

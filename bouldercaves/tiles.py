@@ -4,7 +4,7 @@ Boulder Caves - a Boulder Dash (tm) clone.
 Sprite loading and Tile sheet logic.
 
 Written by Irmen de Jong (irmen@razorvine.net)
-License: MIT open-source.
+License: GNU GPL 3.0, see LICENSE
 """
 
 import array

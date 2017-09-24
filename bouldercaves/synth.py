@@ -3,7 +3,7 @@ Sample waveform synthesizer. Inspired by FM synthesizers such as the Yamaha DX-7
 Creates some simple waveform samples with adjustable parameters.
 
 Almost an identical copy of the synth module from https://github.com/irmen/synthesizer
-Written by Irmen de Jong (irmen@razorvine.net) - License: MIT open-source.
+Written by Irmen de Jong (irmen@razorvine.net) - License: GNU GPL 3.0, see LICENSE
 """
 
 import sys

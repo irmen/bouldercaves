@@ -1,5 +1,5 @@
 # Boulder Caves
-A Boulder Dash (tm) clone in pure python. Includes a cave editor.
+A Boulder Dash (tm) clone in pure python. Includes a cave editor so you can make your own game!
 
 Requirements to run this:
 - Python 3.5 +
@@ -8,11 +8,12 @@ Requirements to run this:
 
 *Detailed instructions how to run the game are [at the bottom of this text.](#how-to-install-and-run-this-game)*
 
-Graphics and sounds are used from the MIT-licensed GDash 
-https://bitbucket.org/czirkoszoltan/gdash
+This software is licensed under the [GNU GPL 3.0](https://www.gnu.org/licenses/gpl.html).
+Graphics and sampled sounds are used from the MIT-licensed [GDash](https://bitbucket.org/czirkoszoltan/gdash). 
 
-Inspired by the javascript version from Jake Gordon
-http://codeincomplete.com/posts/javascript-boulderdash/
+
+Inspired by the [javascript version from Jake Gordon](http://codeincomplete.com/posts/javascript-boulderdash/)
+
 
 Much technical info about Boulder Dash can be found here https://www.elmerproductions.com/sp/peterb/
 and here https://www.boulder-dash.nl/
@@ -66,8 +67,7 @@ You can choose between *sampled sounds* and *synthesized sounds* via a command l
 
 The sampled sounds require the 'oggdec' tool and the sound files. If you use the 
 sound synthesizer however, both of these are not needed at all - all sounds are generated
-by the program. For this I'm using a slightly tweaked version of my software FM-synthesizer
-available here: https://github.com/irmen/synthesizer
+by the program. For this I'm using a slightly tweaked version of [my software FM-synthesizer](https://github.com/irmen/synthesizer).
 
 The Python zip app script creates two versions of this game, one with the sound files included,
 and another one ()that is much smaller) without the sound files because it uses the synthesizer.
@@ -106,7 +106,7 @@ in the 'caves' folder.
 
 **Windows**
 
-1. install Python 3.5 or newer https://www.python.org/downloads/
+1. install Python 3.5 or newer from https://www.python.org/downloads/
 1. open a command prompt and type:
    ``pip install --user pillow sounddevice``
 1. double-click on the ``*.pyz`` file that you downloaded, or on ``startgame.py``
