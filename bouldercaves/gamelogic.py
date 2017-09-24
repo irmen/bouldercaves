@@ -138,7 +138,7 @@ class GameState:
                                 objects.STEELSLOPEDUPLEFT, objects.STEELSLOPEDUPRIGHT}
 
         def isoutbox(self) -> bool:
-            return self.obj is objects.OUTBOXBLINKING
+            return self.obj in (objects.OUTBOXBLINKING, objects.OUTBOXHIDDENOPEN)
 
         def canfall(self) -> bool:
             return self.obj in {objects.BOULDER, objects.SWEET, objects.DIAMONDKEY, objects.BOMB,
@@ -688,6 +688,8 @@ class GameState:
                         self.update_amoeba(cell)
                     elif cell.obj is objects.OUTBOXCLOSED:
                         self.update_outboxclosed(cell)
+                    elif cell.obj is objects.OUTBOXHIDDEN:
+                        self.update_outboxhidden(cell)
                     elif cell.obj is objects.BONUSBG:
                         if self.bonusbg_frame < self.frame:
                             self.draw_single_cell(cell, objects.EMPTY)
@@ -902,12 +904,20 @@ class GameState:
             audio.play_sample("crack")
 
     def update_outboxclosed(self, cell: Cell) -> None:
-        if not self.rockford_cell:
+        if self.rockford_found_frame <= 0:
             return   # do nothing if rockford hasn't appeared yet
         if self.diamonds >= self.diamonds_needed:
             if cell.obj is not objects.OUTBOXBLINKING:
                 audio.play_sample("crack")
             self.draw_single_cell(cell, objects.OUTBOXBLINKING)
+
+    def update_outboxhidden(self, cell: Cell) -> None:
+        if self.rockford_found_frame <= 0:
+            return   # do nothing if rockford hasn't appeared yet
+        if self.diamonds >= self.diamonds_needed:
+            if cell.obj is not objects.OUTBOXHIDDENOPEN:
+                audio.play_sample("crack")
+            self.draw_single_cell(cell, objects.OUTBOXHIDDENOPEN)
 
     def update_amoeba(self, cell: Cell) -> None:
         if self.amoeba["dead"] is not None:

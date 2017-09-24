@@ -25,8 +25,6 @@ from . import audio, synthsamples, tiles, objects, bdcff
 __version__ = "4.0"
 
 
-# @todo fix outbox not opening in time when it is above rockford????
-
 class BoulderWindow(tkinter.Tk):
     update_fps = 30
     update_timestep = 1 / update_fps

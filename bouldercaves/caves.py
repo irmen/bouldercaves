@@ -552,6 +552,9 @@ class CaveSet:
         return cave
 
 
+# BDCFF map symbols
+# !! note !! : make sure every symbol maps to a unique value (don't reuse obj+direction),
+# otherwise saving the cave map will output the wrong characters for those cells.
 BDCFFOBJECTS = {
     '.': (objects.DIRT, Direction.NOWHERE),
     ' ': (objects.EMPTY, Direction.NOWHERE),
@@ -559,7 +562,7 @@ BDCFFOBJECTS = {
     'M': (objects.MAGICWALL, Direction.NOWHERE),
     'x': (objects.HEXPANDINGWALL, Direction.NOWHERE),
     'v': (objects.VEXPANDINGWALL, Direction.NOWHERE),
-    'H': (objects.OUTBOXCLOSED, Direction.NOWHERE),    # should be a 'hidden' outbox officially
+    'H': (objects.OUTBOXHIDDEN, Direction.NOWHERE),
     'X': (objects.OUTBOXCLOSED, Direction.NOWHERE),
     'W': (objects.STEEL, Direction.NOWHERE),
     'Q': (objects.FIREFLY, Direction.LEFT),

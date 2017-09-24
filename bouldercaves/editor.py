@@ -83,7 +83,7 @@ class ScrollableImageSelector(tkinter.Frame):
             self.treeview.delete(row)
         for image, name in rows:
             self.treeview.insert("", tkinter.END, image=image, values=(name,))
-        self.treeview.configure(height=min(16, len(rows)))
+        self.treeview.configure(height=min(18, len(rows)))
         self.draw_label.configure(image=self.listener.tile_images[EDITOR_OBJECTS[self.selected_object]])
         self.erase_label.configure(image=self.listener.tile_images[EDITOR_OBJECTS[self.selected_erase_object]])
 
@@ -150,6 +150,7 @@ EDITOR_OBJECTS = {
     objects.INBOXBLINKING: objects.ROCKFORD.tile(),
     objects.MAGICWALL: objects.MAGICWALL.tile(2),
     objects.OUTBOXCLOSED: objects.OUTBOXBLINKING.tile(1),
+    objects.OUTBOXHIDDEN: objects.TRAPPEDDIAMOND.tile(1),
     objects.SLIME: objects.SLIME.tile(1),
     objects.STEEL: objects.STEEL.tile(),
     objects.VEXPANDINGWALL: objects.VEXPANDINGWALL.tile(),
@@ -261,15 +262,6 @@ class EditorWindow(tkinter.Tk):
         self.imageselector.pack(padx=4, pady=4)
 
         lf.pack(expand=1, fill=tkinter.BOTH)
-        lf = tkinter.LabelFrame(buttonsframe, text="Keyboard commands")
-        tkinter.Label(lf, text="F - flood fill").pack(anchor=tkinter.W, padx=4)
-        tkinter.Label(lf, text="R - drop 10 objects randomly").pack(anchor=tkinter.W, padx=4)
-        tkinter.Label(lf, text="S - make snapshot").pack(anchor=tkinter.W, padx=4)
-        tkinter.Label(lf, text="U - restore snapshot").pack(anchor=tkinter.W, padx=4)
-        tkinter.Label(lf, text="shift - fixed horiz/vertical").pack(anchor=tkinter.W, padx=4)
-        tkinter.Label(lf, text="ctrl - fixed diagonal").pack(anchor=tkinter.W, padx=4)
-        tkinter.Label(lf, text="(activate map first)").pack(anchor=tkinter.W, padx=4)
-        lf.pack(fill=tkinter.X, pady=4)
         lf = tkinter.LabelFrame(buttonsframe, text="Misc. edit")
         tkinter.Button(lf, text="Load", command=self.load).grid(column=0, row=0)
         tkinter.Button(lf, text="Save", command=self.save).grid(column=1, row=0)
@@ -287,9 +279,21 @@ class EditorWindow(tkinter.Tk):
         self.c64random_button.grid(column=0, row=1)
         tkinter.Button(lf, text="Edit", command=self.palette_edit).grid(column=1, row=1)
         lf.pack(fill=tkinter.X, pady=4)
+        lf = tkinter.LabelFrame(buttonsframe, text="Keyboard commands")
+        tkinter.Label(lf, text="F1 - focus on map").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="F - fill area").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="R - drop 10 randomly").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="S - make snapshot").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="U - restore snapshot").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="shift - fixed horiz/vertical").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="ctrl - fixed diagonal").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="(focus on map first)").pack(anchor=tkinter.W, padx=4)
+        lf.pack(fill=tkinter.X, pady=4)
+
         buttonsframe.pack(side=tkinter.LEFT, anchor=tkinter.N)
         self.buttonsframe = buttonsframe
         self.snap_tile_xy = self.snap_tile_diagonal = None
+        self.bind("<KeyPress>", self.keypress_mainwindow)
         self.canvas.bind("<KeyPress>", self.keypress)
         self.canvas.bind("<KeyRelease>", self.keyrelease)
         self.canvas.bind("<Button-1>", self.mousebutton_left)
@@ -336,6 +340,10 @@ class EditorWindow(tkinter.Tk):
 
     def destroy(self) -> None:
         super().destroy()
+
+    def keypress_mainwindow(self, event) -> None:
+        if event.keysym == "F1":
+            self.canvas.focus_set()
 
     def keypress(self, event) -> None:
         if event.char == 'f':
@@ -445,9 +453,14 @@ class EditorWindow(tkinter.Tk):
                 self.canvas_tag_to_tilexy[tile] = (x, y)
 
     def tile_selection_changed(self, object: GameObject, tile: int) -> None:
+        # @todo don't use activeimage it's too expensive to update it all the time, change it with the mousemove event
+        self.canvas.focus_set()
+        self.config(cursor="watch")
+        self.update()
         image = self.tile_images[tile]
         for c_tile in self.c_tiles:
             self.canvas.itemconfigure(c_tile, activeimage=image)
+        self.config(cursor="")
 
     def tile_erase_selection_changed(self, object: GameObject, tile: int) -> None:
         pass
@@ -457,22 +470,24 @@ class EditorWindow(tkinter.Tk):
         self.canvas.itemconfigure(c_tile, image=self.tile_images[tile])
 
     def flood_fill(self, x: int, y: int, thing: Tuple[GameObject, Direction]) -> None:
-        # @todo fix recursion depth error in flood fill with larger caves
+        # @todo optimize flood fill this into a scanline version
         target = self.cave[x, y][0]
         if target == thing[0]:
             return
-
-        def flood(x, y):
+        stack = [(x, y)]
+        self.config(cursor="watch")
+        self.update()
+        while stack:
+            x, y = stack.pop()
             t = self.cave[x, y][0]
             if t != target:
-                return
+                continue
             self.cave[x, y] = thing
-            flood(x - 1, y)
-            flood(x + 1, y)
-            flood(x, y - 1)
-            flood(x, y + 1)
-
-        flood(x, y)
+            stack.append((x - 1, y))
+            stack.append((x + 1, y))
+            stack.append((x, y - 1))
+            stack.append((x, y + 1))
+        self.config(cursor="")
 
     def snapshot(self) -> None:
         self.cave.snapshot()
@@ -639,9 +654,9 @@ class EditorWindow(tkinter.Tk):
         # edge must be all steel wall, or inbox/outbox.
         # we should have at least 1 inbox and at least 1 outbox.
         inbox_count = len([x for x, _ in self.cave.map if x == objects.INBOXBLINKING])
-        outbox_count = len([x for x, _ in self.cave.map if x in (objects.OUTBOXCLOSED, objects.OUTBOXBLINKING)])
+        outbox_count = len([x for x, _ in self.cave.map if x in (objects.OUTBOXCLOSED, objects.OUTBOXBLINKING, objects.OUTBOXHIDDEN)])
         enclosed_ok = True
-        edge_objs_allowed = {objects.STEEL, objects.INBOXBLINKING, objects.OUTBOXBLINKING, objects.OUTBOXCLOSED}
+        edge_objs_allowed = {objects.STEEL, objects.INBOXBLINKING, objects.OUTBOXBLINKING, objects.OUTBOXCLOSED, objects.OUTBOXHIDDEN}
         for x in range(0, self.cave.width):
             enclosed_ok &= self.cave[x, 0][0] in edge_objs_allowed
             enclosed_ok &= self.cave[x, self.cave.height - 1][0] in edge_objs_allowed

@@ -102,6 +102,8 @@ SOKOBANBOX = g("SOKOBANBOX", False, False, False, 5, 2)
 INBOXBLINKING = g("INBOXBLINKING", False, False, False, 6, 2, sframes=2, sfps=4)
 OUTBOXBLINKING = g("OUTBOXBLINKING", False, False, False, 6, 2, sframes=2, sfps=4)
 OUTBOXCLOSED = g("OUTBOXCLOSED", False, False, False, 6, 2)
+OUTBOXHIDDEN = g("OUTBOXHIDDEN", False, False, False, 6, 2)
+OUTBOXHIDDENOPEN = g("OUTBOXHIDDENOPEN", False, False, False, 6, 2)
 # row 3
 STEELWALLBIRTH = g("STEELWALLBIRTH", False, False, False, 0, 3, sframes=4, sfps=10)
 CLOCKBIRTH = g("CLOCKBIRTH", False, False, False, 4, 3, sframes=4, sfps=10)
