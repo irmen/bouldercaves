@@ -25,7 +25,6 @@ from .objects import GameObject, Direction
 from . import tiles, objects, bdcff
 
 # @todo add xy rulers
-# @todo add snapping to xy with shift to draw straight lines
 # @todo fix cave size issues when editing smaller/larger caves/intermissions
 # @todo add support for initial direction of objects
 
@@ -165,6 +164,7 @@ class EditorWindow(tkinter.Tk):
     visible_rows = 22
     max_columns = 200
     max_rows = 200
+    canvas_scale = 2
 
     def __init__(self) -> None:
         super().__init__()
@@ -183,7 +183,9 @@ class EditorWindow(tkinter.Tk):
         rightframe = tkinter.Frame(self)
         cf = tkinter.Frame(rightframe)
         w, h = tiles.tile2pixels(self.visible_columns, self.visible_rows)
-        self.canvas = tkinter.Canvas(cf, width=w * 2, height=h * 2, borderwidth=16, background="black", highlightthickness=1)
+        maxw, maxh = tiles.tile2pixels(40, 22)   # the most common cave size should be visible without scrolling
+        self.canvas = tkinter.Canvas(cf, width=self.canvas_scale * min(w, maxw), height=self.canvas_scale * (min(h, maxh)),
+                                     borderwidth=16, background="black", highlightthickness=1)
         self.canvas.grid(row=0, column=0)
         sy = tkinter.Scrollbar(cf, orient=tkinter.VERTICAL, command=self.canvas.yview)
         sx = tkinter.Scrollbar(cf, orient=tkinter.HORIZONTAL, command=self.canvas.xview)
@@ -262,6 +264,8 @@ class EditorWindow(tkinter.Tk):
         tkinter.Label(lf, text="R - drop 10 objects randomly").pack(anchor=tkinter.W, padx=4)
         tkinter.Label(lf, text="S - make snapshot").pack(anchor=tkinter.W, padx=4)
         tkinter.Label(lf, text="U - restore snapshot").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="shift - fixed horiz/vertical").pack(anchor=tkinter.W, padx=4)
+        tkinter.Label(lf, text="ctrl - fixed diagonal").pack(anchor=tkinter.W, padx=4)
         tkinter.Label(lf, text="(activate map first)").pack(anchor=tkinter.W, padx=4)
         lf.pack(fill=tkinter.X, pady=4)
         lf = tkinter.LabelFrame(buttonsframe, text="Misc. edit")
@@ -283,6 +287,7 @@ class EditorWindow(tkinter.Tk):
         lf.pack(fill=tkinter.X, pady=4)
         buttonsframe.pack(side=tkinter.LEFT, anchor=tkinter.N)
         self.buttonsframe = buttonsframe
+        self.snap_tile_xy = self.snap_tile_diagonal = None
         self.canvas.bind("<KeyPress>", self.keypress)
         self.canvas.bind("<KeyRelease>", self.keyrelease)
         self.canvas.bind("<Button-1>", self.mousebutton_left)
@@ -341,17 +346,33 @@ class EditorWindow(tkinter.Tk):
             self.snapshot()
         elif event.char == 'u':
             self.restore()
+        elif event.keysym.startswith("Shift"):
+            current = self.canvas.find_withtag(tkinter.CURRENT)
+            if current:
+                self.snap_tile_xy = self.canvas_tag_to_tilexy[current[0]]
+        elif event.keysym.startswith("Control"):
+            current = self.canvas.find_withtag(tkinter.CURRENT)
+            if current:
+                self.snap_tile_diagonal = self.canvas_tag_to_tilexy[current[0]]
 
     def keyrelease(self, event) -> None:
-        pass
+        if event.keysym.startswith("Shift"):
+            self.snap_tile_xy = None
+        elif event.keysym.startswith("Control"):
+            self.snap_tile_diagonal = None
 
     def mousebutton_left(self, event) -> None:
         self.canvas.focus_set()
         current = self.canvas.find_withtag(tkinter.CURRENT)
         if current:
+            if event.state & 1:
+                self.snap_tile_xy = self.canvas_tag_to_tilexy[current[0]]
+            if event.state & 4:
+                self.snap_tile_diagonal = self.canvas_tag_to_tilexy[current[0]]
             if self.imageselector.selected_object:
                 x, y = self.canvas_tag_to_tilexy[current[0]]
-                self.cave[x, y] = (self.imageselector.selected_object, Direction.NOWHERE)
+                if self.selected_tile_allowed(x, y):
+                    self.cave[x, y] = (self.imageselector.selected_object, Direction.NOWHERE)
 
     def mousebutton_middle(self, event) -> None:
         pass
@@ -360,7 +381,8 @@ class EditorWindow(tkinter.Tk):
         current = self.canvas.find_withtag(tkinter.CURRENT)
         if current:
             x, y = self.canvas_tag_to_tilexy[current[0]]
-            self.cave[x, y] = (self.imageselector.selected_erase_object, Direction.NOWHERE)
+            if self.selected_tile_allowed(x, y):
+                self.cave[x, y] = (self.imageselector.selected_erase_object, Direction.NOWHERE)
 
     def mouse_motion(self, event) -> None:
         cx = self.canvas.canvasx(event.x)
@@ -368,15 +390,28 @@ class EditorWindow(tkinter.Tk):
         current = self.canvas.find_closest(cx, cy)
         if current:
             x, y = self.canvas_tag_to_tilexy[current[0]]
-            if event.state & 0x100:
-                # left mouse button drag
-                self.cave[x, y] = (self.imageselector.selected_object, Direction.NOWHERE)
-            elif event.state & 0x600:
-                # right / middle mouse button drag
-                self.cave[x, y] = (self.imageselector.selected_erase_object, Direction.NOWHERE)
+            if self.selected_tile_allowed(x, y):
+                if event.state & 0x100:
+                    # left mouse button drag
+                    self.cave[x, y] = (self.imageselector.selected_object, Direction.NOWHERE)
+                elif event.state & 0x600:
+                    # right / middle mouse button drag
+                    self.cave[x, y] = (self.imageselector.selected_erase_object, Direction.NOWHERE)
+            else:
+                orig_tile = self.cave[x, y][0].tile()
+                self.canvas.itemconfigure(current[0], image=self.tile_images[objects.EDIT_CROSS.tile()])
+                self.after(60, lambda: self.canvas.itemconfigure(current[0], image=self.tile_images[orig_tile]))
+
+    def selected_tile_allowed(self, x: int, y: int) -> bool:
+        if self.snap_tile_xy:
+            return x == self.snap_tile_xy[0] or y == self.snap_tile_xy[1]
+        elif self.snap_tile_diagonal:
+            dx, dy = self.snap_tile_diagonal[0] - x, self.snap_tile_diagonal[1] - y
+            return abs(dx) == abs(dy)
+        return True
 
     def create_tile_images(self, colors: Palette) -> None:
-        source_images = tiles.load_sprites(self.c64colors, colors, scale=2)
+        source_images = tiles.load_sprites(self.c64colors, colors, scale=self.canvas_scale)
         self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
         source_images = tiles.load_sprites(self.c64colors, colors, scale=1)
         self.tile_images_small = [tkinter.PhotoImage(data=image) for image in source_images]
@@ -395,7 +430,8 @@ class EditorWindow(tkinter.Tk):
             for x in range(self.playfield_columns):
                 sx, sy = tiles.tile2pixels(x, y)
                 obj, direction = self.cave[x, y]
-                tile = self.canvas.create_image(sx * 2, sy * 2, image=self.tile_images[EDITOR_OBJECTS[obj]],
+                tile = self.canvas.create_image(sx * self.canvas_scale, sy * self.canvas_scale,
+                                                image=self.tile_images[EDITOR_OBJECTS[obj]],
                                                 activeimage=self.tile_images[selected_tile],
                                                 anchor=tkinter.NW, tags="tile")
                 self.c_tiles.append(tile)
@@ -410,7 +446,7 @@ class EditorWindow(tkinter.Tk):
         pass
 
     def set_canvas_tile(self, x: int, y: int, tile: int) -> None:
-        c_tile = self.canvas.find_closest(x * 32, y * 32)
+        c_tile = self.canvas.find_closest(x * 16 * self.canvas_scale, y * 16 * self.canvas_scale)
         self.canvas.itemconfigure(c_tile, image=self.tile_images[tile])
 
     def flood_fill(self, x: int, y: int, thing: Tuple[GameObject, Direction]) -> None:
