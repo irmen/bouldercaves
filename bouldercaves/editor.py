@@ -24,7 +24,6 @@ from .caves import colorpalette, C64Cave, Cave as BaseCave, CaveSet, Palette, BD
 from .objects import GameObject, Direction
 from . import tiles, objects, bdcff
 
-# @todo add xy rulers
 # @todo fix cave size issues when editing smaller/larger caves/intermissions
 # @todo add support for initial direction of objects
 
@@ -91,9 +90,9 @@ class ScrollableImageSelector(tkinter.Frame):
 
 
 class Cave(BaseCave):
-    def init_for_editor(self, editor: 'EditorWindow') -> None:
+    def init_for_editor(self, editor: 'EditorWindow', erase_map: bool) -> None:
         self.editor = editor
-        if not self.map:
+        if not self.map or erase_map:
             self.map = [(objects.EMPTY, Direction.NOWHERE)] * self.width * self.height
         self.snapshot()
         # draw the map into the canvas.
@@ -162,8 +161,6 @@ EDITOR_OBJECTS = {
 class EditorWindow(tkinter.Tk):
     visible_columns = 40
     visible_rows = 22
-    max_columns = 200
-    max_rows = 200
     canvas_scale = 2
 
     def __init__(self) -> None:
@@ -193,8 +190,8 @@ class EditorWindow(tkinter.Tk):
         sy.grid(row=0, column=1, sticky=tkinter.N + tkinter.S)
         sx.grid(row=1, column=0, sticky=tkinter.E + tkinter.W)
         cf.pack()
-        bf = tkinter.Frame(rightframe)
-        f = tkinter.Frame(bf)
+        self.bottomframe = tkinter.Frame(rightframe)
+        f = tkinter.Frame(self.bottomframe)
         tkinter.Label(f, text="Cave name:").grid(column=0, row=0, sticky=tkinter.E, pady=2)
         tkinter.Label(f, text="Cave description:").grid(column=0, row=1, sticky=tkinter.E, pady=2)
         tkinter.Label(f, text="caveset Author:").grid(column=0, row=2, sticky=tkinter.E, pady=2)
@@ -205,17 +202,14 @@ class EditorWindow(tkinter.Tk):
         self.cavesetauthor_var = tkinter.StringVar(value=bdcff.get_system_username())
         self.cavesetwww_var = tkinter.StringVar()
         self.cavesetdate_var = tkinter.StringVar(value=datetime.datetime.now().date())
-        self.caveintermission_var = tkinter.BooleanVar()
         tkinter.Entry(f, textvariable=self.cavename_var).grid(column=1, row=0, pady=2)
         tkinter.Entry(f, textvariable=self.cavedescr_var).grid(column=1, row=1, pady=2)
         tkinter.Entry(f, textvariable=self.cavesetauthor_var).grid(column=1, row=2, pady=2)
         tkinter.Entry(f, textvariable=self.cavesetwww_var).grid(column=1, row=3, pady=2)
         tkinter.Entry(f, textvariable=self.cavesetdate_var).grid(column=1, row=4, pady=2)
-        tkinter.Checkbutton(f, text=" this is an Intermission.", variable=self.caveintermission_var,
-                            selectcolor=self.cget("background")).grid(column=1, row=5, pady=2)
         f.pack(side=tkinter.LEFT, anchor=tkinter.N)
         defaults = bdcff.BdcffCave()
-        f = tkinter.Frame(bf)
+        f = tkinter.Frame(self.bottomframe)
         tkinter.Label(f, text="Time limit [{:d}] :".format(defaults.cavetime)).grid(column=0, row=0, sticky=tkinter.E, pady=2)
         tkinter.Label(f, text="Amoeba slow time [{:d}] :".format(defaults.amoebatime)).grid(column=0, row=1, sticky=tkinter.E, pady=2)
         tkinter.Label(f, text="Magic wall time [{:d}] :".format(defaults.magicwalltime)).grid(column=0, row=2, sticky=tkinter.E, pady=2)
@@ -232,25 +226,34 @@ class EditorWindow(tkinter.Tk):
         tkinter.Entry(f, width=8, textvariable=self.caveamoebafactor_var).grid(column=1, row=3, pady=2)
         tkinter.Entry(f, width=8, textvariable=self.caveslimepermeability_var).grid(column=1, row=4, pady=2)
         f.pack(side=tkinter.LEFT, padx=16, anchor=tkinter.N)
-        f = tkinter.Frame(bf)
+        f = tkinter.Frame(self.bottomframe)
         self.cavediamondsrequired_var = tkinter.IntVar(value=defaults.diamonds_required)
         self.cavediamondvaluenorm_var = tkinter.IntVar(value=defaults.diamondvalue_normal)
         self.cavediamondvalueextra_var = tkinter.IntVar(value=defaults.diamondvalue_extra)
-        self.cavewidth_var = tkinter.IntVar(value=self.playfield_columns)
-        self.caveheight_var = tkinter.IntVar(value=self.playfield_rows)
+        self.caveintermission_var = tkinter.BooleanVar()
         tkinter.Label(f, text="Diamonds required [{:d}] :".format(defaults.diamonds_required)).grid(column=0, row=0, sticky=tkinter.E, pady=2)
         tkinter.Label(f, text="Diamond value normal [{:d}] :".format(defaults.diamondvalue_normal)).grid(column=0, row=1, sticky=tkinter.E, pady=2)
-        tkinter.Label(f, text="Diamond value extra [{:d}] :".format(defaults.diamondvalue_extra)).grid(column=0, row=2, sticky=tkinter.E, pady=(2, 16))
-        tkinter.Label(f, text="Cave Width [{:d}] :".format(self.playfield_columns)).grid(column=0, row=3, sticky=tkinter.E, pady=2)
-        tkinter.Label(f, text="Cave Height [{:d}] :".format(self.playfield_rows)).grid(column=0, row=4, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="Diamond value extra [{:d}] :".format(defaults.diamondvalue_extra)).grid(column=0, row=2, sticky=tkinter.E, pady=2)
         tkinter.Entry(f, width=8, textvariable=self.cavediamondsrequired_var).grid(column=1, row=0, pady=2)
         tkinter.Entry(f, width=8, textvariable=self.cavediamondvaluenorm_var).grid(column=1, row=1, pady=2)
-        tkinter.Entry(f, width=8, textvariable=self.cavediamondvalueextra_var).grid(column=1, row=2, pady=(2, 16))
-        tkinter.Entry(f, width=8, textvariable=self.cavewidth_var, state=tkinter.DISABLED).grid(column=1, row=3, pady=2)
-        tkinter.Entry(f, width=8, textvariable=self.caveheight_var, state=tkinter.DISABLED).grid(column=1, row=4, pady=2)
+        tkinter.Entry(f, width=8, textvariable=self.cavediamondvalueextra_var).grid(column=1, row=2, pady=2)
+        tkinter.Checkbutton(f, text=" this is an Intermission.", variable=self.caveintermission_var,
+                            selectcolor=self.cget("background")).grid(column=0, row=3, pady=(16, 2))
         f.pack(side=tkinter.LEFT, padx=16, anchor=tkinter.N)
 
-        bf.pack(side=tkinter.BOTTOM, fill=tkinter.X)
+        f = tkinter.Frame(self.bottomframe)
+        self.cavewidth_var = tkinter.IntVar(value=self.playfield_columns)
+        self.caveheight_var = tkinter.IntVar(value=self.playfield_rows)
+        tkinter.Label(f, text="Cave Width [{:d}] :".format(self.playfield_columns)).grid(column=0, row=0, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="Cave Height [{:d}] :".format(self.playfield_rows)).grid(column=0, row=1, sticky=tkinter.E, pady=2)
+        tkinter.Label(f, text="(usual sizes: 40*22 and 20*12)").grid(column=0, row=2, columnspan=2, sticky=tkinter.E, pady=2)
+        tkinter.Entry(f, width=8, textvariable=self.cavewidth_var).grid(column=1, row=0, pady=2)
+        tkinter.Entry(f, width=8, textvariable=self.caveheight_var).grid(column=1, row=1, pady=2)
+        tkinter.Button(f, text="Resize cave", command=lambda: self.do_resize_cave(self.cavewidth_var.get(), self.caveheight_var.get()))\
+            .grid(column=1, row=3, pady=2)
+        f.pack(side=tkinter.LEFT, padx=16, anchor=tkinter.N)
+
+        self.bottomframe.pack(side=tkinter.BOTTOM, fill=tkinter.X)
         rightframe.pack(side=tkinter.RIGHT, padx=4, pady=4, fill=tkinter.BOTH, expand=1)
 
         buttonsframe = tkinter.Frame(self)
@@ -303,25 +306,30 @@ class EditorWindow(tkinter.Tk):
         self.wipe(False)
         self.create_canvas_playfield(self.playfield_columns, self.playfield_rows)
         w, h = tiles.tile2pixels(self.playfield_columns, self.playfield_rows)
-        self.canvas.configure(scrollregion=(0, 0, w * 2, h * 2))
+        self.canvas.configure(scrollregion=(0, 0, w * self.canvas_scale, h * self.canvas_scale))
         self.canvas.xview_moveto(0)
         self.canvas.yview_moveto(0)
         self.populate_imageselector()
         self.randomize_initial_values = None   # type: Tuple
 
-    def init_new_cave(self, only_steel_border=False):
-        if not only_steel_border:
-            self.cave = Cave(0, self.cavename_var.get(), self.cavedescr_var.get(), self.playfield_columns, self.playfield_rows)
-            self.cave.init_for_editor(self)
+    def init_new_cave(self, width: int, height: int) -> False:
+        if width < 4 or width > 200 or height < 4 or height > 200:
+            raise ValueError("invalid playfield/cave width or height (4-200)")
+        self.playfield_columns = width
+        self.playfield_rows = height
+        self.cave = Cave(0, self.cavename_var.get(), self.cavedescr_var.get(), width, height)
+        self.cave.init_for_editor(self, True)
+        self.cave_steel_border()
+        self.flood_fill(1, 1, (objects.DIRT, Direction.NOWHERE))
+
+    def cave_steel_border(self) -> None:
         steel = (objects.STEEL, Direction.NOWHERE)
         self.cave.horiz_line(0, 0, self.playfield_columns, steel)
         self.cave.horiz_line(0, self.playfield_rows - 1, self.playfield_columns, steel)
         self.cave.vert_line(0, 1, self.playfield_rows - 2, steel)
         self.cave.vert_line(self.playfield_columns - 1, 1, self.playfield_rows - 2, steel)
-        if not only_steel_border:
-            self.flood_fill(2, 2, (objects.DIRT, Direction.NOWHERE))
 
-    def populate_imageselector(self):
+    def populate_imageselector(self) -> None:
         rows = []
         for obj, displaytile in sorted(EDITOR_OBJECTS.items(), key=lambda t: t[0].name):
             rows.append((self.tile_images_small[displaytile], obj.name.title()))
@@ -419,7 +427,7 @@ class EditorWindow(tkinter.Tk):
     def create_canvas_playfield(self, width: int, height: int) -> None:
         # create the images on the canvas for all tiles (fixed position)
         if width < 4 or width > 200 or height < 4 or height > 200:
-            raise ValueError("invalid playfield/cave width or height")
+            raise ValueError("invalid playfield/cave width or height (4-200)")
         self.playfield_columns = width
         self.playfield_rows = height
         self.canvas.delete(tkinter.ALL)
@@ -475,7 +483,7 @@ class EditorWindow(tkinter.Tk):
     def wipe(self, confirm=True) -> None:
         if confirm and not tkinter.messagebox.askokcancel("Confirm", "Wipe cave?", parent=self.buttonsframe):
             return
-        self.init_new_cave()
+        self.init_new_cave(self.playfield_columns, self.playfield_rows)
         self.snapshot()
 
     def randomize(self) -> None:
@@ -501,8 +509,23 @@ class EditorWindow(tkinter.Tk):
                     if randomseeds[0] < randomprob:
                         objname = randomobj.lower()
                 self.cave[x, y] = (editor_objects_by_name[objname], Direction.NOWHERE)
-        self.init_new_cave(only_steel_border=True)
+        self.cave_steel_border()
         self.randomize_initial_values = (rseed, randomprobs, randomobjs)
+
+    def do_resize_cave(self, width: int, height: int) -> None:
+        if width==self.playfield_columns and height==self.playfield_rows:
+            return
+        if not tkinter.messagebox.askokcancel("Confirm resize",
+                                              "Resize cave?\nYou will lose all of your current work.", parent=self.bottomframe):
+            return
+        try:
+            self.init_new_cave(width, height)
+            self.create_canvas_playfield(width, height)
+        except ValueError as x:
+            tkinter.messagebox.showerror("Error resizing cave", str(x), parent=self.bottomframe)
+            return
+        w, h = tiles.tile2pixels(self.playfield_columns, self.playfield_rows)
+        self.canvas.configure(scrollregion=(0, 0, w * self.canvas_scale, h * self.canvas_scale))
 
     def c64_colors_switched(self, switch: bool) -> None:
         self.c64random_button.configure(state=tkinter.NORMAL if switch else tkinter.DISABLED)
@@ -539,8 +562,10 @@ class EditorWindow(tkinter.Tk):
         else:
             cavenum = 1
         cave = caveset.cave(cavenum)
-        cave.init_for_editor(self)
+        cave.init_for_editor(self, False)
         self.cave = cave
+        self.playfield_columns = cave.width
+        self.playfield_rows = cave.height
         self.set_cave_properties(self.cave)
         self.c64_colors_switched(self.c64colors)  # make sure tiles are redrawn
 
@@ -560,6 +585,8 @@ class EditorWindow(tkinter.Tk):
         self.cavetimelimit_var.set(cave.time)
         self.caveslimepermeability_var.set(cave.slime_permeability)
         self.caveintermission_var.set(cave.intermission)
+        self.cavewidth_var.set(cave.width)
+        self.caveheight_var.set(cave.height)
 
     def save(self, gamefile: Optional[str]=None) -> bool:
         if not self.sanitycheck():
@@ -681,11 +708,11 @@ class RandomizeDialog(tkinter.simpledialog.Dialog):
         tkinter.Label(f, text="Random probability (0-255): ").grid(row=2, column=0)
         tkinter.Label(f, text="Random probability (0-255): ").grid(row=3, column=0)
         tkinter.Label(f, text="Random probability (0-255): ").grid(row=4, column=0)
-        rseed = tkinter.Entry(f, textvariable=self.rseed_var, width=4, font="monospace")
-        rp1 = tkinter.Entry(f, textvariable=self.rp1_var, width=4, font="monospace")
-        rp2 = tkinter.Entry(f, textvariable=self.rp2_var, width=4, font="monospace")
-        rp3 = tkinter.Entry(f, textvariable=self.rp3_var, width=4, font="monospace")
-        rp4 = tkinter.Entry(f, textvariable=self.rp4_var, width=4, font="monospace")
+        rseed = tkinter.Entry(f, textvariable=self.rseed_var, width=4, font="fixed")
+        rp1 = tkinter.Entry(f, textvariable=self.rp1_var, width=4, font="fixed")
+        rp2 = tkinter.Entry(f, textvariable=self.rp2_var, width=4, font="fixed")
+        rp3 = tkinter.Entry(f, textvariable=self.rp3_var, width=4, font="fixed")
+        rp4 = tkinter.Entry(f, textvariable=self.rp4_var, width=4, font="fixed")
         rseed.grid(row=0, column=1)
         rp1.grid(row=1, column=1)
         rp2.grid(row=2, column=1)
@@ -812,7 +839,7 @@ class CaveSelectionDialog(tkinter.simpledialog.Dialog):
     def body(self, master: tkinter.Widget) -> tkinter.Widget:
         tkinter.Label(master, text="Currently you can only edit a single cave.\nThe selected file contains multiple caves:").pack()
         f = tkinter.Frame(master)
-        self.lb = tkinter.Listbox(f, bd=1, font="monospace", height=min(25, len(self.cavenames)),
+        self.lb = tkinter.Listbox(f, bd=1, font="fixed", height=min(25, len(self.cavenames)),
                                   width=max(10, max(len(name) for name in self.cavenames)))
         for name in self.cavenames:
             self.lb.insert(tkinter.END, name)
