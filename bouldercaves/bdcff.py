@@ -13,8 +13,18 @@ License: MIT open-source.
 
 import sys
 import datetime
-import getpass
 from typing import Dict, List, Any, TextIO, Optional, Union
+
+
+def get_system_username():
+    import getpass
+    username = getpass.getuser()
+    try:
+        import pwd
+        fullname = (pwd.getpwnam(username).pw_gecos or "").split(',')[0]
+        return fullname or username
+    except ImportError:
+        return username
 
 
 class BdcffFormatError(Exception):
@@ -38,7 +48,6 @@ class BdcffCave:
         self.objects = []
         self.intermission = False
         self.cavetime = 200
-        self.cavedelay = 8
         self.slimepermeability = 1.0
         self.amoebafactor = 0.2273
         self.amoebatime = 999
@@ -57,7 +66,6 @@ class BdcffCave:
             self.description = self.properties.pop("remark", "")
         if self.name.lower().startswith(("cave ", "intermission ")):
             self.name = self.name.split(" ", maxsplit=1)[1]
-        self.cavedelay = int(self.properties.pop("cavedelay").split()[0])
         self.cavetime = int(self.properties.pop("cavetime").split()[0])
         self.diamonds_required = int(self.properties.pop("diamondsrequired").split()[0])
         dvalue = self.properties.pop("diamondvalue")
@@ -126,7 +134,8 @@ class BdcffCave:
             out.write("Name={:s} {:s}\n".format("Intermission" if self.intermission else "Cave", self.name))
         out.write("Description={:s}\n".format(self.description))
         out.write("Intermission={:s}\n".format("true" if self.intermission else "false"))
-        out.write("CaveDelay={:d}\n".format(self.cavedelay))
+        out.write("FrameTime=150\n")  # XXX
+        out.write("CaveDelay={:d}\n".format(3 if self.intermission else 8))  # XXX
         out.write("CaveTime={:d}\n".format(self.cavetime))
         out.write("DiamondsRequired={:d}\n".format(self.diamonds_required))
         out.write("DiamondValue={:d} {:d}\n".format(self.diamondvalue_normal, self.diamondvalue_extra))
@@ -183,7 +192,7 @@ class BdcffParser:
         self.num_levels = 1
         self.num_caves = 0
         self.charset = self.fontset = "Original"
-        self.author = getpass.getuser()
+        self.author = get_system_username()
         self.www = ""
         self.date = str(datetime.datetime.now().date())
         self.name = "Unnamed"

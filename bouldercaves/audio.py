@@ -248,7 +248,7 @@ class SampleMixer:
             self.sample_counts[name] -= 1
 
     def set_limit(self,samplename: str, max_simultaneously: int) -> None:
-        print("SET LIMIT", samplename, max_simultaneously)   # @todo enforce limit!   and get rid of fall_sound_to_play
+        print("SET LIMIT", samplename, max_simultaneously)   # @todo enforce limit!
 
 
 class AudioApi:

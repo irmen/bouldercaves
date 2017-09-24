@@ -10,7 +10,6 @@ License: MIT open-source.
 import os
 import sys
 import random
-import getpass
 import datetime
 import tkinter
 import tkinter.messagebox
@@ -201,7 +200,7 @@ class EditorWindow(tkinter.Tk):
         tkinter.Label(f, text="caveset Date:").grid(column=0, row=4, sticky=tkinter.E, pady=2)
         self.cavename_var = tkinter.StringVar(value="A: test")
         self.cavedescr_var = tkinter.StringVar(value="A test cave.")
-        self.cavesetauthor_var = tkinter.StringVar(value=getpass.getuser())
+        self.cavesetauthor_var = tkinter.StringVar(value=bdcff.get_system_username())
         self.cavesetwww_var = tkinter.StringVar()
         self.cavesetdate_var = tkinter.StringVar(value=datetime.datetime.now().date())
         self.caveintermission_var = tkinter.BooleanVar()
@@ -512,7 +511,7 @@ class EditorWindow(tkinter.Tk):
     def set_cave_properties(self, cave: Cave) -> None:
         self.cavename_var.set(cave.name)
         self.cavedescr_var.set(cave.description)
-        self.cavesetauthor_var.set(cave.author or getpass.getuser())
+        self.cavesetauthor_var.set(cave.author or bdcff.get_system_username())
         self.cavesetdate_var.set(cave.date or str(datetime.datetime.now().date()))
         self.cavesetwww_var.set(cave.www)
         self.cavediamondsrequired_var.set(cave.diamonds_required)
@@ -550,7 +549,6 @@ class EditorWindow(tkinter.Tk):
         cave.magicwalltime = self.cavemagicwalltime_var.get()
         cave.slimepermeability = self.caveslimepermeability_var.get()
         cave.intermission = self.caveintermission_var.get()
-        cave.cavedelay = 3 if cave.intermission else 8
         c = self.cave.colors
         cave.color_border, cave.color_screen, cave.color_fg1, cave.color_fg2, cave.color_fg3, cave.color_amoeba, cave.color_slime = \
             c.border, c.screen, c.fg1, c.fg2, c.fg3, c.amoeba, c.slime

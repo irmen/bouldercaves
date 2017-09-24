@@ -17,11 +17,10 @@ import tkinter.messagebox
 import tkinter.simpledialog
 import pkgutil
 import time
-import getpass
 from typing import Tuple, Sequence, List, Iterable, Callable
 from .gamelogic import GameState, Direction, GameStatus, HighScores
 from .caves import colorpalette, Palette
-from . import audio, synthsamples, tiles, objects
+from . import audio, synthsamples, tiles, objects, bdcff
 
 __version__ = "3.0"
 
@@ -135,7 +134,7 @@ class BoulderWindow(tkinter.Tk):
                 print("Gfx update too slow to reach {:d} fps!".format(self.update_fps))
             self.repaint()
         self.gfxupdate_starttime = now
-        self.after(1000 // 120, self.tick_loop)
+        self.after(1000 // 60, self.tick_loop)
 
     def keypress(self, event) -> None:
         if event.keysym.startswith("Shift") or event.state & 1:
@@ -511,7 +510,7 @@ class BoulderWindow(tkinter.Tk):
             self.on_popup_closed = None
 
     def ask_highscore_name(self, score_pos: int, score: int) -> str:
-        username = getpass.getuser()[:HighScores.max_namelen]
+        username = bdcff.get_system_username()[:HighScores.max_namelen]
         while True:
             name = tkinter.simpledialog.askstring("Enter your name", "Enter your name for the high-score table!\n\n"
                                                   "#{:d} score:  {:d}\n\n(max {:d} letters)"

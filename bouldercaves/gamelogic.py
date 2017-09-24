@@ -16,6 +16,8 @@ from .objects import Direction
 from . import caves, audio, user_data_dir, tiles, objects
 
 
+# @todo fix explosions of Firefly, butterfly etc. They should be consumed by nearby explosion, but not cause chain reaction
+
 class GameStatus(Enum):
     WAITING = 1
     REVEALING_PLAY = 2
@@ -267,7 +269,7 @@ class GameState:
     def __init__(self, game) -> None:
         self.game = game
         self.graphics_frame_counter = 0    # will be set via the update() method
-        self.fps = 8      # game logic updates every 1/8 seconds
+        self.fps = 7      # game logic updates 7 fps which is about ~143 ms per frame (original game = ~150 ms)
         self.update_timestep = 1 / self.fps
         self.caveset = caves.CaveSet()
         self.start_level_number = 1
@@ -709,13 +711,9 @@ class GameState:
         self.amoeba["size"] = 0
         self.amoeba["enclosed"] = True
         self.rockford_cell = None
-        self.fall_sound_to_play = ""
 
     def frame_end(self) -> None:
         # called at end of every game logic update
-        if self.fall_sound_to_play:
-            audio.play_sample(self.fall_sound_to_play)
-            self.fall_sound_to_play = ""
         if self.amoeba["dead"] is None:
             if self.amoeba["enclosed"] and not self.amoeba["dormant"]:
                 self.amoeba["dead"] = objects.DIAMOND
@@ -1052,11 +1050,11 @@ class GameState:
     def fall_sound(self, cell: Cell, pushing: bool=False) -> None:
         if cell.isboulder() or cell.iswall():
             if pushing:
-                self.fall_sound_to_play = "box_push"
+                audio.play_sample("box_push")
             else:
-                self.fall_sound_to_play = "boulder"
+                audio.play_sample("boulder")
         elif cell.isdiamond():
-            self.fall_sound_to_play = "diamond" + str(random.randint(1, 6))
+            audio.play_sample("diamond" + str(random.randint(1, 6)))
 
     def collect_diamond(self) -> None:
         audio.play_sample("collect_diamond")
