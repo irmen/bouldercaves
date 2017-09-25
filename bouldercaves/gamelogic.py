@@ -471,8 +471,7 @@ class GameState:
 
         if level_intro_popup and self.level_description:
             audio.play_sample("diamond2")
-            fmt = "Intermission {:s}\n\n{:s}" if self.intermission else "Cave {:s}\n\n{:s}"
-            self.game.popup(fmt.format(self.level_name, self.level_description), on_close=prepare_reveal)
+            self.game.popup("{:s}\n\n{:s}".format(self.level_name, self.level_description), on_close=prepare_reveal)
         elif not self.playtesting:
             prepare_reveal()
 
@@ -1051,7 +1050,10 @@ class GameState:
         elif self.game_status == GameStatus.PAUSED:
             line_tiles = tiles.text2tiles("\x08  P A U S E D  \x08".center(width))
         else:
-            fmt = "Intermission {:s}" if self.intermission else "Cave {:s}"
+            if self.level_name.lower().startswith(("cave ", "intermission ")):
+                fmt = "{:s}"
+            else:
+                fmt = "Bonus: {:s}" if self.intermission else "Cave: {:s}"
             if self.game_status == GameStatus.DEMO:
                 fmt += " [Demo]"
             if self.playtesting:

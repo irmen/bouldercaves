@@ -64,8 +64,6 @@ class BdcffCave:
         self.description = self.properties.pop("description", "")
         if not self.description:
             self.description = self.properties.pop("remark", "")
-        if self.name.lower().startswith(("cave ", "intermission ")):
-            self.name = self.name.split(" ", maxsplit=1)[1]
         self.cavetime = int(self.properties.pop("cavetime").split()[0])
         self.diamonds_required = int(self.properties.pop("diamondsrequired").split()[0])
         dvalue = self.properties.pop("diamondvalue")
@@ -146,10 +144,7 @@ class BdcffCave:
 
     def write(self, out: TextIO) -> None:
         out.write("[cave]\n")
-        if self.name.lower().startswith(("cave ", "intermission ")):
-            out.write("Name={:s}\n".format(self.name))
-        else:
-            out.write("Name={:s} {:s}\n".format("Intermission" if self.intermission else "Cave", self.name))
+        out.write("Name={:s}\n".format(self.name))
         out.write("Description={:s}\n".format(self.description))
         out.write("Intermission={:s}\n".format("true" if self.intermission else "false"))
         out.write("FrameTime=150\n")

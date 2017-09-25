@@ -1,0 +1,59 @@
+; written by Bouldercaves.Bdcff by Irmen de Jong
+; last modified 2017-09-25
+
+[BDCFF]
+[game]
+Name=Self-designed
+Description=Caves designed by me.
+Author=Irmen de Jong
+WWW=
+Date=2017-09-25
+Charset=Original
+Fontset=Original
+Levels=1
+Caves=1
+
+[cave]
+Name=Spirals
+Description=Choose your path wisely. Inspiration was T707 by Trischi83.
+Intermission=false
+FrameTime=150
+CaveDelay=8
+CaveTime=220
+DiamondsRequired=4
+DiamondValue=30 30
+AmoebaTime=999
+AmoebaThreshold=0.227300
+MagicWallTime=999
+SlimePermeability=1.000
+Size=40 22
+Colors=Black #001c21 Cyan #703bc8 #d19eff Gray2 #2e03b0
+
+[map]
+ ssw..............................wss   
+ ssw.WWWWWWWWWWWWWWWWWWWWWWWWWWWW..wss  
+ssw..W              W           W..wsss 
+ssw..W WWWWWWWWWWWW W WWWWWWWWW W.wssss 
+sssw.W W          W W W       W W..wssss
+ssw..W W WWWWWWWW W W W WWWWW W W..wssss
+ssw..W W       dW W W W    dW W W.wsssss
+sssw.W WWWWWWWWWW W W WWWWWWWQW W..wssss
+ssw..W            W W         W W..wssss
+ssw..WWWWWWWWWWWWWW WWWWWWWWWWW W..wssss
+sssw..W            P            W...wsss
+sssw..W WWWWWWWWWWW WWWWWWWWWWWWWWW.wsss
+sssw..W W         W Wc            W..wss
+ssssw.W W WWWWWWW W W WWWWWWWWWWW W.wsss
+sssw..W W W     W W W Wd        W W.wsss
+sssw..W W W WXW W W W WWWWWWWWW W W..wss
+ssssw.W W W  dW W W W           W W.wsss
+sssw..W W WWWWW W W WWWWWWWWWWWWW W.wsss
+sssw..W W       W W               W..wss
+ssssw.W WWWWWWWWW WWWWWWWWWWWWWWWWW.wsss
+ ssw..W           W.................wss 
+ ssw..WWWWWWWWWWWWW...wwwwwwwwwwwwwwss  
+[/map]
+[/cave]
+
+[/game]
+[/BDCFF]

@@ -670,25 +670,15 @@ class EditorWindow(tkinter.Tk):
 
     def sanitycheck(self):
         # check that the level is sane:
-        # edge must be all steel wall, or inbox/outbox.
         # we should have at least 1 inbox and at least 1 outbox.
+        # (edge is no longer checked, you should take care of a closed cave yourself!)
         inbox_count = len([x for x, _ in self.cave.map if x == objects.INBOXBLINKING])
         outbox_count = len([x for x, _ in self.cave.map if x in (objects.OUTBOXCLOSED, objects.OUTBOXBLINKING, objects.OUTBOXHIDDEN)])
-        enclosed_ok = True
-        edge_objs_allowed = {objects.STEEL, objects.INBOXBLINKING, objects.OUTBOXBLINKING, objects.OUTBOXCLOSED, objects.OUTBOXHIDDEN}
-        for x in range(0, self.cave.width):
-            enclosed_ok &= self.cave[x, 0][0] in edge_objs_allowed
-            enclosed_ok &= self.cave[x, self.cave.height - 1][0] in edge_objs_allowed
-        for y in range(0, self.cave.height):
-            enclosed_ok &= self.cave[0, y][0] in edge_objs_allowed
-            enclosed_ok &= self.cave[self.cave.width - 1, y][0] in edge_objs_allowed
         messages = []
         if inbox_count <= 0:
             messages.append("There should be at least one INBOX.")
         if outbox_count <= 0:
             messages.append("There should be at least one OUTBOX.")
-        if not enclosed_ok:
-            messages.append("The edge of the level should be STEEL (or INBOX or OUTBOX).")
         if messages:
             messages.insert(0, "There are some problems with the current cave:")
             tkinter.messagebox.showerror("Cave sanity check failed", "\n\n".join(messages), parent=self.buttonsframe)

@@ -360,10 +360,7 @@ class C64Cave(Cave):
     def decode_from_lvl(cls, levelnumber: int) -> 'C64Cave':
         assert 0 < levelnumber <= len(BD1CAVES)
         name, description, data = BD1CAVES[levelnumber - 1]
-        stripped_name = name
-        if stripped_name.lower().startswith(("cave ", "intermission ")):
-            stripped_name = stripped_name.split(" ", maxsplit=1)[1]
-        cave = cls(data[0], stripped_name, description, 40, 22)   # size is hardcoded, also for intermissions
+        cave = cls(data[0], name, description, 40, 22)   # size is hardcoded, also for intermissions
         cave.codemap = bytearray(cave.width * cave.height)
         cave.intermission = name.lower().startswith("intermission")
         cave.magicwall_millingtime = cave.amoeba_slowgrowthtime = data[0x01]
