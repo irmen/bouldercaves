@@ -146,13 +146,16 @@ def load_sprites(c64colors=False, colors: Palette=None, scale: float=1.0) -> Seq
         tile_num = 0
         if tile_image.width != 128:
             raise IOError("sprites image width should be 8 sprites of 16 pixels = 128 pixels")
+        scaling_method = Image.NEAREST
+        if hasattr(Image, "HAMMING"):
+            scaling_method = Image.HAMMING
         while True:
             row, col = divmod(tile_num, 8)
             if row * 16 >= tile_image.height:
                 break
             ci = tile_image.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16))
             if scale != 1:
-                ci = ci.resize((int(16 * scale), int(16 * scale)), Image.NONE)
+                ci = ci.resize((int(16 * scale), int(16 * scale)), scaling_method)
             out = io.BytesIO()
             ci.save(out, "png", compress_level=0)
             sprite_src_images.append(out.getvalue())
@@ -164,6 +167,9 @@ def load_sprites(c64colors=False, colors: Palette=None, scale: float=1.0) -> Seq
 
 def load_font(scale: float=1.0) -> Sequence[bytes]:
     font_src_images = []
+    scaling_method = Image.NEAREST
+    if hasattr(Image, "HAMMING"):
+        scaling_method = Image.HAMMING
     with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/font.png"))) as image:
         for c in range(0, 128):
             row, col = divmod(c, image.width // 8)       # the font image contains 8x8 pixel tiles
@@ -171,7 +177,7 @@ def load_font(scale: float=1.0) -> Sequence[bytes]:
                 break
             ci = image.crop((col * 8, row * 8, col * 8 + 8, row * 8 + 8))
             if scale != 1:
-                ci = ci.resize((int(8 * scale), int(8 * scale)), Image.NONE)
+                ci = ci.resize((int(8 * scale), int(8 * scale)), scaling_method)
             out = io.BytesIO()
             ci.save(out, "png")
             font_src_images.append(out.getvalue())
