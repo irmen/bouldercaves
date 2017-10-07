@@ -241,7 +241,8 @@ colorpalette = colorpalette_pepto           # select desired color palette here
 
 
 class Palette:
-    def __init__(self, fg1: int=8, fg2: int=11, fg3: int=1, amoeba: int=5, slime: int=6, screen: int=0, border: int=0) -> None:
+    def __init__(self, fg1: Union[int, str]=8, fg2: Union[int, str]=11, fg3: Union[int, str]=1,
+                 amoeba: Union[int, str]=5, slime: Union[int, str]=6, screen: Union[int, str]=0, border: Union[int, str]=0) -> None:
         self.fg1 = self._color(fg1)
         self.fg2 = self._color(fg2)
         self.fg3 = self._color(fg3)
@@ -272,7 +273,9 @@ class Palette:
         self.screen = self.border = 0
 
     def _color(self, color: Union[int, str]) -> Union[int, str]:
-        if type(color) is int or color.startswith('#'):
+        if isinstance(color, int):
+            return color
+        if color.startswith('#'):
             return color
         c = int(color)
         if 0 <= c <= len(colorpalette):
@@ -280,7 +283,7 @@ class Palette:
         raise ValueError("invalid palette color: " + str(color))
 
     def _rgb(self, color: Union[int, str]) -> int:
-        if type(color) is int:
+        if isinstance(color, int):
             return colorpalette[color]
         if color.startswith('#'):
             return int(color[1:], 16)
@@ -356,6 +359,13 @@ class Cave:
 
 
 class C64Cave(Cave):
+    def __init__(self, index: int, name: str, description: str, width: int, height: int) -> None:
+        super().__init__(index, name, description, width, height)
+        self.codemap = bytearray()
+        self.randomseed = 0
+        self.random_objects = (0, 0, 0, 0)
+        self.random_probabilities = (0, 0, 0, 0)
+
     @classmethod
     def decode_from_lvl(cls, levelnumber: int) -> 'C64Cave':
         assert 0 < levelnumber <= len(BD1CAVES)
@@ -502,26 +512,25 @@ class CaveSet:
         self.caveclass = caveclass
         if external_bdcff_file:
             self.mode = "bdcff"
-            self.caves = bdcff.BdcffParser(external_bdcff_file)
-            self.name = self.caves.name
-            self.author = self.caves.author
-            self.date = self.caves.date
+            self.bdcff_caves = bdcff.BdcffParser(external_bdcff_file)
+            self.name = self.bdcff_caves.name
+            self.author = self.bdcff_caves.author
+            self.date = self.bdcff_caves.date
             self.cave_demo = None
-            self.num_caves = len(self.caves.caves)
+            self.num_caves = len(self.bdcff_caves.caves)
         else:
             self.mode = "builtin"
             self.name = "Boulder Dash I"
             self.author = "Peter Liepa"
             self.date = "1984"
-            self.caves = BD1CAVES
             self.cave_demo = CAVE_A_DEMO
             self.num_caves = len(BD1CAVES)
 
     def cave_names(self):
         if self.mode == "builtin":
-            return [c[0] for c in self.caves.caves]
+            return [c[0] for c in BD1CAVES]
         elif self.mode == "bdcff":
-            return [c.name for c in self.caves.caves]
+            return [c.name for c in self.bdcff_caves.caves]
         raise ValueError("invalid caveset mode")
 
     def cave(self, levelnumber: int) -> Cave:
@@ -530,15 +539,15 @@ class CaveSet:
                 raise TypeError("for built-in caves you cannot specify a custom cave class")
             return C64Cave.decode_from_lvl(levelnumber)
         elif self.mode == "bdcff":
-            return self.cave_from_bdcff(levelnumber, self.caves.caves[levelnumber - 1])
+            return self.cave_from_bdcff(levelnumber, self.bdcff_caves.caves[levelnumber - 1])
         raise ValueError("invalid caveset mode")
 
-    def cave_from_bdcff(self, levelnumber: int, bdcff) -> Cave:
+    def cave_from_bdcff(self, levelnumber: int, bdcff: bdcff.BdcffCave) -> Cave:
         caveclass = self.caveclass or Cave
         cave = caveclass(levelnumber, bdcff.name, bdcff.description, bdcff.width, bdcff.height)
-        cave.www = self.caves.www
-        cave.author = self.caves.author
-        cave.date = self.caves.date
+        cave.www = self.bdcff_caves.www
+        cave.author = self.bdcff_caves.author
+        cave.date = self.bdcff_caves.date
         cave.intermission = bdcff.intermission
         cave.magicwall_millingtime = bdcff.magicwalltime
         cave.amoeba_slowgrowthtime = bdcff.amoebatime

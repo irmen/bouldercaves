@@ -415,7 +415,7 @@ class GameState:
     def load_level(self, levelnumber: int, level_intro_popup: bool=True) -> None:
         audio.silence_audio()
         self.game.popup_close()    # make sure any open popup won't restore the old tiles
-        self.cheat_used |= self.start_level_number > 1
+        self.cheat_used = self.cheat_used or (self.start_level_number > 1)
         cave = self.caveset.cave(levelnumber)
         if cave.width < self.game.visible_columns or cave.height < self.game.visible_columns:
             cave.resize(self.game.visible_columns, self.game.visible_rows)
@@ -490,7 +490,7 @@ class GameState:
 
     def tile_music_ended(self) -> None:
         # do one of two things: play the demo, or show the highscore list for a short time
-        self.demo_or_highscore = (not self.demo_or_highscore) and self.caveset.cave_demo
+        self.demo_or_highscore = (not self.demo_or_highscore) and self.caveset.cave_demo is not None
         if self.demo_or_highscore:
             self.start_demo()
         else:

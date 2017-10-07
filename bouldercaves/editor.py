@@ -292,7 +292,7 @@ class EditorWindow(tkinter.Tk):
 
         buttonsframe.pack(side=tkinter.LEFT, anchor=tkinter.N)
         self.buttonsframe = buttonsframe
-        self.snap_tile_xy = self.snap_tile_diagonal = None
+        self.snap_tile_xy = self.snap_tile_diagonal = None   # type: Optional[Tuple[int, int]]
         self.bind("<KeyPress>", self.keypress_mainwindow)
         self.canvas.bind("<KeyPress>", self.keypress)
         self.canvas.bind("<KeyRelease>", self.keyrelease)
@@ -318,7 +318,7 @@ class EditorWindow(tkinter.Tk):
     def _use_active_image(self):
         return self.playfield_columns * self.playfield_rows <= 4096
 
-    def init_new_cave(self, width: int, height: int) -> False:
+    def init_new_cave(self, width: int, height: int) -> None:
         if width < 4 or width > 100 or height < 4 or height > 100:
             raise ValueError("invalid playfield/cave width or height (4-100)")
         self.playfield_columns = width
@@ -813,7 +813,7 @@ class PaletteDialog(tkinter.simpledialog.Dialog):
             rgb_var = tkinter.IntVar()
             self.rgb_vars[name] = rgb_var
             rgb_label = tkinter.Label(rf, text="any RGB color")
-            if type(value) is str:
+            if isinstance(value, str):
                 fgtkcolor = "#{:06x}".format(0xffffff ^ int(value[1:], 16))
                 rgb_label.configure(bg=value, fg=fgtkcolor)
             rgb_label.pack(side=tkinter.LEFT, expand=True, fill=tkinter.Y)

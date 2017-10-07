@@ -159,9 +159,9 @@ class BdcffCave:
         out.write("Size={:d} {:d}\n".format(self.width, self.height))
 
         def outputcolor(color: Union[int, str]) -> str:
-            if type(color) is int:
-                return BdcffParser.COLORNAMES[color]
-            return color
+            if isinstance(color, str):
+                return color
+            return BdcffParser.COLORNAMES[color]
 
         out.write("Colors={:s} {:s} {:s} {:s} {:s} {:s} {:s}\n".format(
             outputcolor(self.color_border),
