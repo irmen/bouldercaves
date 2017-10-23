@@ -106,19 +106,27 @@ in the 'caves' folder.
 
 **Windows**
 
+Did you download only a ```*.pyz``` file? Do this:
 1. install Python 3.5 or newer from https://www.python.org/downloads/
 1. open a command prompt and type:
    ``pip install --user pillow sounddevice``
-1. double-click on the ``*.pyz`` file that you downloaded, or on ``startgame.py``
+1. double-click on the ``*.pyz`` file that you downloaded.
 
-You can play the game without the ``sounddevice`` library if you disable sounds or use
-the sampled sounds version. However the sound quality is sub-par and no sound mixing
-is possible, so please just use ``sounddevice`` :)
+If you downloaded the source code, you can simply launch the game
+by clicking on ``startgame-venv.py``  (that should take care of installing the
+required libraries for you).  The other script, ``startgame.py`` also works, but
+it requires you to have installed the libraries yourself (step 2 above).
 
 
 **Mac OS, Linux, ...**
 
-1. make sure you have Python 3.5 or newer installed
+Make sure you have Python 3.5 or newer installed.
+
+If you don't want to bother with installing the required libraries yourself, 
+just launch the ``startgame-venv.py`` script and it will take care of that for you.
+
+Alternatively:
+
 1. make sure you have the ``pillow`` (or ``pil``) and ``sounddevice`` python libraries 
    installed. You can often find them in your package manager or install them with pip.
 1. if you want to play the version with synthesized sounds, you're all set.

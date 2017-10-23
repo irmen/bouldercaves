@@ -21,7 +21,7 @@ from bouldercaves import game
 game.start(sys.argv[1:])
 EOT
 
-7z a -bd -bso0 -tzip -mx=9 ${TMPFILE} bouldercaves __main__.py
+7z a -tzip -mx=9 ${TMPFILE} bouldercaves __main__.py  > /dev/null
 echo "#!/usr/bin/env python3" > ${OUTFILE}
 cat ${TMPFILE} >> ${OUTFILE}
 chmod u+x ${OUTFILE}
@@ -36,7 +36,7 @@ from bouldercaves import game
 game.start(["--synth"] + sys.argv[1:])
 EOT
 
-7z a -bd -bso0 -tzip -mx=9 ${TMPFILE} '-xr!bouldercaves/sounds/*' bouldercaves __main__.py
+7z a -tzip -mx=9 ${TMPFILE} '-xr!bouldercaves/sounds/*' bouldercaves __main__.py  > /dev/null
 echo "#!/usr/bin/env python3" > ${OUTFILESYNTH}
 cat ${TMPFILE} >> ${OUTFILESYNTH}
 chmod u+x ${OUTFILESYNTH}
