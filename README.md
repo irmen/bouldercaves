@@ -120,7 +120,11 @@ it requires you to have installed the libraries yourself (step 2 above).
 
 **Mac OS, Linux, ...**
 
-Make sure you have Python 3.5 or newer installed.
+Make sure you have Python 3.5 or newer installed, with Tkinter (Python's default GUI toolkit).
+On Linux it's probably easiest to install these via your distribution's package manager.
+On Mac OS, personally I'm using [Homebrew](https://brew.sh) to install things
+(I've used the "``brew install python3 --with-tkinter``" command to make sure it doesn't use Apple's
+own version of the tkinter gui toolkit, which is buggy, but a newer version).
 
 If you don't want to bother with installing the required libraries yourself, 
 just launch the ``startgame-venv.py`` script and it will take care of that for you.
