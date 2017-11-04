@@ -338,6 +338,7 @@ class Cave:
         self.diamonds_required = defaults.diamonds_required
         self.amoebafactor = defaults.amoebafactor
         self.slime_permeability = defaults.slimepermeability
+        self.wraparound = defaults.wraparound
         self.time = defaults.cavetime
         self.colors = Palette()
 
@@ -549,6 +550,7 @@ class CaveSet:
         cave.author = self.bdcff_caves.author
         cave.date = self.bdcff_caves.date
         cave.intermission = bdcff.intermission
+        cave.wraparound = bdcff.wraparound
         cave.magicwall_millingtime = bdcff.magicwalltime
         cave.amoeba_slowgrowthtime = bdcff.amoebatime
         cave.diamondvalue_normal = bdcff.diamondvalue_normal

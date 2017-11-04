@@ -56,6 +56,7 @@ class BdcffCave:
         self.diamondvalue_normal = self.diamondvalue_extra = 0
         self.width = self.map.width
         self.height = self.map.height
+        self.wraparound = False
         self.color_screen, self.color_border, self.color_fg1, self.color_fg2, self.color_fg3, \
             self.color_amoeba, self.color_slime = [0, 0, 10, 12, 1, 5, 6]
 
@@ -106,6 +107,7 @@ class BdcffCave:
         else:
             raise BdcffFormatError("invalid color spec: " + str(colors))
         self.intermission = self.properties.pop("intermission", "false") == "true"
+        self.wraparound = self.properties.pop("borderproperties.wraparound", "false") == "true"
         self.map.postprocess()
         self.height = self.map.height
         self.width = self.map.width
@@ -118,6 +120,7 @@ class BdcffCave:
                 raise BdcffFormatError("cave width or height doesn't match map, in cave " + self.name)
         self.properties.pop("cavedelay", 0)
         self.properties.pop("frametime", 0)
+        self.properties.pop("borderproperties.lineshift", "false")
         if self.properties:
             print("\nWARNING: unrecognised cave properties in cave " + self.name + " :")
             print(self.properties, "\n")
@@ -156,6 +159,8 @@ class BdcffCave:
         out.write("AmoebaThreshold={:f}\n".format(self.amoebafactor))
         out.write("MagicWallTime={:d}\n".format(self.magicwalltime))
         out.write("SlimePermeability={:.3f}\n".format(self.slimepermeability))
+        out.write("BorderProperties.wraparound={:s}\n".format("true" if self.wraparound else "false"))
+        out.write("BorderProperties.lineshift=true\n")
         out.write("Size={:d} {:d}\n".format(self.width, self.height))
 
         def outputcolor(color: Union[int, str]) -> str:

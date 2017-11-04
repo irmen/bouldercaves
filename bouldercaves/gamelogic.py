@@ -424,6 +424,7 @@ class GameState:
         self.level_name = cave.name
         self.level_description = cave.description
         self.intermission = cave.intermission
+        self.wraparound = cave.wraparound
         level_intro_popup = level_intro_popup and levelnumber != self.level
         self.level = levelnumber
         self.level_won = False
@@ -590,13 +591,22 @@ class GameState:
 
     def get(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> Cell:
         # retrieve the cell relative to the given cell
-        return self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
+        # deals with wrapping around the up/bottom edge
+        cell_index = cell.x + cell.y * self.width + self._dirxy[direction]
+        if self.wraparound:
+            if cell_index >= len(self.cave):
+                cell_index %= self.width        # wrap around lower edge
+            elif cell_index < 0:
+                cell_index += len(self.cave)    # wrap around upper edge
+        elif cell_index < 0 or cell_index >= len(self.cave):
+            return GameState.Cell(objects.STEEL, cell.x, cell.y)   # treat upper/lower edge as steel wall
+        return self.cave[cell_index]
 
     def move(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> Cell:
         # move the object in the cell to the given relative direction
         if direction == Direction.NOWHERE:
             return None  # no movement...
-        newcell = self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
+        newcell = self.get(cell, direction)
         self.draw_single_cell(newcell, cell.obj)
         newcell.falling = cell.falling
         newcell.direction = cell.direction
@@ -972,6 +982,7 @@ class GameState:
             elif targetcell.isoutbox():
                 cell = self.move(cell, self.movement.direction)
                 self.level_won = True   # exit found!
+                audio.silence_audio()
                 audio.play_sample("finished")
                 self.movement.stop_all()
             self.movement.move_done()
@@ -1120,7 +1131,7 @@ class GameState:
 
     def explode(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> None:
         explosion_sample = "explosion"
-        explosioncell = self.cave[cell.x + cell.y * self.width + self._dirxy[direction]]
+        explosioncell = self.get(cell, direction)
         if explosioncell.isbutterfly():
             explode_obj = objects.DIAMONDBIRTH
         else:
@@ -1133,7 +1144,7 @@ class GameState:
         for direction in Direction:
             if direction == Direction.NOWHERE:
                 continue
-            cell = self.cave[explosioncell.x + explosioncell.y * self.width + self._dirxy[direction]]
+            cell = self.get(explosioncell, direction)
             if cell.isconsumable():
                 if cell.obj is objects.VOODOO:
                     explosion_sample = "voodoo_explosion"

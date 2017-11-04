@@ -231,6 +231,7 @@ class EditorWindow(tkinter.Tk):
         self.cavediamondvaluenorm_var = tkinter.IntVar(value=defaults.diamondvalue_normal)
         self.cavediamondvalueextra_var = tkinter.IntVar(value=defaults.diamondvalue_extra)
         self.caveintermission_var = tkinter.BooleanVar()
+        self.cavewraparound_var = tkinter.BooleanVar()
         tkinter.Label(f, text="Diamonds required [{:d}] :".format(defaults.diamonds_required)).grid(column=0, row=0, sticky=tkinter.E, pady=2)
         tkinter.Label(f, text="Diamond value normal [{:d}] :".format(defaults.diamondvalue_normal)).grid(column=0, row=1, sticky=tkinter.E, pady=2)
         tkinter.Label(f, text="Diamond value extra [{:d}] :".format(defaults.diamondvalue_extra)).grid(column=0, row=2, sticky=tkinter.E, pady=2)
@@ -238,7 +239,9 @@ class EditorWindow(tkinter.Tk):
         tkinter.Entry(f, width=8, textvariable=self.cavediamondvaluenorm_var).grid(column=1, row=1, pady=2)
         tkinter.Entry(f, width=8, textvariable=self.cavediamondvalueextra_var).grid(column=1, row=2, pady=2)
         tkinter.Checkbutton(f, text=" this is an Intermission.", variable=self.caveintermission_var,
-                            selectcolor=self.cget("background")).grid(column=0, row=3, pady=(16, 2))
+                            selectcolor=self.cget("background")).grid(column=0, row=3, sticky=tkinter.W, pady=2)
+        tkinter.Checkbutton(f, text=" border wrap-around.", variable=self.cavewraparound_var,
+                            selectcolor=self.cget("background")).grid(column=0, row=4, sticky=tkinter.W, pady=2)
         f.pack(side=tkinter.LEFT, padx=16, anchor=tkinter.N)
 
         f = tkinter.Frame(self.bottomframe)
@@ -618,7 +621,7 @@ class EditorWindow(tkinter.Tk):
         self.caveintermission_var.set(cave.intermission)
         self.cavetimelimit_var.set(cave.time)
         self.caveslimepermeability_var.set(cave.slime_permeability)
-        self.caveintermission_var.set(cave.intermission)
+        self.cavewraparound_var.set(cave.wraparound)
         self.cavewidth_var.set(cave.width)
         self.caveheight_var.set(cave.height)
 
@@ -646,6 +649,7 @@ class EditorWindow(tkinter.Tk):
         cave.magicwalltime = self.cavemagicwalltime_var.get()
         cave.slimepermeability = self.caveslimepermeability_var.get()
         cave.intermission = self.caveintermission_var.get()
+        cave.wraparound = self.cavewraparound_var.get()
         c = self.cave.colors
         cave.color_border, cave.color_screen, cave.color_fg1, cave.color_fg2, cave.color_fg3, cave.color_amoeba, cave.color_slime = \
             c.border, c.screen, c.fg1, c.fg2, c.fg3, c.amoeba, c.slime
