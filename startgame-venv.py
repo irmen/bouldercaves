@@ -17,7 +17,7 @@ else:
     venv_dir = os.expanduser("~/bouldercaves/venv")
     symlink = True
     executable = venv_dir + "/bin/python3"
-   
+
 print("Creating virtual python environment in: ", venv_dir)
 
 builder = venv.EnvBuilder(system_site_packages=True, symlinks=symlink, upgrade=True, with_pip=True)

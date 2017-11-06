@@ -3,6 +3,7 @@ Cave decoding/conversion logic.
 Included here are the (encoded) caves from Boulderdash I  on the Commodore-64.
 More info including the decoding algorithm:
 https://www.elmerproductions.com/sp/peterb/rawCaveData.html#rawCaveDataFormat
+https://www.elmerproductions.com/sp/peterb/insideBoulderdash.html
 
 Written by Irmen de Jong (irmen@razorvine.net)
 License: GNU GPL 3.0, see LICENSE
@@ -173,6 +174,7 @@ BD1CAVES = [
 # The high nybble indicates the number of times (number of frames) to apply that movement.
 # The demo finishes when it hits $00. So for example,
 # $FF means no movement for 15 turns, $1E means move up one space, $77 means move right 7 spaces, etc.
+# (details: https://www.elmerproductions.com/sp/peterb/insideBoulderdash.html)
 CAVE_A_DEMO = [
     0x4F, 0x1E, 0x77, 0x2D, 0x97, 0x4F, 0x2D, 0x47, 0x3E, 0x1B, 0x4F, 0x1E, 0xB7, 0x1D, 0x27,
     0x4F, 0x6D, 0x17, 0x4D, 0x3B, 0x4F, 0x1D, 0x1B, 0x47, 0x3B, 0x4F, 0x4E, 0x5B, 0x3E, 0x5B, 0x4D,

@@ -659,7 +659,7 @@ def start(sargs: Sequence[str]=None) -> None:
             raise SystemExit("Synths missing for: " + str(missing))
         for name, sample in synthesized.items():
             max_simul = samples[name][1]
-            samples[name] = (sample, max_simul)
+            samples[name] = (sample, max_simul)    # type: ignore
 
     if args.nosound:
         print("No sound output selected.")

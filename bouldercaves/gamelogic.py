@@ -70,200 +70,83 @@ class HighScores:
         self.scores = self.scores[:8]
 
 
+class Cell:
+    __slots__ = ("obj", "x", "y", "frame", "falling", "direction", "anim_start_gfx_frame")
+
+    def __init__(self, obj: objects.GameObject, x: int, y: int) -> None:
+        self.obj = obj  # what object is in the cell
+        self.x = x
+        self.y = y
+        self.frame = 0
+        self.falling = False
+        self.direction = Direction.NOWHERE
+        self.anim_start_gfx_frame = 0
+
+    def __repr__(self):
+        return "<Cell {:s} @{:d},{:d}>".format(self.obj.name, self.x, self.y)
+
+    def isempty(self) -> bool:
+        return self.obj in {objects.EMPTY, objects.BONUSBG, None}
+
+    def isdirt(self) -> bool:
+        return self.obj in {objects.DIRTBALL, objects.DIRT, objects.DIRT2, objects.DIRTLOOSE,
+                            objects.DIRTSLOPEDDOWNLEFT, objects.DIRTSLOPEDDOWNRIGHT,
+                            objects.DIRTSLOPEDUPLEFT, objects.DIRTSLOPEDUPRIGHT}
+
+    def isrockford(self) -> bool:
+        return self.obj is objects.ROCKFORD
+
+    def isrounded(self) -> bool:
+        return self.obj.rounded
+
+    def isexplodable(self) -> bool:
+        return self.obj.explodable
+
+    def isconsumable(self) -> bool:
+        return self.obj.consumable
+
+    def ismagic(self) -> bool:
+        return self.obj is objects.MAGICWALL
+
+    def isslime(self) -> bool:
+        return self.obj is objects.SLIME
+
+    def isbutterfly(self) -> bool:
+        # these explode to diamonds
+        return self.obj is objects.BUTTERFLY or self.obj is objects.ALTBUTTERFLY
+
+    def isamoeba(self) -> bool:
+        return self.obj is objects.AMOEBA or self.obj is objects.AMOEBARECTANGLE
+
+    def isfirefly(self) -> bool:
+        return self.obj is objects.FIREFLY or self.obj is objects.ALTFIREFLY
+
+    def isdiamond(self) -> bool:
+        return self.obj is objects.DIAMOND or self.obj is objects.FLYINGDIAMOND
+
+    def isboulder(self) -> bool:
+        return self.obj in {objects.BOULDER, objects.MEGABOULDER, objects.CHASINGBOULDER, objects.FLYINGBOULDER}
+
+    def iswall(self) -> bool:
+        return self.obj in {objects.HEXPANDINGWALL, objects.VEXPANDINGWALL, objects.BRICK,
+                            objects.MAGICWALL, objects.STEEL, objects.STEELWALLBIRTH,
+                            objects.BRICKSLOPEDDOWNRIGHT, objects.BRICKSLOPEDDOWNLEFT,
+                            objects.BRICKSLOPEDUPRIGHT, objects.BRICKSLOPEDUPLEFT,
+                            objects.STEELSLOPEDDOWNLEFT, objects.STEELSLOPEDDOWNRIGHT,
+                            objects.STEELSLOPEDUPLEFT, objects.STEELSLOPEDUPRIGHT}
+
+    def isoutbox(self) -> bool:
+        return self.obj in (objects.OUTBOXBLINKING, objects.OUTBOXHIDDENOPEN)
+
+    def canfall(self) -> bool:
+        return self.obj in {objects.BOULDER, objects.SWEET, objects.DIAMONDKEY, objects.BOMB,
+                            objects.IGNITEDBOMB, objects.KEY1, objects.KEY2, objects.KEY3,
+                            objects.DIAMOND, objects.MEGABOULDER, objects.SKELETON, objects.NITROFLASK,
+                            objects.DIRTBALL, objects.COCONUT, objects.ROCKETLAUNCHER}
+
+
 # noinspection PyAttributeOutsideInit
 class GameState:
-    class Cell:
-        __slots__ = ("obj", "x", "y", "frame", "falling", "direction", "anim_start_gfx_frame")
-
-        def __init__(self, obj: objects.GameObject, x: int, y: int) -> None:
-            self.obj = obj  # what object is in the cell
-            self.x = x
-            self.y = y
-            self.frame = 0
-            self.falling = False
-            self.direction = Direction.NOWHERE
-            self.anim_start_gfx_frame = 0
-
-        def __repr__(self):
-            return "<Cell {:s} @{:d},{:d}>".format(self.obj.name, self.x, self.y)
-
-        def isempty(self) -> bool:
-            return self.obj in {objects.EMPTY, objects.BONUSBG, None}
-
-        def isdirt(self) -> bool:
-            return self.obj in {objects.DIRTBALL, objects.DIRT, objects.DIRT2, objects.DIRTLOOSE,
-                                objects.DIRTSLOPEDDOWNLEFT, objects.DIRTSLOPEDDOWNRIGHT,
-                                objects.DIRTSLOPEDUPLEFT, objects.DIRTSLOPEDUPRIGHT}
-
-        def isrockford(self) -> bool:
-            return self.obj is objects.ROCKFORD
-
-        def isrounded(self) -> bool:
-            return self.obj.rounded
-
-        def isexplodable(self) -> bool:
-            return self.obj.explodable
-
-        def isconsumable(self) -> bool:
-            return self.obj.consumable
-
-        def ismagic(self) -> bool:
-            return self.obj is objects.MAGICWALL
-
-        def isslime(self) -> bool:
-            return self.obj is objects.SLIME
-
-        def isbutterfly(self) -> bool:
-            # these explode to diamonds
-            return self.obj is objects.BUTTERFLY or self.obj is objects.ALTBUTTERFLY
-
-        def isamoeba(self) -> bool:
-            return self.obj is objects.AMOEBA or self.obj is objects.AMOEBARECTANGLE
-
-        def isfirefly(self) -> bool:
-            return self.obj is objects.FIREFLY or self.obj is objects.ALTFIREFLY
-
-        def isdiamond(self) -> bool:
-            return self.obj is objects.DIAMOND or self.obj is objects.FLYINGDIAMOND
-
-        def isboulder(self) -> bool:
-            return self.obj in {objects.BOULDER, objects.MEGABOULDER, objects.CHASINGBOULDER, objects.FLYINGBOULDER}
-
-        def iswall(self) -> bool:
-            return self.obj in {objects.HEXPANDINGWALL, objects.VEXPANDINGWALL, objects.BRICK,
-                                objects.MAGICWALL, objects.STEEL, objects.STEELWALLBIRTH,
-                                objects.BRICKSLOPEDDOWNRIGHT, objects.BRICKSLOPEDDOWNLEFT,
-                                objects.BRICKSLOPEDUPRIGHT, objects.BRICKSLOPEDUPLEFT,
-                                objects.STEELSLOPEDDOWNLEFT, objects.STEELSLOPEDDOWNRIGHT,
-                                objects.STEELSLOPEDUPLEFT, objects.STEELSLOPEDUPRIGHT}
-
-        def isoutbox(self) -> bool:
-            return self.obj in (objects.OUTBOXBLINKING, objects.OUTBOXHIDDENOPEN)
-
-        def canfall(self) -> bool:
-            return self.obj in {objects.BOULDER, objects.SWEET, objects.DIAMONDKEY, objects.BOMB,
-                                objects.IGNITEDBOMB, objects.KEY1, objects.KEY2, objects.KEY3,
-                                objects.DIAMOND, objects.MEGABOULDER, objects.SKELETON, objects.NITROFLASK,
-                                objects.DIRTBALL, objects.COCONUT, objects.ROCKETLAUNCHER}
-
-    class MovementInfo:
-        def __init__(self) -> None:
-            self.direction = Direction.NOWHERE
-            self.lastXdir = Direction.NOWHERE
-            self.up = self.down = self.left = self.right = False
-            self.grab = False           # is rockford grabbing something?
-            self.pushing = False        # is rockford pushing something?
-
-        @property
-        def moving(self) -> bool:
-            return bool(self.direction != Direction.NOWHERE)
-
-        def start_up(self) -> None:
-            self.direction = Direction.UP
-            self.up = True
-
-        def start_down(self) -> None:
-            self.direction = Direction.DOWN
-            self.down = True
-
-        def start_left(self) -> None:
-            self.direction = Direction.LEFT
-            self.left = True
-            self.lastXdir = Direction.LEFT
-
-        def start_right(self) -> None:
-            self.direction = Direction.RIGHT
-            self.right = True
-            self.lastXdir = Direction.RIGHT
-
-        def start_grab(self) -> None:
-            self.grab = True
-
-        def stop_all(self) -> None:
-            self.grab = self.up = self.down = self.left = self.right = False
-            self.direction = None
-
-        def stop_grab(self) -> None:
-            self.grab = False
-
-        def stop_up(self) -> None:
-            self.up = False
-            self.direction = self.where() if self.direction == Direction.UP else self.direction
-
-        def stop_down(self) -> None:
-            self.down = False
-            self.direction = self.where() if self.direction == Direction.DOWN else self.direction
-
-        def stop_left(self) -> None:
-            self.left = False
-            self.direction = self.where() if self.direction == Direction.LEFT else self.direction
-
-        def stop_right(self) -> None:
-            self.right = False
-            self.direction = self.where() if self.direction == Direction.RIGHT else self.direction
-
-        def where(self) -> Direction:
-            if self.up:
-                return Direction.UP
-            elif self.down:
-                return Direction.DOWN
-            elif self.left:
-                return Direction.LEFT
-            elif self.right:
-                return Direction.RIGHT
-            else:
-                return Direction.NOWHERE
-
-        def move_done(self) -> None:
-            pass
-
-    class DemoMovementInfo(MovementInfo):
-        # movement controller that doesn't respond to user input,
-        # and instead plays a prerecorded sequence of moves.
-        def __init__(self, demo_moves: Sequence[int]) -> None:
-            super().__init__()
-            self.demo_direction = Direction.NOWHERE
-            self.demo_moves = self.decompressed(demo_moves)
-            self.demo_finished = False
-
-        @property
-        def moving(self) -> bool:
-            return True
-
-        @property
-        def direction(self) -> Direction:
-            return self.demo_direction
-
-        @direction.setter
-        def direction(self, value: Direction) -> None:
-            pass
-
-        def move_done(self) -> None:
-            try:
-                self.demo_direction = next(self.demo_moves)
-                if self.demo_direction == Direction.LEFT:
-                    self.lastXdir = Direction.LEFT
-                elif self.demo_direction == Direction.RIGHT:
-                    self.lastXdir = Direction.RIGHT
-            except StopIteration:
-                self.demo_finished = True
-                self.demo_direction = Direction.NOWHERE
-
-        def decompressed(self, demo: Sequence[int]) -> Generator[Direction, None, None]:
-            for step in demo:
-                d = step & 0x0f
-                if d == 0:
-                    raise StopIteration
-                direction = {
-                    0x0f: Direction.NOWHERE,
-                    0x07: Direction.RIGHT,
-                    0x0b: Direction.LEFT,
-                    0x0d: Direction.DOWN,
-                    0x0e: Direction.UP
-                }[d]
-                for _ in range(step >> 4):
-                    yield direction
-
     def __init__(self, game) -> None:
         self.game = game
         self.graphics_frame_counter = 0    # will be set via the update() method
@@ -327,9 +210,9 @@ class GameState:
         }
         self.timeremaining = datetime.timedelta(0)
         self.timelimit = None   # type: Optional[datetime.datetime]
-        self.rockford_cell = self.inbox_cell = self.last_focus_cell = None   # type: GameState.Cell
+        self.rockford_cell = self.inbox_cell = self.last_focus_cell = None   # type: Cell
         self.rockford_found_frame = -1
-        self.movement = self.MovementInfo()
+        self.movement = MovementInfo()
         self.flash = 0
         # draw the 'title screen'
         self._create_cave(40, 22)
@@ -388,10 +271,10 @@ class GameState:
             Direction.LEFTDOWN: self.width - 1,
             Direction.RIGHTDOWN: self.width + 1
         }
-        self.cave = []   # type: List[GameState.Cell]
+        self.cave = []   # type: List[Cell]
         for y in range(self.height):
             for x in range(self.width):
-                self.cave.append(self.Cell(objects.EMPTY, x, y))
+                self.cave.append(Cell(objects.EMPTY, x, y))
 
     def use_bdcff(self, filename: str) -> None:
         self.caveset = caves.CaveSet(filename)
@@ -447,7 +330,7 @@ class GameState:
         self.rockford_cell = None     # the cell where Rockford currently is
         self.inbox_cell = self.last_focus_cell = None
         self.rockford_found_frame = 0
-        self.movement = self.MovementInfo()
+        self.movement = MovementInfo()
         self.amoeba = {
             "size": 0,
             "max": cave.amoebafactor * self.width * self.height,
@@ -504,7 +387,7 @@ class GameState:
                 self.load_next_level(intro_popup=False)
                 self.game_status = GameStatus.REVEALING_DEMO     # the sound is already being played.
                 self.reveal_frame = self.frame + self.fps * self.reveal_duration
-                self.movement = self.DemoMovementInfo(self.caveset.cave_demo)  # is reset to regular handling when demo ends/new level
+                self.movement = DemoMovementInfo(self.caveset.cave_demo)  # is reset to regular handling when demo ends/new level
             else:
                 self.game.popup("This cave set doesn't have a demo.", duration=3)
 
@@ -599,7 +482,7 @@ class GameState:
             elif cell_index < 0:
                 cell_index += len(self.cave)    # wrap around upper edge
         elif cell_index < 0 or cell_index >= len(self.cave):
-            return GameState.Cell(objects.STEEL, cell.x, cell.y)   # treat upper/lower edge as steel wall
+            return Cell(objects.STEEL, cell.x, cell.y)   # treat upper/lower edge as steel wall
         return self.cave[cell_index]
 
     def move(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> Cell:
@@ -1152,3 +1035,123 @@ class GameState:
                 else:
                     self.draw_single_cell(cell, explode_obj)
         audio.play_sample(explosion_sample)
+
+
+class MovementInfo:
+    def __init__(self) -> None:
+        self.direction = Direction.NOWHERE
+        self.lastXdir = Direction.NOWHERE
+        self.up = self.down = self.left = self.right = False
+        self.grab = False           # is rockford grabbing something?
+        self.pushing = False        # is rockford pushing something?
+
+    @property
+    def moving(self) -> bool:
+        return bool(self.direction != Direction.NOWHERE)
+
+    def start_up(self) -> None:
+        self.direction = Direction.UP
+        self.up = True
+
+    def start_down(self) -> None:
+        self.direction = Direction.DOWN
+        self.down = True
+
+    def start_left(self) -> None:
+        self.direction = Direction.LEFT
+        self.left = True
+        self.lastXdir = Direction.LEFT
+
+    def start_right(self) -> None:
+        self.direction = Direction.RIGHT
+        self.right = True
+        self.lastXdir = Direction.RIGHT
+
+    def start_grab(self) -> None:
+        self.grab = True
+
+    def stop_all(self) -> None:
+        self.grab = self.up = self.down = self.left = self.right = False
+        self.direction = None
+
+    def stop_grab(self) -> None:
+        self.grab = False
+
+    def stop_up(self) -> None:
+        self.up = False
+        self.direction = self.where() if self.direction == Direction.UP else self.direction
+
+    def stop_down(self) -> None:
+        self.down = False
+        self.direction = self.where() if self.direction == Direction.DOWN else self.direction
+
+    def stop_left(self) -> None:
+        self.left = False
+        self.direction = self.where() if self.direction == Direction.LEFT else self.direction
+
+    def stop_right(self) -> None:
+        self.right = False
+        self.direction = self.where() if self.direction == Direction.RIGHT else self.direction
+
+    def where(self) -> Direction:
+        if self.up:
+            return Direction.UP
+        elif self.down:
+            return Direction.DOWN
+        elif self.left:
+            return Direction.LEFT
+        elif self.right:
+            return Direction.RIGHT
+        else:
+            return Direction.NOWHERE
+
+    def move_done(self) -> None:
+        pass
+
+
+class DemoMovementInfo(MovementInfo):
+    # movement controller that doesn't respond to user input,
+    # and instead plays a prerecorded sequence of moves.
+    def __init__(self, demo_moves: Sequence[int]) -> None:
+        super().__init__()
+        self.demo_direction = Direction.NOWHERE
+        self.demo_moves = self.decompressed(demo_moves)
+        self.demo_finished = False
+
+    @property
+    def moving(self) -> bool:
+        return True
+
+    @property
+    def direction(self) -> Direction:
+        return self.demo_direction
+
+    @direction.setter
+    def direction(self, value: Direction) -> None:
+        pass
+
+    def move_done(self) -> None:
+        try:
+            self.demo_direction = next(self.demo_moves)
+            if self.demo_direction == Direction.LEFT:
+                self.lastXdir = Direction.LEFT
+            elif self.demo_direction == Direction.RIGHT:
+                self.lastXdir = Direction.RIGHT
+        except StopIteration:
+            self.demo_finished = True
+            self.demo_direction = Direction.NOWHERE
+
+    def decompressed(self, demo: Sequence[int]) -> Generator[Direction, None, None]:
+        for step in demo:
+            d = step & 0x0f
+            if d == 0:
+                raise StopIteration
+            direction = {
+                0x0f: Direction.NOWHERE,
+                0x07: Direction.RIGHT,
+                0x0b: Direction.LEFT,
+                0x0d: Direction.DOWN,
+                0x0e: Direction.UP
+            }[d]
+            for _ in range(step >> 4):
+                yield direction

@@ -550,7 +550,7 @@ class EditorWindow(tkinter.Tk):
         self.randomize_initial_values = (rseed, randomprobs, randomobjs)
 
     def do_resize_cave(self, width: int, height: int) -> None:
-        if width==self.playfield_columns and height==self.playfield_rows:
+        if width == self.playfield_columns and height == self.playfield_rows:
             return
         if not tkinter.messagebox.askokcancel("Confirm resize",
                                               "Resize cave?\nYou will lose all of your current work.", parent=self.bottomframe):
