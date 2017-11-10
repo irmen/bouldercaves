@@ -1,0 +1,49 @@
+; written by Bouldercaves.Bdcff by Irmen de Jong
+; last modified 2017-09-25
+
+[BDCFF]
+[game]
+Name=playtest caveset
+Description=playtest caveset
+Author=Irmen de Jong
+WWW=
+Date=2017-09-23
+Charset=Original
+Fontset=Original
+Levels=1
+Caves=1
+
+[cave]
+Name=Intermzzz
+Description=testing intermission
+Intermission=true
+FrameTime=150
+CaveDelay=3
+CaveTime=100
+DiamondsRequired=4
+DiamondValue=0 0
+AmoebaTime=1
+AmoebaThreshold=0.227300
+MagicWallTime=1
+SlimePermeability=0.100
+Size=20 12
+Colors=#4b217c #000458 LightBlue Gray2 White Red White
+
+[map]
+WWWWWWWWWWWWWWWWWWWW
+WXH............Q...W
+W.............. ...W
+W.............. ...W
+WP....dddddddd. ...W
+Wr.............Q...W
+W...Q   Q   Q   ...W
+W..................W
+W..................W
+W .................W
+Wr.................W
+WWWWWWWWWWWWWWWWWWWW
+[/map]
+[/cave]
+
+[/game]
+[/BDCFF]

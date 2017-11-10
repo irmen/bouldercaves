@@ -1,0 +1,101 @@
+; written by Bouldercaves.Bdcff by Irmen de Jong
+; last modified 2017-09-25
+
+[BDCFF]
+[game]
+Name=playtest caveset
+Description=playtest caveset
+Author=Irmen de Jong
+WWW=
+Date=2017-09-25
+Charset=Original
+Fontset=Original
+Levels=1
+Caves=1
+
+[cave]
+Name=Miga big cave
+Description=can we go bigger?
+Intermission=false
+FrameTime=150
+CaveDelay=8
+CaveTime=200
+DiamondsRequired=10
+DiamondValue=0 0
+AmoebaTime=1
+AmoebaThreshold=0.227300
+MagicWallTime=999
+SlimePermeability=1.000
+Size=64 64
+Colors=Black Black Orange Gray1 White Green Blue
+
+[map]
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+W      Qw                            c                 w Qw    W
+W               Q            a      Q  a          c  a   w     W
+Ww                  Q        w    Q      w                     W
+W  a      Q     a  a     w        Qc  Q       c c              W
+W  c      w  c         a     wc    Q                     Q     W
+W    c       w      Q c a                                   c  W
+WQ     Q   c   c       w           Q            QQ w   w       W
+W      w          wc Q  Q a   c              w                 W
+W         Q             a      w                         c     W
+W      a   Q      w   w        c                Q     QQ       W
+W c   w Q cw         Q     wQ   c       w          a  Q      w W
+WQ                               Q    Q     c          w       W
+W              c        w         w    Q      w           Q w  W
+W                    Q       w         c   a   Q cQ    w       W
+W        w  cQw    c         c       Q             Q  Q        W
+W               c                Q                w c      QQ  W
+W w          w  Q           w        a           aw            W
+W           cQ c  cww            a                 a  w    w   W
+W    c     w   Q    w c     w      w       a c       Q Q c   Q W
+W Q        a     c  c  Q                      c   c       Q    W
+W    w            c                 Q     w                    W
+W  a c           Q   c    c  c c           w   aw     Q        W
+W             Q    c        Q       wwwww              c       W
+W                       Q           wPXww     Qw    a          W
+W  wc  w        w Q          QwQ    wwww                   Q   W
+W  Q       cw                                      aw         QW
+W  Q     Q   w             a             a                  c  W
+W    Q        Q        c           w    Q         Q          Q W
+W Q       c       ww    Q      w             Q Qc       Q      W
+W      a              c     w    Q         w         c  Q Q    W
+W         w                            a     cc                W
+W             Q w  w    w      w                    c       c  W
+W   w  Q                   c            c           c          W
+Ww             Q               a                               W
+W               Q        Q                     c       c       W
+Ww             Q a   w         w                     ca        W
+W c w         w          c Q      Q  c       c         ww w    W
+W       wc        w        Q   w              QQ  w            W
+W             Qw    Q          w   w   a w         c           W
+W  wc a                      Q                   w  w   w  c   W
+W     Q                c                wc     w  w       c    W
+W       Q    w    Q  w            c          w           Q     W
+W                w    Q Q     c          w   w     c Q      c  W
+W                 Qw    Q     Q           w Q c                W
+W  c        w          Q     c      Q  w    Q   c  w c  Q      W
+W  w                   Q                w  Q                w  W
+W        wQ a        w    c   Q         w         Q wc     c   W
+W                              cQ      Q  c   c    c   c       W
+WQ c       Q           Q        w   a           Q c            W
+W  Qw     cQ        a    w Q           a  c   w     Q          W
+W                 w                                c        Q  W
+W     c                                   c      Q   w      c  W
+W  w         c           w      w                           w wW
+W     ww       c   c   QQ     w           a     Q         cc  wW
+W                  Q  w       w   Q   w  c      w              W
+W                   w            Q w    Q          Q        c  W
+W                   w   w           w Q     QQ             w   W
+W       w                c              c         a  wQ  Q cQ  W
+W                      Q   Q w                   Q             W
+W w             c    c w                    Q                  W
+W        w           Q                   w                     W
+Wc              c           w         ca          a            W
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+[/map]
+[/cave]
+
+[/game]
+[/BDCFF]

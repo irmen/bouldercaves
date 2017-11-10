@@ -1,0 +1,61 @@
+; written by Bouldercaves.Bdcff by Irmen de Jong
+; last modified 2017-11-06
+
+[BDCFF]
+[game]
+Name=playtest caveset
+Description=playtest caveset
+Author=Irmen de Jong
+WWW=
+Date=2017-11-06
+Charset=Original
+Fontset=Original
+Levels=1
+Caves=1
+
+[cave]
+Name=A: test
+Description=A test cave.
+Intermission=false
+FrameTime=150
+CaveDelay=8
+CaveTime=200
+DiamondsRequired=10
+DiamondValue=0 0
+AmoebaTime=999
+AmoebaThreshold=0.227300
+MagicWallTime=999
+SlimePermeability=1.000
+BorderProperties.wraparound=false
+BorderProperties.lineshift=true
+Size=40 22
+Colors=Black Black Orange Gray1 White Green Blue
+
+[map]
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+W......................................W
+W.....rrrrrrrrrrrrrrrrrrrrrrrrrrrr.....W
+W.....rrrrrrrrrrrrrrrrrrrrrrrrrrrr.....W
+W.....rrrrrrrrrrrrrrrrrrrrrrrrrrrr.....W
+W.....rrrrrrrrrrrrrrrrrrrrrrrrrrrr.....W
+W.....rrrrrrrrrrrrrrrrrrrrrrrrrrrr.....W
+W.....rrrrrrrrrrrrrrrrrrrrrrrrrrrrr....W
+W......................................W
+W.....                            .....W
+W.....                            .....W
+W.....                            .....W
+W.....                            .....W
+W.....                            .....W
+W.....                            .....W
+W.....      P X                   .....W
+W.....                            .....W
+W.....                            .....W
+W.....      ddddddddddddddd       .....W
+W......................................W
+W......................................W
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+[/map]
+[/cave]
+
+[/game]
+[/BDCFF]

@@ -1,0 +1,59 @@
+; written by Bouldercaves.Bdcff by Irmen de Jong
+; last modified 2017-09-25
+
+[BDCFF]
+[game]
+Name=playtest caveset
+Description=playtest caveset
+Author=Irmen de Jong
+WWW=
+Date=2017-09-23
+Charset=Original
+Fontset=Original
+Levels=1
+Caves=1
+
+[cave]
+Name=Amoebaslimes
+Description=Testing amoeba color
+Intermission=false
+FrameTime=150
+CaveDelay=8
+CaveTime=100
+DiamondsRequired=0
+DiamondValue=0 0
+AmoebaTime=1
+AmoebaThreshold=0.227300
+MagicWallTime=1
+SlimePermeability=0.100
+Size=40 22
+Colors=Black Black Orange Gray1 White #a1ff33 #db80ff
+
+[map]
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+W......................................W
+W...........................ccccc......W
+W...........................QQQQQ......W
+W............rrr............rrrrr......W
+W...P.H.....rrarr...........ddddd......W
+W...........raaarr..........sssss......W
+W...........raaaar..........     ......W
+W...........raaaar..........sssss......W
+W...........raaaar..........     ......W
+W...........rraarr..........sssss......W
+W............rrrr...........     ......W
+W...........................sssss......W
+W...........................     ......W
+W...........................sssss......W
+W...........................     ......W
+W...........................sssss......W
+W...........................     ......W
+W...........................     ......W
+W...........................c   Q......W
+W......................................W
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+[/map]
+[/cave]
+
+[/game]
+[/BDCFF]
