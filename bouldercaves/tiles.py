@@ -157,6 +157,7 @@ def load_sprites(c64colors=False, colors: Palette=None, scale: float=1.0) -> Seq
             if scale != 1:
                 ci = ci.resize((int(16 * scale), int(16 * scale)), scaling_method)
             out = io.BytesIO()
+            ci = ci.convert(mode="P")
             ci.save(out, "png", compress_level=0)
             sprite_src_images.append(out.getvalue())
             tile_num += 1

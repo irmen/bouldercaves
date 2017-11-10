@@ -717,6 +717,7 @@ class GameState:
             if not cell.falling:
                 self.fall_sound(cell)
                 cell.falling = True
+                self.update_falling(cell)
         elif cellbelow.isslime():
             cell.falling = True
         elif cellbelow.isrounded():
@@ -729,9 +730,8 @@ class GameState:
         # let the object fall down, explode stuff if explodable!
         cellbelow = self.get(cell, Direction.DOWN)
         if cellbelow.isempty():
+            # cell below is empty, move down and continue falling
             cell = self.move(cell, Direction.DOWN)
-            if not self.get(cell, Direction.DOWN).isempty():
-                self.fall_sound(cell)  # play a sound as soon as we hit something.
         elif cellbelow.obj is objects.VOODOO and cell.obj is objects.DIAMOND:
             self.clear_cell(cell)
             self.collect_diamond()  # voodoo doll catches falling diamond
@@ -742,11 +742,14 @@ class GameState:
         elif cellbelow.isslime():
             self.do_slime(cell)
         elif cellbelow.isrounded() and self.get(cell, Direction.LEFT).isempty() and self.get(cell, Direction.LEFTDOWN).isempty():
+            self.fall_sound(cell)
             self.move(cell, Direction.LEFT)
         elif cellbelow.isrounded() and self.get(cell, Direction.RIGHT).isempty() and self.get(cell, Direction.RIGHTDOWN).isempty():
+            self.fall_sound(cell)
             self.move(cell, Direction.RIGHT)
         else:
             cell.falling = False  # falling was blocked by something
+            self.fall_sound(cell)
 
     def update_firefly(self, cell: Cell) -> None:
         # if it hits Rockford or Amoeba it explodes
