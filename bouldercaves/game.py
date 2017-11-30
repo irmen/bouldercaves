@@ -22,7 +22,7 @@ from .gamelogic import GameState, Direction, GameStatus, HighScores
 from .caves import colorpalette, Palette
 from . import audio, synthsamples, tiles, objects, bdcff
 
-__version__ = "4.2"
+__version__ = "4.3"
 
 
 class BoulderWindow(tkinter.Tk):

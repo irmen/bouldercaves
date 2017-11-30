@@ -251,7 +251,9 @@ class GameOver(audio.Sample, RealtimeSynthesizedSample):
 class WalkDirt(audio.Sample):
     def __init__(self) -> None:
         super().__init__("walk_dirt", pcmdata=b"")
-        osc = WhiteNoise(0x8500, amplitude=0.3, samplerate=audio.norm_samplerate)
+        # XXX generating this sample with freq above ~0x5600 is broken (endless loop)!?!?
+        # osc = WhiteNoise(0x8500, amplitude=0.3, samplerate=audio.norm_samplerate)
+        osc = WhiteNoise(0x5600, amplitude=0.3, samplerate=audio.norm_samplerate)
         filtered = EnvelopeFilter(osc, 0.034, 0.006, 0.0, 0.5, 0.008, stop_at_end=True)
         self.append(sample_from_osc(filtered.generator()))
 
