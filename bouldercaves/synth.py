@@ -772,10 +772,11 @@ class WhiteNoise(Oscillator):
         self.amplitude = amplitude
         self.bias = bias
         self.frequency = frequency
-        self.frequency = frequency
 
     def generator(self):
         cycles = int(self._samplerate / self.frequency)
+        if cycles < 1:
+            raise ValueError("whitenoise frequency cannot be bigger than the sample rate")
         # optimizations:
         amplitude = self.amplitude
         bias = self.bias
@@ -1066,91 +1067,3 @@ class FastPointy(Oscillator):
             else:
                 yield vv*vv*amplitude+bias
             t += increment
-
-
-def check_waveforms():
-    # check the wavesynth and generators
-    ws = WaveSynth(samplerate=1000)
-    scale = 2 ** (ws.samplewidth * 8 - 1) - 1
-    s = ws.sine(440, 1)
-    sgen = ws.sine_gen(440)
-    s2 = list(itertools.islice(sgen, 0, 1000))
-    assert list(s.get_frame_array()) == s2
-    s = ws.square(440, 1)
-    sgen = ws.square_gen(440)
-    s2 = list(itertools.islice(sgen, 0, 1000))
-    assert list(s.get_frame_array()) == s2
-    s = ws.square_h(440, 1)
-    sgen = ws.square_h_gen(440)
-    s2 = list(itertools.islice(sgen, 0, 1000))
-    assert list(s.get_frame_array()) == s2
-    s = ws.triangle(440, 1)
-    sgen = ws.triangle_gen(440)
-    s2 = list(itertools.islice(sgen, 0, 1000))
-    assert list(s.get_frame_array()) == s2
-    s = ws.sawtooth(440, 1)
-    sgen = ws.sawtooth_gen(440)
-    s2 = list(itertools.islice(sgen, 0, 1000))
-    assert list(s.get_frame_array()) == s2
-    s = ws.sawtooth_h(440, 1)
-    sgen = ws.sawtooth_h_gen(440)
-    s2 = list(itertools.islice(sgen, 0, 1000))
-    assert list(s.get_frame_array()) == s2
-    s = ws.pulse(440, 1)
-    sgen = ws.pulse_gen(440)
-    s2 = list(itertools.islice(sgen, 0, 1000))
-    assert list(s.get_frame_array()) == s2
-    s = ws.harmonics(440, 1, [(n, 1/n) for n in range(1, 8)])
-    sgen = ws.harmonics_gen(440, [(n, 1/n) for n in range(1, 8)])
-    s2 = list(itertools.islice(sgen, 0, 1000))
-    assert list(s.get_frame_array()) == s2
-    s = ws.white_noise(440, 1)
-    sgen = ws.white_noise_gen(440)
-    s2 = list(itertools.islice(sgen, 0, 1000))
-    assert len(s) == len(s2) == 1000
-    s = ws.semicircle(440, 1)
-    sgen = ws.semicircle_gen(440)
-    s2 = list(itertools.islice(sgen, 0, 1000))
-    assert len(s) == len(s2) == 1000
-
-
-def plot_waveforms():
-    import matplotlib.pyplot as plot
-    ws = WaveSynth(samplerate=80, samplewidth=2)
-    ws2 = WaveSynth(samplerate=1000, samplewidth=2)
-    ncols = 4
-    nrows = 3
-    freq = 2.0
-    dur = 1.0
-    harmonics = [(n, 1 / n) for n in range(3, 5 * 2, 2)]
-    fm = FastSine(1, amplitude=0, bias=0, samplerate=ws.samplerate)
-    waveforms = [
-        ('sine', ws.sine(freq, dur).get_frame_array()),
-        ('square', ws.square(freq, dur).get_frame_array()),
-        ('square_h', ws.square_h(freq, dur, num_harmonics=5).get_frame_array()),
-        ('triangle', ws.triangle(freq, dur).get_frame_array()),
-        ('sawtooth', ws.sawtooth(freq, dur).get_frame_array()),
-        ('sawtooth_h', ws.sawtooth_h(freq, dur, num_harmonics=5).get_frame_array()),
-        ('pulse', ws.pulse(freq, dur).get_frame_array()),
-        ('harmonics', ws.harmonics(freq, dur, harmonics=harmonics).get_frame_array()),
-        ('white_noise', ws2.white_noise(50.0, dur).get_frame_array()),
-        ('linear', list(itertools.islice(Linear(20, 1, max_value=100, samplerate=100), 100))),
-        ('W2-pointy', ws.pointy(freq, dur, fm_lfo=fm).get_frame_array()),
-        ('W3-semicircle', ws.semicircle(freq, dur, fm_lfo=fm).get_frame_array())
-    ]
-    plot.figure(1, figsize=(16,10))
-    plot.suptitle("waveforms (2 cycles)")
-    for i, (waveformname, values) in enumerate(waveforms, start=1):
-        ax = plot.subplot(nrows, ncols, i)
-        ax.set_yticklabels([])
-        ax.set_xticklabels([])
-        plot.title(waveformname)
-        plot.grid(True)
-        plot.plot(values)
-    plot.subplots_adjust(hspace=0.5, wspace=0.5, top=0.90, bottom=0.1, left=0.05, right=0.95)
-    plot.show()
-
-
-if __name__ == "__main__":
-    check_waveforms()
-    plot_waveforms()

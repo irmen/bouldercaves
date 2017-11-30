@@ -248,7 +248,7 @@ class GameState:
                     '#': objects.BOULDER,
                     'f': objects.ALTFIREFLY
                 }[c]
-                self.draw_single(obj, 2 + x, 1 + y)
+                self.draw_single(obj, 3 + x, 1 + y)
 
         self.draw_line(objects.LAVA, 4, self.height - 3, self.width - 8, Direction.RIGHT)
         self.draw_line(objects.DIRT, 3, self.height - 2, self.width - 6, Direction.RIGHT)
