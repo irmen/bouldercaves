@@ -722,8 +722,10 @@ class GameState:
             cell.falling = True
         elif cellbelow.isrounded():
             if self.get(cell, Direction.LEFT).isempty() and self.get(cell, Direction.LEFTDOWN).isempty():
+                self.fall_sound(cell)
                 self.move(cell, Direction.LEFT).falling = True
             elif self.get(cell, Direction.RIGHT).isempty() and self.get(cell, Direction.RIGHTDOWN).isempty():
+                self.fall_sound(cell)
                 self.move(cell, Direction.RIGHT).falling = True
 
     def update_falling(self, cell: Cell) -> None:
