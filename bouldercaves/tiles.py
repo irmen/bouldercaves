@@ -118,11 +118,11 @@ def text2tiles(text: str) -> Sequence[int]:
     return [num_sprites + ord(c) for c in text]
 
 
-def load_sprites(c64colors=False, colors: Palette=None, scale: float=1.0) -> Sequence[bytes]:
-    tiles_filename = "c64_gfx.png" if c64colors else "boulder_rush.png"
+def load_sprites(c64colorpalette: Palette=None, scale: float=1.0) -> Sequence[bytes]:
+    tiles_filename = "c64_gfx.png" if c64colorpalette else "boulder_rush.png"
     sprite_src_images = []
-    with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/" + tiles_filename))) as tile_image:
-        if c64colors:
+    with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/" + tiles_filename) or b"")) as tile_image:
+        if c64colorpalette:
             tile_image = tile_image.copy().convert('P', 0)
             palettevalues = tile_image.getpalette()
             assert 768 - palettevalues.count(0) <= 16, "must be an image with <= 16 colors"
@@ -133,12 +133,13 @@ def load_sprites(c64colors=False, colors: Palette=None, scale: float=1.0) -> Seq
             pc4 = palette.index((0, 255, 0))        # green, amoeba color
             pc5 = palette.index((0, 0, 255))        # blue, slime color
             pc_bg = palette.index((0, 0, 0))        # black, background color
-            palette[pc1] = (colors.rgb_fg1 >> 16, (colors.rgb_fg1 & 0xff00) >> 8, colors.rgb_fg1 & 0xff)
-            palette[pc2] = (colors.rgb_fg2 >> 16, (colors.rgb_fg2 & 0xff00) >> 8, colors.rgb_fg2 & 0xff)
-            palette[pc3] = (colors.rgb_fg3 >> 16, (colors.rgb_fg3 & 0xff00) >> 8, colors.rgb_fg3 & 0xff)
-            palette[pc4] = (colors.rgb_amoeba >> 16, (colors.rgb_amoeba & 0xff00) >> 8, colors.rgb_amoeba & 0xff)
-            palette[pc5] = (colors.rgb_slime >> 16, (colors.rgb_slime & 0xff00) >> 8, colors.rgb_slime & 0xff)
-            palette[pc_bg] = (colors.rgb_screen >> 16, (colors.rgb_screen & 0xff00) >> 8, colors.rgb_screen & 0xff)
+            assert c64colorpalette
+            palette[pc1] = (c64colorpalette.rgb_fg1 >> 16, (c64colorpalette.rgb_fg1 & 0xff00) >> 8, c64colorpalette.rgb_fg1 & 0xff)
+            palette[pc2] = (c64colorpalette.rgb_fg2 >> 16, (c64colorpalette.rgb_fg2 & 0xff00) >> 8, c64colorpalette.rgb_fg2 & 0xff)
+            palette[pc3] = (c64colorpalette.rgb_fg3 >> 16, (c64colorpalette.rgb_fg3 & 0xff00) >> 8, c64colorpalette.rgb_fg3 & 0xff)
+            palette[pc4] = (c64colorpalette.rgb_amoeba >> 16, (c64colorpalette.rgb_amoeba & 0xff00) >> 8, c64colorpalette.rgb_amoeba & 0xff)
+            palette[pc5] = (c64colorpalette.rgb_slime >> 16, (c64colorpalette.rgb_slime & 0xff00) >> 8, c64colorpalette.rgb_slime & 0xff)
+            palette[pc_bg] = (c64colorpalette.rgb_screen >> 16, (c64colorpalette.rgb_screen & 0xff00) >> 8, c64colorpalette.rgb_screen & 0xff)
             palettevalues = []
             for rgb in palette:
                 palettevalues.extend(rgb)
@@ -171,7 +172,7 @@ def load_font(scale: float=1.0) -> Sequence[bytes]:
     scaling_method = Image.NEAREST
     if hasattr(Image, "HAMMING"):
         scaling_method = Image.HAMMING
-    with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/font.png"))) as image:
+    with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/font.png") or b"")) as image:
         for c in range(0, 128):
             row, col = divmod(c, image.width // 8)       # the font image contains 8x8 pixel tiles
             if row * 8 > image.height:

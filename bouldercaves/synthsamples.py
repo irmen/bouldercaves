@@ -83,7 +83,7 @@ class TitleMusic(audio.Sample):
     def __init__(self) -> None:
         super().__init__("music", pcmdata=b"")
         # set the duration to a quite precise approximation of the length of the synthesized song:
-        self.duration = len(self.title_music) * sum(self.adsr_times) + 0.005
+        self.duration = sum(self.adsr_times) * len(self.title_music) + 0.005
 
     def chunked_data(self, chunksize: int, repeat: bool=False,
                      stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:

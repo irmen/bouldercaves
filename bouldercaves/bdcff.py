@@ -206,7 +206,7 @@ class BdcffParser:
         self.bdcff_version = ""
         self.game_properties = {}   # type: Dict[str, Any]
         self.caves = []     # type: List[BdcffCave]
-        self.current_cave = None    # type: BdcffCave
+        self.current_cave = None    # type: Optional[BdcffCave]
         self.num_levels = 1
         self.num_caves = 0
         self.charset = self.fontset = "Original"
@@ -339,11 +339,14 @@ class BdcffParser:
             self.game_properties[prop.lower()] = value
         elif self.state == self.SECT_CAVE:
             prop, value = line.split("=")
+            assert self.current_cave
             self.current_cave.properties[prop.lower()] = value
         elif self.state == self.SECT_MAP:
+            assert self.current_cave
             self.current_cave.map.maplines.append(line)
         elif self.state == self.SECT_OBJECTS:
             instruction, arguments = line.split('=')
+            assert self.current_cave
             self.current_cave.objects.append((instruction, arguments))
         elif self.state in (self.SECT_HIGHSCORE, self.SECT_HIGHSCOREG, self.SECT_REPLAY):
             return

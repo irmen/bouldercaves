@@ -210,7 +210,7 @@ class GameState:
         }
         self.timeremaining = datetime.timedelta(0)
         self.timelimit = None   # type: Optional[datetime.datetime]
-        self.rockford_cell = self.inbox_cell = self.last_focus_cell = None   # type: Cell
+        self.rockford_cell = self.inbox_cell = self.last_focus_cell = None   # type: Optional[Cell]
         self.rockford_found_frame = -1
         self.movement = MovementInfo()
         self.flash = 0
@@ -485,7 +485,7 @@ class GameState:
             return Cell(objects.STEEL, cell.x, cell.y)   # treat upper/lower edge as steel wall
         return self.cave[cell_index]
 
-    def move(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> Cell:
+    def move(self, cell: Cell, direction: Direction=Direction.NOWHERE) -> Optional[Cell]:
         # move the object in the cell to the given relative direction
         if direction == Direction.NOWHERE:
             return None  # no movement...
@@ -507,7 +507,9 @@ class GameState:
                 self.move(pushedcell, direction)
                 self.fall_sound(targetcell, pushing=True)
                 if not self.movement.grab:
-                    cell = self.move(cell, direction)
+                    newcell = self.move(cell, direction)
+                    if newcell:
+                        cell = newcell
         self.movement.pushing = True
         return cell
 
@@ -610,15 +612,15 @@ class GameState:
         # called at end of every game logic update
         if self.amoeba["dead"] is None:
             if self.amoeba["enclosed"] and not self.amoeba["dormant"]:
-                self.amoeba["dead"] = objects.DIAMOND
+                self.amoeba["dead"] = objects.DIAMOND       # type: ignore
                 audio.silence_audio("amoeba")
                 audio.play_sample("diamond1")
-            elif self.amoeba["size"] > self.amoeba["max"]:
-                self.amoeba["dead"] = objects.BOULDER
+            elif self.amoeba["size"] > self.amoeba["max"]:  # type: ignore
+                self.amoeba["dead"] = objects.BOULDER       # type: ignore
                 audio.silence_audio("amoeba")
                 audio.play_sample("boulder")
-            elif self.amoeba["slow"] > 0:
-                self.amoeba["slow"] -= 1
+            elif self.amoeba["slow"] > 0:                   # type: ignore
+                self.amoeba["slow"] -= 1                    # type: ignore
         if self.magicwall["active"]:
             self.magicwall["time"] -= 1
             still_magic = self.magicwall["time"] > 0
@@ -650,7 +652,7 @@ class GameState:
             # after 10 seconds with dead rockford we reload the current level
             self.life_lost()
 
-    def focus_cell(self) -> Cell:
+    def focus_cell(self) -> Optional[Cell]:
         focus_cell = self.rockford_cell or self.inbox_cell or self.last_focus_cell
         if focus_cell:
             self.last_focus_cell = focus_cell
@@ -687,6 +689,7 @@ class GameState:
             popuptxt = "Congratulations, you finished the game!\n\nScore: {:d}".format(self.score)
         else:
             popuptxt = "??invalid status??"
+        score_pos = None
         if self.cheat_used or self.start_level_number > 1:
             popuptxt += "\n\nYou cheated, so the score is not recorded."
             score_pos = 0
@@ -695,9 +698,9 @@ class GameState:
             if score_pos:
                 popuptxt += "\n\nYou got a new #{:d} high score!".format(score_pos)
 
-        def ask_highscore_name(score_pos, score):
-            if score_pos:
-                name = self.game.ask_highscore_name(score_pos, score)
+        def ask_highscore_name(position: Optional[int], score):
+            if position:
+                name = self.game.ask_highscore_name(position, score)
                 self.highscores.add(name, score)
         self.game.popup(popuptxt, on_close=lambda: ask_highscore_name(score_pos, self.score))
 
@@ -723,17 +726,21 @@ class GameState:
         elif cellbelow.isrounded():
             if self.get(cell, Direction.LEFT).isempty() and self.get(cell, Direction.LEFTDOWN).isempty():
                 self.fall_sound(cell)
-                self.move(cell, Direction.LEFT).falling = True
+                new_cell = self.move(cell, Direction.LEFT)
+                if new_cell:
+                    new_cell.falling = True
             elif self.get(cell, Direction.RIGHT).isempty() and self.get(cell, Direction.RIGHTDOWN).isempty():
                 self.fall_sound(cell)
-                self.move(cell, Direction.RIGHT).falling = True
+                new_cell = self.move(cell, Direction.RIGHT)
+                if new_cell:
+                    new_cell.falling = True
 
     def update_falling(self, cell: Cell) -> None:
         # let the object fall down, explode stuff if explodable!
         cellbelow = self.get(cell, Direction.DOWN)
         if cellbelow.isempty():
             # cell below is empty, move down and continue falling
-            cell = self.move(cell, Direction.DOWN)
+            self.move(cell, Direction.DOWN)
         elif cellbelow.obj is objects.VOODOO and cell.obj is objects.DIAMOND:
             self.clear_cell(cell)
             self.collect_diamond()  # voodoo doll catches falling diamond
@@ -769,7 +776,9 @@ class GameState:
             self.explode(cell)
             self.death_by_voodoo = True
         elif self.get(cell, newdir).isempty():
-            self.move(cell, newdir).direction = newdir
+            new_cell = self.move(cell, newdir)
+            if new_cell:
+                new_cell.direction = newdir
         elif self.get(cell, cell.direction).isempty():
             self.move(cell, cell.direction)
         else:
@@ -789,7 +798,9 @@ class GameState:
             self.explode(cell)
             self.death_by_voodoo = True
         elif self.get(cell, newdir).isempty():
-            self.move(cell, newdir).direction = newdir
+            new_cell = self.move(cell, newdir)
+            if new_cell:
+                new_cell.direction = newdir
         elif self.get(cell, cell.direction).isempty():
             self.move(cell, cell.direction)
         else:
@@ -820,9 +831,9 @@ class GameState:
 
     def update_amoeba(self, cell: Cell) -> None:
         if self.amoeba["dead"] is not None:
-            self.draw_single_cell(cell, self.amoeba["dead"])
+            self.draw_single_cell(cell, self.amoeba["dead"])     # type: ignore
         else:
-            self.amoeba["size"] += 1
+            self.amoeba["size"] += 1    # type: ignore
             if self.get(cell, Direction.UP).isempty() or self.get(cell, Direction.DOWN).isempty() \
                     or self.get(cell, Direction.RIGHT).isempty() or self.get(cell, Direction.LEFT).isempty() \
                     or self.get(cell, Direction.UP).isdirt() or self.get(cell, Direction.DOWN).isdirt() \
@@ -843,6 +854,7 @@ class GameState:
         self.rockford_found_frame = self.frame
         if self.level_won:
             return
+        new_cell = cell     # type: Optional[Cell]
         if self.timeremaining.seconds <= 0 or self.death_by_voodoo:
             self.explode(cell)
         elif self.movement.moving:
@@ -858,26 +870,26 @@ class GameState:
                     self.push(cell, self.movement.direction)
             elif targetcell.isempty():
                 audio.play_sample("walk_empty")
-                cell = self.move(cell, self.movement.direction)
+                new_cell = self.move(cell, self.movement.direction)
             elif targetcell.isdirt():
                 audio.play_sample("walk_dirt")
-                cell = self.move(cell, self.movement.direction)
+                new_cell = self.move(cell, self.movement.direction)
             elif targetcell.isboulder() and self.movement.direction in (Direction.LEFT, Direction.RIGHT):
-                cell = self.push(cell, self.movement.direction)
+                new_cell = self.push(cell, self.movement.direction)
             elif targetcell.isdiamond():
                 self.collect_diamond()
-                cell = self.move(cell, self.movement.direction)
+                new_cell = self.move(cell, self.movement.direction)
             elif targetcell.isoutbox():
-                cell = self.move(cell, self.movement.direction)
+                new_cell = self.move(cell, self.movement.direction)
                 self.level_won = True   # exit found!
                 audio.silence_audio()
                 audio.play_sample("finished")
                 self.movement.stop_all()
             self.movement.move_done()
-        if cell is not self.rockford_cell:
+        if new_cell and new_cell is not self.rockford_cell:
             # rockford has moved, tweak his walk animation so it keeps going and is not reset to the first anim frame
-            cell.anim_start_gfx_frame = 0
-        self.rockford_cell = cell
+            new_cell.anim_start_gfx_frame = 0
+        self.rockford_cell = new_cell
 
     def update_expandingwall(self, cell: Cell) -> None:
         # cell is an expanding wall (horizontally or vertically)
@@ -996,6 +1008,7 @@ class GameState:
                     self.bonusbg_frame = self.frame + self.fps * 6   # sparkle for 6 seconds
 
     def add_extra_time(self, seconds: float) -> None:
+        assert self.timelimit
         self.timelimit += datetime.timedelta(seconds=seconds)
 
     def end_rockfordbirth(self, cell: Cell) -> None:
@@ -1044,7 +1057,7 @@ class GameState:
 
 class MovementInfo:
     def __init__(self) -> None:
-        self.direction = Direction.NOWHERE
+        self._direction = Direction.NOWHERE
         self.lastXdir = Direction.NOWHERE
         self.up = self.down = self.left = self.right = False
         self.grab = False           # is rockford grabbing something?
@@ -1052,23 +1065,31 @@ class MovementInfo:
 
     @property
     def moving(self) -> bool:
-        return bool(self.direction != Direction.NOWHERE)
+        return bool(self._direction != Direction.NOWHERE)
+
+    @property
+    def direction(self) -> Direction:
+        return self._direction
+
+    @direction.setter
+    def direction(self, value: Direction) -> None:
+        self._direction = value
 
     def start_up(self) -> None:
-        self.direction = Direction.UP
+        self._direction = Direction.UP
         self.up = True
 
     def start_down(self) -> None:
-        self.direction = Direction.DOWN
+        self._direction = Direction.DOWN
         self.down = True
 
     def start_left(self) -> None:
-        self.direction = Direction.LEFT
+        self._direction = Direction.LEFT
         self.left = True
         self.lastXdir = Direction.LEFT
 
     def start_right(self) -> None:
-        self.direction = Direction.RIGHT
+        self._direction = Direction.RIGHT
         self.right = True
         self.lastXdir = Direction.RIGHT
 
@@ -1077,26 +1098,26 @@ class MovementInfo:
 
     def stop_all(self) -> None:
         self.grab = self.up = self.down = self.left = self.right = False
-        self.direction = None
+        self._direction = Direction.NOWHERE
 
     def stop_grab(self) -> None:
         self.grab = False
 
     def stop_up(self) -> None:
         self.up = False
-        self.direction = self.where() if self.direction == Direction.UP else self.direction
+        self._direction = self.where() if self._direction == Direction.UP else self._direction
 
     def stop_down(self) -> None:
         self.down = False
-        self.direction = self.where() if self.direction == Direction.DOWN else self.direction
+        self._direction = self.where() if self._direction == Direction.DOWN else self._direction
 
     def stop_left(self) -> None:
         self.left = False
-        self.direction = self.where() if self.direction == Direction.LEFT else self.direction
+        self._direction = self.where() if self._direction == Direction.LEFT else self._direction
 
     def stop_right(self) -> None:
         self.right = False
-        self.direction = self.where() if self.direction == Direction.RIGHT else self.direction
+        self._direction = self.where() if self._direction == Direction.RIGHT else self._direction
 
     def where(self) -> Direction:
         if self.up:

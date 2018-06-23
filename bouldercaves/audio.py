@@ -81,7 +81,7 @@ class Sample:
         if filename:
             inputfile = open(filename, "rb")
         else:
-            inputfile = io.BytesIO(filedata)
+            inputfile = io.BytesIO(filedata or b"")
         try:
             with self.convertformat(inputfile) as inputfile:
                 with wave.open(inputfile, "r") as wavesample:

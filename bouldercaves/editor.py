@@ -13,7 +13,7 @@ import random
 import datetime
 import tkinter
 import tkinter.messagebox
-import tkinter.simpledialog
+from tkinter.simpledialog import Dialog
 import tkinter.ttk
 import tkinter.filedialog
 import tkinter.colorchooser
@@ -316,7 +316,7 @@ class EditorWindow(tkinter.Tk):
         self.canvas.xview_moveto(0)
         self.canvas.yview_moveto(0)
         self.populate_imageselector()
-        self.randomize_initial_values = None   # type: Tuple
+        self.randomize_initial_values = None    # type: Optional[Tuple]
 
     def _use_active_image(self):
         return self.playfield_columns * self.playfield_rows <= 4096
@@ -438,9 +438,9 @@ class EditorWindow(tkinter.Tk):
         return True
 
     def create_tile_images(self, colors: Palette) -> None:
-        source_images = tiles.load_sprites(self.c64colors, colors, scale=self.canvas_scale)
+        source_images = tiles.load_sprites(colors if self.c64colors else None, scale=self.canvas_scale)
         self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
-        source_images = tiles.load_sprites(self.c64colors, colors, scale=1)
+        source_images = tiles.load_sprites(colors if self.c64colors else None, scale=1)
         self.tile_images_small = [tkinter.PhotoImage(data=image) for image in source_images]
 
     def create_canvas_playfield(self, width: int, height: int) -> None:
@@ -710,8 +710,8 @@ class EditorWindow(tkinter.Tk):
         self.set_cave_properties(Cave(0, "Test.", "A test cave.", self.visible_columns, self.visible_rows))
 
 
-class RandomizeDialog(tkinter.simpledialog.Dialog):
-    def __init__(self, parent, title: str, editor: EditorWindow, initial_values: Tuple) -> None:
+class RandomizeDialog(Dialog):
+    def __init__(self, parent, title: str, editor: EditorWindow, initial_values: Optional[Tuple]) -> None:
         self.editor = editor
         self.initial_values = initial_values
         super().__init__(parent=parent, title=title)
@@ -784,11 +784,11 @@ class RandomizeDialog(tkinter.simpledialog.Dialog):
         self.editor.do_random_fill(vs, (v1, v2, v3, v4), (o1, o2, o3, o4))
 
 
-class PaletteDialog(tkinter.simpledialog.Dialog):
+class PaletteDialog(Dialog):
     def __init__(self, parent, title: str, editor: EditorWindow, colors: Palette) -> None:
         self.editor = editor
         self.colors = colors
-        self.result = None  # type: Palette
+        self.result = Palette()
         self.palettergblabels = {}   # type: Dict[str, tkinter.Label]
         self.color_vars = {}   # type: Dict[str, tkinter.Variable]
         self.rgb_vars = {}   # type: Dict[str, tkinter.Variable]
@@ -835,7 +835,7 @@ class PaletteDialog(tkinter.simpledialog.Dialog):
         color = self.color_vars[colorname].get()
         if not color.startswith("#"):
             color = "#{:06x}".format(colorpalette[int(color)])
-        rgbcolor = tkinter.colorchooser.askcolor(title="Choose a RGB color", parent=self, initialcolor=color)
+        rgbcolor = tkinter.colorchooser.askcolor(title="Choose a RGB color", parent=self, initialcolor=color)   # type: ignore
         if rgbcolor[1] is not None:
             tkcolor = rgbcolor[1]
             fgtkcolor = "#{:06x}".format(0xffffff ^ int(tkcolor[1:], 16))
@@ -857,7 +857,7 @@ class PaletteDialog(tkinter.simpledialog.Dialog):
                        self.color_vars["border"].get())
 
 
-class CaveSelectionDialog(tkinter.simpledialog.Dialog):
+class CaveSelectionDialog(Dialog):
     def __init__(self, parent, cavenames: List[str], editor: EditorWindow) -> None:
         self.editor = editor
         self.cavenames = cavenames

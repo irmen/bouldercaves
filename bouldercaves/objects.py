@@ -8,7 +8,7 @@ License: GNU GPL 3.0, see LICENSE
 """
 
 from enum import Enum
-from typing import Callable
+from typing import Callable, Optional
 
 
 class GameObject:
@@ -33,6 +33,25 @@ class GameObject:
         if self.sframes:
             return self._tile + animframe % self.sframes
         return self._tile
+
+
+class RockfordGameObject(GameObject):
+    def __init__(self, name: str, rounded: bool, explodable: bool, consumable: bool,
+                 spritex: int, spritey: int, sframes: int=0, sfps: int=0,
+                 anim_end_callback: Callable=None) -> None:
+        super().__init__(name, rounded, explodable, consumable,
+                         spritex, spritey, sframes, sfps, anim_end_callback)
+        dummy = GameObject("dummy", False, False, False, 0, 0)
+        self.bomb = dummy
+        self.blink = dummy
+        self.tap = dummy
+        self.tapblink = dummy
+        self.left = dummy
+        self.right = dummy
+        self.stirring = dummy
+        self.rocketlauncher = dummy
+        self.pushleft = dummy
+        self.pushright = dummy
 
 
 class Direction(Enum):
@@ -109,7 +128,7 @@ STEELWALLBIRTH = g("STEELWALLBIRTH", False, False, False, 0, 3, sframes=4, sfps=
 CLOCKBIRTH = g("CLOCKBIRTH", False, False, False, 4, 3, sframes=4, sfps=10)
 # row 4
 ROCKFORDBIRTH = g("ROCKFORDBIRTH", False, False, False, 0, 4, sframes=4, sfps=10)
-ROCKFORD = g("ROCKFORD", False, True, True, 3, 4)  # standing still
+ROCKFORD = RockfordGameObject("ROCKFORD", False, True, True, 3, 4)  # standing still
 BOULDERBIRTH = g("BOULDERBIRTH", False, False, False, 4, 4, sframes=4, sfps=10)
 # row 5
 HEXPANDINGWALL = g("HEXPANDINGWALL", False, False, True, 0, 5)

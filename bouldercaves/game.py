@@ -14,15 +14,15 @@ import sys
 import math
 import tkinter
 import tkinter.messagebox
-import tkinter.simpledialog
+from tkinter import simpledialog
 import pkgutil
 import time
-from typing import Tuple, Sequence, List, Iterable, Callable
+from typing import Tuple, Sequence, List, Iterable, Callable, Optional
 from .gamelogic import GameState, Direction, GameStatus, HighScores
 from .caves import colorpalette, Palette
 from . import audio, synthsamples, tiles, objects, bdcff
 
-__version__ = "4.4"
+__version__ = "4.5"
 
 
 class BoulderWindow(tkinter.Tk):
@@ -66,8 +66,8 @@ class BoulderWindow(tkinter.Tk):
         else:
             self.tilesheet_score = tiles.Tilesheet(self.visible_columns, 2, self.visible_columns, 2)
             score_canvas_height = 32 * self.scalexy
-        self.popup_tiles_save = None   # type: Tuple[int, int, int, int, Sequence[Iterable[int]]]
-        self.on_popup_closed = None   # type: Callable
+        self.popup_tiles_save = None   # type: Optional[Tuple[int, int, int, int, Sequence[Iterable[int]]]]
+        self.on_popup_closed = None   # type: Optional[Callable]
         self.scrolling_into_view = False
         self.scorecanvas = tkinter.Canvas(self, width=self.visible_columns * 16 * self.scalexy,
                                           height=score_canvas_height, borderwidth=0, highlightthickness=0, background="black")
@@ -253,7 +253,7 @@ class BoulderWindow(tkinter.Tk):
 
         if self.gamestate.rockford_cell:
             # is rockford moving or pushing left/right?
-            rockford_sprite = objects.ROCKFORD
+            rockford_sprite = objects.ROCKFORD   # type: objects.GameObject
             animframe = 0
             if self.gamestate.movement.direction == Direction.LEFT or \
                     (self.gamestate.movement.direction in (Direction.UP, Direction.DOWN) and
@@ -301,13 +301,13 @@ class BoulderWindow(tkinter.Tk):
 
     def create_colored_tiles(self, colors: Palette) -> None:
         if self.c64colors:
-            source_images = tiles.load_sprites(self.c64colors, colors, scale=self.scalexy)
+            source_images = tiles.load_sprites(colors if self.c64colors else None, scale=self.scalexy)
             for i, image in enumerate(source_images):
                 self.tile_images[i] = tkinter.PhotoImage(data=image)
 
     def create_tile_images(self) -> None:
         initial_palette = Palette(2, 4, 13, 5, 6)
-        source_images = tiles.load_sprites(self.c64colors, initial_palette, scale=self.scalexy)
+        source_images = tiles.load_sprites(initial_palette if self.c64colors else None, scale=self.scalexy)
         self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
         source_images = tiles.load_font(self.scalexy if self.smallwindow else 2 * self.scalexy)
         self.tile_images.extend([tkinter.PhotoImage(data=image) for image in source_images])
@@ -397,8 +397,9 @@ class BoulderWindow(tkinter.Tk):
         if self.popup_frame < self.graphics_frame:
             self.gamestate.update(self.graphics_frame)
         self.gamestate.update_scorebar()
+        music_duration = audio.samples["music"].duration   # type: ignore
         if self.gamestate.game_status == GameStatus.WAITING and \
-                self.last_demo_or_highscore_frame + self.update_fps * max(15, audio.samples["music"].duration) < self.graphics_frame:
+                self.last_demo_or_highscore_frame + self.update_fps * max(15, music_duration) < self.graphics_frame:
             self.gamestate.tile_music_ended()
             self.last_demo_or_highscore_frame = self.graphics_frame
 
@@ -446,7 +447,7 @@ class BoulderWindow(tkinter.Tk):
             if output:
                 lines.append(output.rstrip())
             else:
-                lines.append(None)
+                lines.append("")
         if self.smallwindow:
             bchar = ""
             popupwidth = width + 4
@@ -512,10 +513,10 @@ class BoulderWindow(tkinter.Tk):
     def ask_highscore_name(self, score_pos: int, score: int) -> str:
         username = bdcff.get_system_username()[:HighScores.max_namelen]
         while True:
-            name = tkinter.simpledialog.askstring("Enter your name", "Enter your name for the high-score table!\n\n"
-                                                  "#{:d} score:  {:d}\n\n(max {:d} letters)"
-                                                  .format(score_pos, score, HighScores.max_namelen),
-                                                  initialvalue=username, parent=self) or ""
+            name = simpledialog.askstring("Enter your name", "Enter your name for the high-score table!\n\n"
+                                          "#{:d} score:  {:d}\n\n(max {:d} letters)"
+                                          .format(score_pos, score, HighScores.max_namelen),
+                                          initialvalue=username, parent=self) or ""
             name = name.strip()
             if 0 < len(name) <= HighScores.max_namelen:
                 return name
