@@ -561,6 +561,9 @@ class EditorWindow(tkinter.Tk):
         except ValueError as x:
             tkinter.messagebox.showerror("Error resizing cave", str(x), parent=self.bottomframe)
             return
+        self.reconfigure_scroll_area()
+
+    def reconfigure_scroll_area(self):
         w, h = tiles.tile2pixels(self.playfield_columns, self.playfield_rows)
         self.canvas.configure(scrollregion=(0, 0, w * self.canvas_scale, h * self.canvas_scale))
 
@@ -605,6 +608,7 @@ class EditorWindow(tkinter.Tk):
         self.playfield_rows = cave.height
         self.set_cave_properties(self.cave)
         self.c64_colors_switched(self.c64colors)  # make sure tiles are redrawn
+        self.reconfigure_scroll_area()
 
     def set_cave_properties(self, cave: Cave) -> None:
         self.cavename_var.set(cave.name)
