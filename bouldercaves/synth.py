@@ -21,6 +21,10 @@ __all__ = ["key_num", "key_freq", "note_freq", "octave_notes", "note_alias", "ma
            "ClipFilter", "AbsFilter", "NullFilter"]
 
 
+if sys.version_info < (3, 0):
+    raise SystemExit("the synth module requires Python 3.x")
+
+
 norm_samplerate = 44100
 norm_samplewidth = 2
 
@@ -424,8 +428,12 @@ class MixingFilter(Oscillator):
 
     def generator(self):
         sources = [iter(src) for src in self._sources]
+        source_values = itertools.zip_longest(*sources, fillvalue=0.0)
         while True:
-            yield sum([next(src) for src in sources])
+            try:
+                yield sum(next(source_values))
+            except StopIteration:
+                break
 
 
 class AmpModulationFilter(Oscillator):

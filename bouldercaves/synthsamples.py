@@ -9,8 +9,8 @@ import audioop
 import array
 import random
 import itertools
-import collections
-from typing import Callable, Generator, Iterator, Union
+import collections.abc
+from typing import Callable, Generator, Iterator
 from .synth import FastTriangle, WhiteNoise, Linear, Triangle, Sine, SquareH, EnvelopeFilter, AmpModulationFilter, MixingFilter
 from . import audio
 
@@ -23,7 +23,7 @@ class NoteFinished(Exception):
 
 
 def monochannel_from_osc(osc: Iterator[int], chunksize: int=0) -> bytes:
-    assert isinstance(osc, collections.Iterator), "you need to provide an iterator as osc instead of the filter itself"
+    assert isinstance(osc, collections.abc.Iterator), "you need to provide an iterator as osc instead of the filter itself"
     scale = 2 ** (audio.norm_samplewidth * 8 - 1) - 1
     sounddata = array.array('h')
     if chunksize:

@@ -37,9 +37,6 @@ class HighScores:
         self.name = cavesetname.lower().replace(' ', '_').replace('.', '_')
         self.load()
 
-    def __del__(self):
-        self.save()
-
     def __iter__(self):
         yield from self.scores
 
