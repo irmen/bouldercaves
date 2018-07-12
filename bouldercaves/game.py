@@ -533,7 +533,6 @@ def start(sargs: Sequence[str]=None) -> None:
     ap.add_argument("-s", "--size", type=int, help="graphics size (default=%(default)d)", default=3, choices=(1, 2, 3, 4, 5))
     ap.add_argument("-c", "--c64colors", help="use Commodore-64 colors", action="store_true")
     ap.add_argument("-a", "--authentic", help="use C-64 colors AND limited window size", action="store_true")
-    ap.add_argument("-n", "--nosound", help="don't use sound", action="store_true")
     ap.add_argument("-y", "--synth", help="use synthesized sounds instead of samples", action="store_true")
     ap.add_argument("-l", "--level", help="select start level (cave number). When using this, no highscores will be recorded.", type=int, default=1)
     ap.add_argument("--editor", help="run the cave editor instead of the game.", action="store_true")
@@ -546,32 +545,8 @@ def start(sargs: Sequence[str]=None) -> None:
         editor.start()
         raise SystemExit
 
-    if args.nosound:
-        args.synth = False
-    else:
-        # validate required libraries
-        audio_api = audio.best_api(dummy_enabled=True)
-        if isinstance(audio_api, audio.DummyAudio):
-            r = tkinter.Tk()
-            r.withdraw()
-            tkinter.messagebox.showerror("missing Python library",
-                                         "No suitable python audio library is available, try installing 'sounddevice'.")
-            raise SystemExit
-        if isinstance(audio_api, audio.Winsound):
-            r = tkinter.Tk()
-            r.withdraw()
-            if args.synth:
-                # winsound can't play streaming audio at all
-                tkinter.messagebox.showerror("inferior Python audio library detected",
-                                             "Winsound is used as python audio library. It can't play synthesized audio streams.\n\n"
-                                             "Try installing 'sounddevice' to hear properly mixed sounds (or use the sampled sounds)")
-                raise SystemExit
-            else:
-                tkinter.messagebox.showinfo("inferior Python audio library detected",
-                                            "Winsound is used as python audio library. It can'n play all sounds correctly.\n\n"
-                                            "Try installing 'sounddevice' to hear properly mixed sounds.")
-            r.destroy()
-
+    # validate required libraries
+    audio_api = audio.best_api()
     args.c64colors |= args.authentic
     if args.c64colors:
         print("Using the original Commodore-64 colors.")
@@ -662,11 +637,7 @@ def start(sargs: Sequence[str]=None) -> None:
             max_simul = samples[name][1]
             samples[name] = (sample, max_simul)    # type: ignore
 
-    if args.nosound:
-        print("No sound output selected.")
-        audio.init_audio(samples, dummy=True)
-    else:
-        audio.init_audio(samples)
+    audio.init_audio(samples)
     title = "Boulder Caves {version:s} {sound:s} {playtest:s} - by Irmen de Jong"\
         .format(version=__version__,
                 sound="[using synthesizer]" if args.synth else "",

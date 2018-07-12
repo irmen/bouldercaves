@@ -138,7 +138,3 @@ Alternatively:
    ``oggdec`` tool installed as well (usually available as part of the ``vorbis-tools`` package)
 1. type ``python3 startgame.py``  or just execute the python zip app ``*.pyz`` file if you
    downloaded that.  If ``python3`` doesn't work just try ``python`` instead. 
-
-You can skip installing the sound related libraries if you run the game with sounds disabled.
-This is a command line option.
-

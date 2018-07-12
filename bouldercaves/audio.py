@@ -3,7 +3,6 @@ Various audio output options. Here the specific audio library code is located.
 Supported audio output libraries:
 - pyaudio
 - sounddevice (both thread+blocking stream, and nonblocking callback stream variants)
-- winsound
 
 It can play multiple samples at the same time via real-time mixing, and you can
 loop samples as well without noticable overhead (great for continous effects or music)
@@ -42,7 +41,6 @@ __all__ = ["init_audio", "play_sample", "silence_audio", "shutdown_audio"]
 # stubs for optional audio library modules:
 sounddevice = None
 pyaudio = None
-winsound = None
 
 norm_samplerate = 44100
 norm_samplewidth = 2
@@ -50,7 +48,7 @@ norm_channels = 2
 norm_chunk_duration = 1 / 50     # seconds
 
 
-def best_api(dummy_enabled: bool=False):
+def best_api():
     try:
         return Sounddevice()
     except ImportError:
@@ -60,12 +58,7 @@ def best_api(dummy_enabled: bool=False):
             try:
                 return PyAudio()
             except ImportError:
-                try:
-                    return Winsound()
-                except ImportError:
-                    if dummy_enabled:
-                        return DummyAudio()
-                    raise Exception("no suitable audio output api available") from None
+                raise Exception("no suitable audio output api available") from None
 
 
 class Sample:
@@ -96,8 +89,7 @@ class Sample:
                 self.sampledata = audioop.tostereo(self.sampledata, norm_samplewidth, 1, 1)
         except FileNotFoundError as x:
             print(x)
-            raise SystemExit("'oggdec' (vorbis-tools) must be installed on your system to hear sounds in this game. "
-                             "Or you can start it with the --nosound option.")
+            raise SystemExit("'oggdec' (vorbis-tools) must be installed on your system to hear sounds in this game. ")
 
     def append(self, othersample: 'Sample'):
         self.duration += othersample.duration
@@ -125,7 +117,7 @@ class Sample:
             return stream
         # use oggdec to convert the audio file on the fly to a WAV
         if os.name == "nt":
-            oggdecexe = Winsound.ensure_oggdegexe()
+            oggdecexe = ensure_oggdecexe()
             uncompress_command = [oggdecexe, "--quiet", "--output", "-", "-"]
         else:
             uncompress_command = ["oggdec", "--quiet", "--output", "-", "-"]
@@ -156,14 +148,6 @@ class Sample:
             while i < len(mdata) and not stopcondition():
                 yield mdata[i: i + chunksize]
                 i += chunksize
-
-
-class DummySample(Sample):
-    def __init__(self, name: str, filename: str=None, duration: float=0.0) -> None:
-        self.name = name
-        self.filename = filename
-        self.duration = duration
-        self.sampledata = b""
 
 
 class SampleMixer:
@@ -468,70 +452,21 @@ class Sounddevice(AudioApi):
             outdata[:] = data
 
 
-class Winsound(AudioApi):
-    """Minimally featured api for the winsound library that comes with Python on Windows. Can't plays streaming audio."""
-    def __init__(self):
-        super().__init__()
-        del self.samp_queue
-        import winsound as _winsound
-        global winsound
-        winsound = _winsound
-        self.threads = []
-        self.oggdecexe = self.ensure_oggdegexe()
-
-    @staticmethod
-    def ensure_oggdegexe():
-        filename = user_data_dir + "oggdec.exe"
-        if os.path.isfile(filename):
-            return filename
-        oggdecexe = pkgutil.get_data(__name__, "sounds/oggdec.exe")
-        with open(filename, "wb") as exefile:
-            exefile.write(oggdecexe)
+def ensure_oggdecexe():
+    filename = user_data_dir + "oggdec.exe"
+    if os.path.isfile(filename):
         return filename
-
-    def play(self, sample, repeat=False):
-        # winsound.SND_NOSTOP doesn't seem to work.
-        option = winsound.SND_ASYNC
-        if repeat:
-            option |= winsound.SND_LOOP
-        winsound.PlaySound(sample.filename, option)
-        return None
-
-    def silence(self):
-        winsound.PlaySound(None, winsound.SND_PURGE)
-
-    def close(self):
-        self.silence()
-
-    def store_sample_file(self, filename, data):
-        # convert the sample file to a wav file on disk.
-        oggfilename = user_data_dir + filename
-        with open(oggfilename, "wb") as oggfile:
-            oggfile.write(data)
-        wavfilename = os.path.splitext(oggfilename)[0] + ".wav"
-        oggdeccmd = [self.oggdecexe, "--quiet", oggfilename, "-o", wavfilename]
-        subprocess.call(oggdeccmd)
-        os.remove(oggfilename)
-        return wavfilename
-
-
-class DummyAudio(AudioApi):
-    """Dummy audio api that does nothing"""
-    def __init__(self):
-        super().__init__()
-
-    def query_api_version(self):
-        return "dummy"
-
-    def play(self, sample, repeat=False):
-        return None
+    oggdecexe = pkgutil.get_data(__name__, "sounds/oggdec.exe")
+    with open(filename, "wb") as exefile:
+        exefile.write(oggdecexe)
+    return filename
 
 
 class Output:
     """Plays samples to audio output device or streams them to a file."""
     def __init__(self, api=None):
         if api is None:
-            api = best_api(dummy_enabled=True)
+            api = best_api()
         self.audio_api = api
 
     def __enter__(self):
@@ -562,19 +497,10 @@ samples = {}    # type: Dict[str, Union[str, Sample]]
 output = None
 
 
-def init_audio(samples_to_load, dummy=False, preferred_api=None) -> Output:
+def init_audio(samples_to_load, preferred_api=None) -> Output:
     global output, samples
     samples.clear()
-    if dummy:
-        output = Output(DummyAudio())
-    else:
-        output = Output(preferred_api)
-    if isinstance(output.audio_api, DummyAudio):
-        if not dummy:
-            print("No audio output available. Install 'sounddevice' or 'pyaudio' library to hear things.")
-        for name, filename in samples_to_load.items():
-            samples[name] = DummySample(name)
-        return output
+    output = Output(preferred_api)
     if any(isinstance(sample, str) for sample, _ in samples_to_load.values()):
         print("Loading sound files...")
     for name, (filename, max_simultaneously) in samples_to_load.items():
@@ -582,16 +508,9 @@ def init_audio(samples_to_load, dummy=False, preferred_api=None) -> Output:
             samples[name] = filename
         else:
             data = pkgutil.get_data(__name__, "sounds/" + filename)
-            if isinstance(output.audio_api, Winsound):
-                # winsound needs the samples as physical WAV files on disk.
-                filename = output.audio_api.store_sample_file(filename, data)
-                samples[name] = DummySample(name, filename)
-            else:
-                samples[name] = Sample(name, filedata=data)
+            samples[name] = Sample(name, filedata=data)
         output.set_sample_play_limit(name, max_simultaneously)
     print("Sound API initialized:", output.audio_api)
-    if isinstance(output.audio_api, Winsound):
-        print("Winsound is used as fallback. For better audio, it is recommended to install the 'sounddevice' or 'pyaudio' library instead.")
     return output
 
 
