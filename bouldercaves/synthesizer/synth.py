@@ -2,15 +2,14 @@
 Sample waveform synthesizer. Inspired by FM synthesizers such as the Yamaha DX-7 and TX81Z.
 Creates various waveform samples with adjustable parameters.
 
-Almost an identical copy of the synth module from https://github.com/irmen/synthesizer
-Written by Irmen de Jong (irmen@razorvine.net) - License: GNU GPL 3.0, see LICENSE
+Written by Irmen de Jong (irmen@razorvine.net) - License: MIT open-source.
 """
 
 import sys
 import itertools
 import random
 import math
-import array
+from .sample import Sample
 
 
 __all__ = ["key_num", "key_freq", "note_freq", "octave_notes", "note_alias", "major_chords", "major_chord_keys",
@@ -19,14 +18,6 @@ __all__ = ["key_num", "key_freq", "note_freq", "octave_notes", "note_alias", "ma
            "FastSine", "FastPulse", "FastTriangle", "FastSawtooth", "FastSquare", "FastSemicircle", "FastPointy",
            "EnvelopeFilter", "MixingFilter", "AmpModulationFilter", "DelayFilter", "EchoFilter",
            "ClipFilter", "AbsFilter", "NullFilter"]
-
-
-if sys.version_info < (3, 0):
-    raise SystemExit("the synth module requires Python 3.x")
-
-
-norm_samplerate = 44100
-norm_samplewidth = 2
 
 
 octave_notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -124,7 +115,7 @@ class WaveSynth:
     variable harmonics, white noise.  It also supports an optional LFO for Frequency Modulation.
     The resulting waveform sample data is in integer 16 or 32 bits format.
     """
-    def __init__(self, samplerate=norm_samplerate, samplewidth=norm_samplewidth):
+    def __init__(self, samplerate=Sample.norm_samplerate, samplewidth=Sample.norm_samplewidth):
         if samplewidth not in (2, 4):
             raise ValueError("only sample widths 2 and 4 are supported")
         self.samplerate = samplerate
@@ -312,9 +303,11 @@ class WaveSynth:
         assert 0 <= pulsewidth <= 1
         scale = self.__check_and_get_scale(frequency, amplitude, bias)
         if fm_lfo:
-            return Pulse(frequency, amplitude*scale, phase, bias*scale, pulsewidth, fm_lfo=fm_lfo, pwm_lfo=pwm_lfo, samplerate=self.samplerate)
+            return Pulse(frequency, amplitude*scale, phase, bias*scale, pulsewidth,
+                         fm_lfo=fm_lfo, pwm_lfo=pwm_lfo, samplerate=self.samplerate)
         else:
-            return FastPulse(frequency, amplitude*scale, phase, bias*scale, pulsewidth, pwm_lfo=pwm_lfo, samplerate=self.samplerate)
+            return FastPulse(frequency, amplitude*scale, phase, bias*scale, pulsewidth,
+                             pwm_lfo=pwm_lfo, samplerate=self.samplerate)
 
     def __harmonics(self, frequency, harmonics, amplitude, phase, bias, fm_lfo):
         scale = self.__check_and_get_scale(frequency, amplitude, bias)
@@ -332,13 +325,9 @@ class WaveSynth:
         return scale
 
     def __render_sample(self, duration, wave):
-        wave = iter(wave)
-        arraycode = {
-            1: 'b',
-            2: 'h',
-            4: 'l'  # or 'i' on 64 bit systems
-        }[self.samplewidth]
-        return array.array(arraycode, map(int, itertools.islice(wave, int(duration*self.samplerate))))
+        values = map(int, itertools.islice(wave, int(duration*self.samplerate)))
+        samples = Sample.get_array(self.samplewidth, values)
+        return Sample.from_array(samples, self.samplerate, 1)
 
 
 class Oscillator:
@@ -539,7 +528,7 @@ class NullFilter(Oscillator):
 
 class Sine(Oscillator):
     """Sine Wave oscillator."""
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=Sample.norm_samplerate):
         # The FM compensates for the phase change by means of phase_correction.
         # See http://stackoverflow.com/questions/3089832/sine-wave-glissando-from-one-pitch-to-another-in-numpy
         # and http://stackoverflow.com/questions/28185219/generating-vibrato-sine-wave
@@ -573,7 +562,7 @@ class Sine(Oscillator):
 
 class Triangle(Oscillator):
     """Perfect triangle wave oscillator (not using harmonics)."""
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self.frequency = frequency
         self.amplitude = amplitude
@@ -604,7 +593,7 @@ class Triangle(Oscillator):
 
 class Square(Oscillator):
     """Perfect square wave [max/-max] oscillator (not using harmonics)."""
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self.frequency = frequency
         self.amplitude = amplitude
@@ -634,7 +623,7 @@ class Square(Oscillator):
 
 class Sawtooth(Oscillator):
     """Perfect sawtooth waveform oscillator (not using harmonics)."""
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self.frequency = frequency
         self.amplitude = amplitude
@@ -669,7 +658,8 @@ class Pulse(Oscillator):
     Optional FM and/or Pulse-width modulation. If you use PWM, pulsewidth is ignored.
     The pwm_lfo oscillator will be clipped between 0 and 1 as pulse width factor.
     """
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, pulsewidth=0.1, fm_lfo=None, pwm_lfo=None, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, pulsewidth=0.1,
+                 fm_lfo=None, pwm_lfo=None, samplerate=Sample.norm_samplerate):
         assert 0 <= pulsewidth <= 1
         super().__init__(samplerate=samplerate)
         self.frequency = frequency
@@ -712,7 +702,7 @@ class Harmonics(Oscillator):
     Oscillator that produces a waveform based on harmonics.
     This is computationally intensive because many sine waves are added together.
     """
-    def __init__(self, frequency, harmonics, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=norm_samplerate):
+    def __init__(self, frequency, harmonics, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self.frequency = frequency
         self.amplitude = amplitude
@@ -753,7 +743,7 @@ class SquareH(Harmonics):
     It is a lot heavier to generate than square because it has to add many individual sine waves.
     It's done by adding only odd-integer harmonics, see https://en.wikipedia.org/wiki/Square_wave
     """
-    def __init__(self, frequency, num_harmonics=16, amplitude=0.9999, phase=0.0, bias=0.0, fm_lfo=None, samplerate=norm_samplerate):
+    def __init__(self, frequency, num_harmonics=16, amplitude=0.9999, phase=0.0, bias=0.0, fm_lfo=None, samplerate=Sample.norm_samplerate):
         harmonics = [(n, 1.0/n) for n in range(1, num_harmonics*2, 2)]  # only the odd harmonics
         super().__init__(frequency, harmonics, amplitude, phase, bias, fm_lfo=fm_lfo, samplerate=samplerate)
 
@@ -764,7 +754,7 @@ class SawtoothH(Harmonics):
     It is a lot heavier to generate than square because it has to add many individual sine waves.
     It's done by adding all harmonics, see https://en.wikipedia.org/wiki/Sawtooth_wave
     """
-    def __init__(self, frequency, num_harmonics=16, amplitude=0.9999, phase=0.0, bias=0.0, fm_lfo=None, samplerate=norm_samplerate):
+    def __init__(self, frequency, num_harmonics=16, amplitude=0.9999, phase=0.0, bias=0.0, fm_lfo=None, samplerate=Sample.norm_samplerate):
         harmonics = [(n, 1.0/n) for n in range(1, num_harmonics+1)]  # all harmonics
         super().__init__(frequency, harmonics, amplitude, phase+0.5, bias, fm_lfo=fm_lfo, samplerate=samplerate)
 
@@ -775,7 +765,7 @@ class SawtoothH(Harmonics):
 
 class WhiteNoise(Oscillator):
     """Oscillator that produces white noise (randomness) waveform."""
-    def __init__(self, frequency, amplitude=1.0, bias=0.0, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, bias=0.0, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self.amplitude = amplitude
         self.bias = bias
@@ -796,7 +786,7 @@ class WhiteNoise(Oscillator):
 
 class Linear(Oscillator):
     """Oscillator that produces a linear sloped value, until it reaches a maximum or minimum value."""
-    def __init__(self, startlevel, increment=0.0, min_value=-1.0, max_value=1.0, samplerate=norm_samplerate):
+    def __init__(self, startlevel, increment=0.0, min_value=-1.0, max_value=1.0, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self.value = startlevel
         self.increment = increment
@@ -818,7 +808,7 @@ class Linear(Oscillator):
 
 class Semicircle(Oscillator):
     """Semicircle half wave ('W3') oscillator."""
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self._phase = phase
         self.frequency = frequency
@@ -850,7 +840,7 @@ class Semicircle(Oscillator):
 
 class Pointy(Oscillator):
     """Pointy Wave ('inverted cosine', 'W2') oscillator."""
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, fm_lfo=None, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self.frequency = frequency
         self.amplitude = amplitude
@@ -886,7 +876,7 @@ class Pointy(Oscillator):
 
 class FastSine(Oscillator):
     """Fast sine wave oscillator. Some parameters cannot be changed."""
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self._frequency = frequency
         self._phase = phase
@@ -909,7 +899,7 @@ class FastSine(Oscillator):
 
 class FastTriangle(Oscillator):
     """Fast perfect triangle wave oscillator (not using harmonics). Some parameters cannot be changed."""
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self._frequency = frequency
         self._phase = phase
@@ -932,7 +922,7 @@ class FastTriangle(Oscillator):
 
 class FastSquare(Oscillator):
     """Fast perfect square wave [max/-max] oscillator (not using harmonics). Some parameters cannot be changed."""
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self._frequency = frequency
         self._phase = phase
@@ -954,7 +944,7 @@ class FastSquare(Oscillator):
 
 class FastSawtooth(Oscillator):
     """Fast perfect sawtooth waveform oscillator (not using harmonics). Some parameters canot be changed."""
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self._frequency = frequency
         self._phase = phase
@@ -983,7 +973,7 @@ class FastPulse(Oscillator):
     Optional Pulse-width modulation. If used, the pulsewidth argument is ignored.
     The pwm_lfo oscillator will be clipped between 0 and 1 as pulse width factor.
     """
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, pulsewidth=0.1, pwm_lfo=None, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, pulsewidth=0.1, pwm_lfo=None, samplerate=Sample.norm_samplerate):
         assert 0 <= pulsewidth <= 1
         super().__init__(samplerate=samplerate)
         self._frequency = frequency
@@ -1025,7 +1015,7 @@ class FastPulse(Oscillator):
 
 class FastSemicircle(Oscillator):
     """Fast semicircle half wave ('W3') oscillator. Some parameters cannot be changed."""
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self._frequency = frequency
         self._phase = phase
@@ -1050,7 +1040,7 @@ class FastSemicircle(Oscillator):
 
 class FastPointy(Oscillator):
     """Fast pointy wave ('inverted cosine', 'W2') oscillator. Some parameters cannot be changed."""
-    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, samplerate=norm_samplerate):
+    def __init__(self, frequency, amplitude=1.0, phase=0.0, bias=0.0, samplerate=Sample.norm_samplerate):
         super().__init__(samplerate=samplerate)
         self._frequency = frequency
         self._phase = phase
@@ -1075,3 +1065,102 @@ class FastPointy(Oscillator):
             else:
                 yield vv*vv*amplitude+bias
             t += increment
+
+
+def check_waveforms():
+    # white noise frequency issue test
+    wn = WhiteNoise(100, samplerate=1000)
+    list(itertools.islice(wn, 2000))
+    wn = WhiteNoise(1000, samplerate=1000)
+    list(itertools.islice(wn, 2000))
+    wn = WhiteNoise(1001, samplerate=1000)
+    try:
+        list(itertools.islice(wn, 2000))
+        raise SystemExit("invalid whitenoise freq should raise exception")
+    except ValueError:
+        pass
+    # check the wavesynth and generators
+    ws = WaveSynth(samplerate=1000)
+    scale = 2 ** (ws.samplewidth * 8 - 1) - 1
+    s = ws.sine(440, 1)
+    sgen = ws.sine_gen(440)
+    s2 = list(itertools.islice(sgen, 0, 1000))
+    assert list(s.get_frame_array()) == s2
+    s = ws.square(440, 1)
+    sgen = ws.square_gen(440)
+    s2 = list(itertools.islice(sgen, 0, 1000))
+    assert list(s.get_frame_array()) == s2
+    s = ws.square_h(440, 1)
+    sgen = ws.square_h_gen(440)
+    s2 = list(itertools.islice(sgen, 0, 1000))
+    assert list(s.get_frame_array()) == s2
+    s = ws.triangle(440, 1)
+    sgen = ws.triangle_gen(440)
+    s2 = list(itertools.islice(sgen, 0, 1000))
+    assert list(s.get_frame_array()) == s2
+    s = ws.sawtooth(440, 1)
+    sgen = ws.sawtooth_gen(440)
+    s2 = list(itertools.islice(sgen, 0, 1000))
+    assert list(s.get_frame_array()) == s2
+    s = ws.sawtooth_h(440, 1)
+    sgen = ws.sawtooth_h_gen(440)
+    s2 = list(itertools.islice(sgen, 0, 1000))
+    assert list(s.get_frame_array()) == s2
+    s = ws.pulse(440, 1)
+    sgen = ws.pulse_gen(440)
+    s2 = list(itertools.islice(sgen, 0, 1000))
+    assert list(s.get_frame_array()) == s2
+    s = ws.harmonics(440, 1, [(n, 1/n) for n in range(1, 8)])
+    sgen = ws.harmonics_gen(440, [(n, 1/n) for n in range(1, 8)])
+    s2 = list(itertools.islice(sgen, 0, 1000))
+    assert list(s.get_frame_array()) == s2
+    s = ws.white_noise(440, 1)
+    sgen = ws.white_noise_gen(440)
+    s2 = list(itertools.islice(sgen, 0, 1000))
+    assert len(s) == len(s2) == 1000
+    s = ws.semicircle(440, 1)
+    sgen = ws.semicircle_gen(440)
+    s2 = list(itertools.islice(sgen, 0, 1000))
+    assert len(s) == len(s2) == 1000
+
+
+def plot_waveforms():
+    import matplotlib.pyplot as plot
+    ws = WaveSynth(samplerate=80, samplewidth=2)
+    ws2 = WaveSynth(samplerate=1000, samplewidth=2)
+    ncols = 4
+    nrows = 3
+    freq = 2.0
+    dur = 1.0
+    harmonics = [(n, 1 / n) for n in range(3, 5 * 2, 2)]
+    fm = FastSine(1, amplitude=0, bias=0, samplerate=ws.samplerate)
+    waveforms = [
+        ('sine', ws.sine(freq, dur).get_frame_array()),
+        ('square', ws.square(freq, dur).get_frame_array()),
+        ('square_h', ws.square_h(freq, dur, num_harmonics=5).get_frame_array()),
+        ('triangle', ws.triangle(freq, dur).get_frame_array()),
+        ('sawtooth', ws.sawtooth(freq, dur).get_frame_array()),
+        ('sawtooth_h', ws.sawtooth_h(freq, dur, num_harmonics=5).get_frame_array()),
+        ('pulse', ws.pulse(freq, dur).get_frame_array()),
+        ('harmonics', ws.harmonics(freq, dur, harmonics=harmonics).get_frame_array()),
+        ('white_noise', ws2.white_noise(50.0, dur).get_frame_array()),
+        ('linear', list(itertools.islice(Linear(20, 1, max_value=100, samplerate=100), 100))),
+        ('W2-pointy', ws.pointy(freq, dur, fm_lfo=fm).get_frame_array()),
+        ('W3-semicircle', ws.semicircle(freq, dur, fm_lfo=fm).get_frame_array())
+    ]
+    plot.figure(1, figsize=(16, 10))
+    plot.suptitle("waveforms (2 cycles)")
+    for i, (waveformname, values) in enumerate(waveforms, start=1):
+        ax = plot.subplot(nrows, ncols, i)
+        ax.set_yticklabels([])
+        ax.set_xticklabels([])
+        plot.title(waveformname)
+        plot.grid(True)
+        plot.plot(values)
+    plot.subplots_adjust(hspace=0.5, wspace=0.5, top=0.90, bottom=0.1, left=0.05, right=0.95)
+    plot.show()
+
+
+if __name__ == "__main__":
+    check_waveforms()
+    plot_waveforms()

@@ -11,7 +11,7 @@ import random
 import itertools
 import collections.abc
 from typing import Callable, Generator, Iterator
-from .synth import FastTriangle, WhiteNoise, Linear, Triangle, Sine, SquareH, EnvelopeFilter, AmpModulationFilter, MixingFilter
+from .synthesizer.synth import FastTriangle, WhiteNoise, Linear, Triangle, Sine, SquareH, EnvelopeFilter, AmpModulationFilter, MixingFilter
 from . import audio
 
 
