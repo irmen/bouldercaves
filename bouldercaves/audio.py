@@ -33,6 +33,7 @@ import wave
 from collections import defaultdict
 from typing import BinaryIO, Callable, Generator, Union, Dict, Tuple
 from . import user_data_dir
+from .synthesizer import params as synth_params
 
 
 __all__ = ["init_audio", "play_sample", "silence_audio", "shutdown_audio"]
@@ -41,10 +42,6 @@ __all__ = ["init_audio", "play_sample", "silence_audio", "shutdown_audio"]
 # stubs for optional audio library modules:
 sounddevice = None
 pyaudio = None
-
-norm_samplerate = 44100
-norm_samplewidth = 2
-norm_channels = 2
 norm_chunk_duration = 1 / 50     # seconds
 
 
@@ -61,7 +58,7 @@ def best_api():
                 raise Exception("no suitable audio output api available") from None
 
 
-class Sample:
+class BCSample:
     """A stereo sample of raw PCM audio data. Uncompresses .ogg to PCM if needed."""
     def __init__(self, name: str, filename: str=None, filedata: bytes=None, pcmdata: bytes=None) -> None:
         self.duration = 0.0
@@ -69,7 +66,7 @@ class Sample:
         self.filename = filename
         if pcmdata is not None:
             self.sampledata = pcmdata
-            self.duration = len(self.sampledata) // norm_channels // norm_samplewidth / norm_samplerate
+            self.duration = len(self.sampledata) // synth_params.norm_nchannels // synth_params.norm_samplewidth / synth_params.norm_samplerate
             return
         if filename:
             inputfile = open(filename, "rb")
@@ -78,26 +75,26 @@ class Sample:
         try:
             with self.convertformat(inputfile) as inputfile:
                 with wave.open(inputfile, "r") as wavesample:
-                    assert wavesample.getframerate() == norm_samplerate
-                    assert wavesample.getsampwidth() == norm_samplewidth
+                    assert wavesample.getframerate() == synth_params.norm_samplerate
+                    assert wavesample.getsampwidth() == synth_params.norm_samplewidth
                     numchannels = wavesample.getnchannels()
                     assert numchannels in (1, 2)
                     self.sampledata = wavesample.readframes(wavesample.getnframes())
-                    self.duration = wavesample.getnframes() / norm_samplerate
-            if numchannels == 1 and norm_channels == 2:
+                    self.duration = wavesample.getnframes() / synth_params.norm_samplerate
+            if numchannels == 1 and synth_params.norm_nchannels == 2:
                 # on the fly conversion to stereo if it is a mono sample
-                self.sampledata = audioop.tostereo(self.sampledata, norm_samplewidth, 1, 1)
+                self.sampledata = audioop.tostereo(self.sampledata, synth_params.norm_samplewidth, 1, 1)
         except FileNotFoundError as x:
             print(x)
             raise SystemExit("'oggdec' (vorbis-tools) must be installed on your system to hear sounds in this game. ")
 
-    def append(self, othersample: 'Sample'):
+    def append(self, othersample: 'BCSample'):
         self.duration += othersample.duration
         self.sampledata += othersample.sampledata
 
     def save_wav(self, filename):
         with wave.open(filename, "wb") as out:
-            out.setparams((norm_channels, norm_samplewidth, norm_samplerate, 0, "NONE", "not compressed"))
+            out.setparams((synth_params.norm_nchannels, synth_params.norm_samplewidth, synth_params.norm_samplerate, 0, "NONE", "not compressed"))
             out.writeframes(self.sampledata)
 
     @classmethod
@@ -106,8 +103,8 @@ class Sample:
         try:
             # maybe the existing data is already a WAV in the correct format
             with wave.open(stream, "r") as wavesample:
-                if wavesample.getframerate() == norm_samplerate and wavesample.getnchannels() in (1, 2) \
-                        and wavesample.getsampwidth() == norm_samplewidth:
+                if wavesample.getframerate() == synth_params.norm_samplerate and wavesample.getnchannels() in (1, 2) \
+                        and wavesample.getsampwidth() == synth_params.norm_samplewidth:
                     conversion_required = False
         except (wave.Error, IOError):
             conversion_required = True
@@ -117,8 +114,12 @@ class Sample:
             return stream
         # use oggdec to convert the audio file on the fly to a WAV
         if os.name == "nt":
-            oggdecexe = ensure_oggdecexe()
-            uncompress_command = [oggdecexe, "--quiet", "--output", "-", "-"]
+            filename = user_data_dir + "oggdec.exe"
+            if not os.path.isfile(filename):
+                oggdecexe = pkgutil.get_data(__name__, "sounds/oggdec.exe")
+                with open(filename, "wb") as exefile:
+                    exefile.write(oggdecexe)
+            uncompress_command = [filename, "--quiet", "--output", "-", "-"]
         else:
             uncompress_command = ["oggdec", "--quiet", "--output", "-", "-"]
         with tempfile.NamedTemporaryFile() as tmpfile:
@@ -164,7 +165,7 @@ class SampleMixer:
         self._sid = 0
         self.sample_limits = defaultdict(int)  # type: Dict[str, int]
 
-    def add_sample(self, sample: Sample, repeat: bool=False, sid: int=None) -> Union[int, None]:
+    def add_sample(self, sample: BCSample, repeat: bool=False, sid: int=None) -> Union[int, None]:
         if not self.allow_sample(sample, repeat):
             return None
         with self.add_lock:
@@ -175,7 +176,7 @@ class SampleMixer:
             self.sample_counts[sample.name] += 1
             return sid
 
-    def allow_sample(self, sample: Sample, repeat: bool=False) -> bool:
+    def allow_sample(self, sample: BCSample, repeat: bool=False) -> bool:
         if repeat and self.sample_counts[sample.name] >= 1:  # don't allow more than one repeating sample
             return False
         max_samples = self.sample_limits[sample.name] or 4
@@ -224,7 +225,7 @@ class SampleMixer:
             mixed = chunks_to_mix[0]
             if len(chunks_to_mix) > 1:
                 for to_mix in chunks_to_mix[1:]:
-                    mixed = audioop.add(mixed, to_mix, norm_channels)
+                    mixed = audioop.add(mixed, to_mix, synth_params.norm_nchannels)
                 mixed = memoryview(mixed)
             yield mixed
 
@@ -241,9 +242,9 @@ class SampleMixer:
 class AudioApi:
     """Base class for the various audio APIs."""
     def __init__(self) -> None:
-        self.samplerate = norm_samplerate
-        self.samplewidth = norm_samplewidth
-        self.nchannels = norm_channels
+        self.samplerate = synth_params.norm_samplerate
+        self.samplewidth = synth_params.norm_samplewidth
+        self.nchannels = synth_params.norm_nchannels
         self.chunkduration = norm_chunk_duration
         self.samp_queue = queue.Queue(maxsize=100)    # type: ignore
 
@@ -257,7 +258,7 @@ class AudioApi:
     def chunksize(self) -> int:
         return int(self.samplerate * self.samplewidth * self.nchannels * self.chunkduration)
 
-    def play(self, sample: Sample, repeat: bool=False) -> int:
+    def play(self, sample: BCSample, repeat: bool=False) -> int:
         job = {"sample": sample, "repeat": repeat}
         job_id = id(job)
         job["id"] = job_id
@@ -452,16 +453,6 @@ class Sounddevice(AudioApi):
             outdata[:] = data
 
 
-def ensure_oggdecexe():
-    filename = user_data_dir + "oggdec.exe"
-    if os.path.isfile(filename):
-        return filename
-    oggdecexe = pkgutil.get_data(__name__, "sounds/oggdec.exe")
-    with open(filename, "wb") as exefile:
-        exefile.write(oggdecexe)
-    return filename
-
-
 class Output:
     """Plays samples to audio output device or streams them to a file."""
     def __init__(self, api=None):
@@ -493,7 +484,7 @@ class Output:
         self.audio_api.set_sample_play_limit(samplename, max_simultaneously)
 
 
-samples = {}    # type: Dict[str, Union[str, Sample]]
+samples = {}    # type: Dict[str, Union[str, BCSample]]
 output = None
 
 
@@ -504,11 +495,11 @@ def init_audio(samples_to_load, preferred_api=None) -> Output:
     if any(isinstance(sample, str) for sample, _ in samples_to_load.values()):
         print("Loading sound files...")
     for name, (filename, max_simultaneously) in samples_to_load.items():
-        if isinstance(filename, Sample):
+        if isinstance(filename, BCSample):
             samples[name] = filename
         else:
             data = pkgutil.get_data(__name__, "sounds/" + filename)
-            samples[name] = Sample(name, filedata=data)
+            samples[name] = BCSample(name, filedata=data)
         output.set_sample_play_limit(name, max_simultaneously)
     print("Sound API initialized:", output.audio_api)
     return output
@@ -527,11 +518,11 @@ def shutdown_audio():
 
 
 if __name__ == "__main__":
-    sample = Sample("test", pcmdata=b"0123456789")
+    sample = BCSample("test", pcmdata=b"0123456789")
     chunks = sample.chunked_data(chunksize=51, repeat=True)
     for _ in range(60):
         print(next(chunks).tobytes())
-    norm_samplerate = 22050
+    synth_params.norm_samplerate = 22050
     output = init_audio({
         "explosion": ("explosion.ogg", 99),
         "amoeba": ("amoeba.ogg", 99),

@@ -21,8 +21,9 @@ from typing import Tuple, Sequence, List, Iterable, Callable, Optional
 from .gamelogic import GameState, Direction, GameStatus, HighScores
 from .caves import colorpalette, Palette
 from . import audio, synthsamples, tiles, objects, bdcff
+from .synthesizer import params as synth_params
 
-__version__ = "4.4"
+__version__ = "5.0"
 
 
 class BoulderWindow(tkinter.Tk):
@@ -556,9 +557,9 @@ def start(sargs: Sequence[str]=None) -> None:
         print("You can use the '-c' or '--c64colors' argument to get the original C-64 colors.")
 
     # initialize the audio system
-    audio.norm_samplerate = 22050
-    audio.norm_samplewidth = 2
-    audio.norm_channels = 2
+    synth_params.norm_samplerate = 22050
+    synth_params.norm_samplewidth = 2
+    synth_params.norm_nchannels = 2
     samples = {
         "music": ("bdmusic.ogg", 1),
         "cover": ("cover.ogg", 1),
