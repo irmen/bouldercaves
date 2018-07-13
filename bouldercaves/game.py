@@ -21,9 +21,9 @@ from typing import Tuple, Sequence, List, Iterable, Callable, Optional
 from .gamelogic import GameState, Direction, GameStatus, HighScores
 from .caves import colorpalette, Palette
 from . import audio, synthsamples, tiles, objects, bdcff
-from .synthesizer import params as synth_params
+from .synthesizer import sample
 
-__version__ = "5.0"
+__version__ = "5.0.dev0"
 
 
 class BoulderWindow(tkinter.Tk):
@@ -80,8 +80,8 @@ class BoulderWindow(tkinter.Tk):
         self.cscore_tiles = []    # type: List[str]
         self.view_x = 0
         self.view_y = 0
-        self.canvas.view_x = self.view_x    # type: ignore
-        self.canvas.view_y = self.view_y    # type: ignore
+        self.canvas.view_x = self.view_x        # type: ignore
+        self.canvas.view_y = self.view_y        # type: ignore
         self.tile_images = []  # type: List[tkinter.PhotoImage]
         self.playfield_columns = 0
         self.playfield_rows = 0
@@ -398,9 +398,10 @@ class BoulderWindow(tkinter.Tk):
         if self.popup_frame < self.graphics_frame:
             self.gamestate.update(self.graphics_frame)
         self.gamestate.update_scorebar()
-        music_duration = audio.samples["music"].duration   # type: ignore
+        music_sample = audio.samples["music"]
+        assert isinstance(music_sample, sample.Sample)
         if self.gamestate.game_status == GameStatus.WAITING and \
-                self.last_demo_or_highscore_frame + self.update_fps * max(15, music_duration) < self.graphics_frame:
+                self.last_demo_or_highscore_frame + self.update_fps * max(15, music_sample.duration) < self.graphics_frame:
             self.gamestate.tile_music_ended()
             self.last_demo_or_highscore_frame = self.graphics_frame
 
@@ -557,9 +558,6 @@ def start(sargs: Sequence[str]=None) -> None:
         print("You can use the '-c' or '--c64colors' argument to get the original C-64 colors.")
 
     # initialize the audio system
-    synth_params.norm_samplerate = 22050
-    synth_params.norm_samplewidth = 2
-    synth_params.norm_nchannels = 2
     samples = {
         "music": ("bdmusic.ogg", 1),
         "cover": ("cover.ogg", 1),
@@ -636,7 +634,7 @@ def start(sargs: Sequence[str]=None) -> None:
             raise SystemExit("Synths missing for: " + str(missing))
         for name, sample in synthesized.items():
             max_simul = samples[name][1]
-            samples[name] = (sample, max_simul)    # type: ignore
+            samples[name] = (sample, max_simul)     # type: ignore
 
     audio.init_audio(samples)
     title = "Boulder Caves {version:s} {sound:s} {playtest:s} - by Irmen de Jong"\

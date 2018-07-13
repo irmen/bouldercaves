@@ -79,7 +79,7 @@ class Tilesheet:
         result = []
         for dy in range(height):
             result.append(self.tiles[offset + self.width * dy: offset + self.width * dy + width])
-        return result       # type: ignore
+        return result
 
     def all_dirty(self) -> None:
         for i in range(self.width * self.height):

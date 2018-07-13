@@ -11,6 +11,7 @@ import audioop
 import array
 import math
 import itertools
+from typing import Callable, Generator
 from . import params
 try:
     import numpy
@@ -39,8 +40,9 @@ class Sample:
     Most operations modify the sample data in place (if it's not locked) and return the sample object,
     so you can easily chain several operations.
     """
-    def __init__(self, wave_file=None):
+    def __init__(self, wave_file=None, name=""):
         """Creates a new empty sample, or loads it from a wav file."""
+        self.name = name
         self.__locked = False
         if wave_file:
             self.load_wav(wave_file)
@@ -69,20 +71,23 @@ class Sample:
             self.__frames == other.__frames
 
     @classmethod
-    def from_raw_frames(cls, frames, samplewidth, samplerate, numchannels):
+    def from_raw_frames(cls, frames, samplewidth, samplerate, numchannels, name=""):
         """Creates a new sample directly from the raw sample data."""
         assert 1 <= numchannels <= 2
         assert 2 <= samplewidth <= 4
         assert samplerate > 1
-        s = cls()
-        s.__frames = frames
+        s = cls(name=name)
+        if isinstance(frames, list):
+            s.__frames = bytes(frames)
+        else:
+            s.__frames = frames
         s.__samplerate = int(samplerate)
         s.__samplewidth = int(samplewidth)
         s.__nchannels = int(numchannels)
         return s
 
     @classmethod
-    def from_array(cls, array_or_list, samplerate, numchannels):
+    def from_array(cls, array_or_list, samplerate, numchannels, name=""):
         assert 1 <= numchannels <= 2
         assert samplerate > 1
         if isinstance(array_or_list, list):
@@ -103,7 +108,7 @@ class Sample:
         frames = array_or_list.tobytes()
         if sys.byteorder == "big":
             frames = audioop.byteswap(frames, samplewidth)
-        return Sample.from_raw_frames(frames, samplewidth, samplerate, numchannels)
+        return Sample.from_raw_frames(frames, samplewidth, samplerate, numchannels, name=name)
 
     @property
     def samplewidth(self):
@@ -175,6 +180,37 @@ class Sample:
         """returns the number of sample frames"""
         return len(self.__frames) // self.__samplewidth // self.__nchannels
 
+    def view_frame_data(self) -> memoryview:
+        """return a memoryview on the raw frame data."""
+        return memoryview(self.__frames)
+
+    def chunked_frame_data(self, chunksize: int, repeat: bool=False,
+                           stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
+        """
+        Generator that produces chunks of raw frame data bytes of the given length.
+        Stops when the stopcondition function returns True or the sample runs out,
+        unless repeat is set to True to let it loop endlessly.
+        """
+        if repeat:
+            # continuously repeated
+            bdata = self.__frames
+            if len(bdata) < chunksize:
+                bdata = bdata * int(math.ceil(chunksize / len(bdata)))
+            length = len(bdata)
+            bdata += bdata[:chunksize]
+            mdata = memoryview(bdata)
+            i = 0
+            while not stopcondition():
+                yield mdata[i: i + chunksize]
+                i = (i + chunksize) % length
+        else:
+            # one-shot
+            mdata = memoryview(self.__frames)
+            i = 0
+            while i < len(mdata) and not stopcondition():
+                yield mdata[i: i + chunksize]
+                i += chunksize
+
     def get_frame_array(self):
         """Returns the sample values as array. Warning: this can copy large amounts of data."""
         return Sample.get_array(self.samplewidth, self.__frames)
@@ -198,6 +234,7 @@ class Sample:
         self.__samplerate = other.__samplerate
         self.__nchannels = other.__nchannels
         self.__filename = other.__filename
+        self.name = other.name
         return self
 
     def lock(self):

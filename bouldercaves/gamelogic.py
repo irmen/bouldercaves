@@ -828,9 +828,9 @@ class GameState:
 
     def update_amoeba(self, cell: Cell) -> None:
         if self.amoeba["dead"] is not None:
-            self.draw_single_cell(cell, self.amoeba["dead"])     # type: ignore
+            self.draw_single_cell(cell, self.amoeba["dead"])    # type: ignore
         else:
-            self.amoeba["size"] += 1    # type: ignore
+            self.amoeba["size"] += 1        # type: ignore
             if self.get(cell, Direction.UP).isempty() or self.get(cell, Direction.DOWN).isempty() \
                     or self.get(cell, Direction.RIGHT).isempty() or self.get(cell, Direction.LEFT).isempty() \
                     or self.get(cell, Direction.UP).isdirt() or self.get(cell, Direction.DOWN).isdirt() \

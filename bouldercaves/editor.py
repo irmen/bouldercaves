@@ -839,7 +839,7 @@ class PaletteDialog(Dialog):
         color = self.color_vars[colorname].get()
         if not color.startswith("#"):
             color = "#{:06x}".format(colorpalette[int(color)])
-        rgbcolor = tkinter.colorchooser.askcolor(title="Choose a RGB color", parent=self, initialcolor=color)   # type: ignore
+        rgbcolor = tkinter.colorchooser.askcolor(title="Choose a RGB color", parent=self, initialcolor=color)
         if rgbcolor[1] is not None:
             tkcolor = rgbcolor[1]
             fgtkcolor = "#{:06x}".format(0xffffff ^ int(tkcolor[1:], 16))
