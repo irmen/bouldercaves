@@ -14,7 +14,7 @@ from typing import Callable, Generator, Iterator
 from .synthesizer.synth import FastTriangle, WhiteNoise, Linear, Triangle, Sine, SquareH, \
     EnvelopeFilter, AmpModulationFilter, MixingFilter
 from .synthesizer import params as synth_params
-from .synthesizer import sample
+from .synthesizer.sample import Sample
 from . import audio
 
 
@@ -44,15 +44,15 @@ def monochannel_from_osc(osc: Iterator[int], chunksize: int=0) -> bytes:
     return sounddatab
 
 
-def sample_from_osc(osc: Iterator[int], chunksize: int=0) -> sample.Sample:
+def sample_from_osc(osc: Iterator[int], chunksize: int=0) -> Sample:
     # A single oscillator gives one channel and the sound output is in stereo,
     # so we duplicate the mono channel into a stereo sample here.
     mono = monochannel_from_osc(osc, chunksize)
     stereo = audioop.tostereo(mono, synth_params.norm_samplewidth, 1, 1)
-    return sample.Sample.from_raw_frames(stereo, synth_params.norm_samplewidth, synth_params.norm_samplerate, 2)
+    return Sample.from_raw_frames(stereo, synth_params.norm_samplewidth, synth_params.norm_samplerate, 2)
 
 
-class TitleMusic(sample.Sample):
+class TitleMusic(Sample):
     # The title music. It is generated real-time while being played.
     title_music = [
         (22, 34), (29, 38), (34, 41), (37, 46), (20, 36), (31, 39), (32, 41), (39, 48),
@@ -135,7 +135,14 @@ class TitleMusic(sample.Sample):
             yield memoryview(samplebuffer)
 
 
-class RealtimeSynthesizedSample:
+class RealtimeSynthesizedSample(Sample):
+    def __init__(self, name: str) -> None:
+        super().__init__(name=name)
+
+    def chunked_frame_data(self, chunksize: int, repeat: bool=False,
+                           stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
+        raise NotImplementedError("subclass should implement this")
+
     def render_samples(self, osc: Iterator[int], samplebuffer: bytes,
                        sample_chunksize: int, stopcondition: Callable[[], bool]=lambda: False,
                        return_remaining_buffer: bool=False) -> Generator[memoryview, None, bytes]:
@@ -163,7 +170,7 @@ class RealtimeSynthesizedSample:
         return samplebuffer
 
 
-class Amoeba(sample.Sample, RealtimeSynthesizedSample):
+class Amoeba(RealtimeSynthesizedSample):
     def __init__(self) -> None:
         super().__init__(name="amoeba")
 
@@ -178,7 +185,7 @@ class Amoeba(sample.Sample, RealtimeSynthesizedSample):
             samplebuffer = yield from self.render_samples(filtered.generator(), samplebuffer, chunksize, return_remaining_buffer=True)
 
 
-class MagicWall(sample.Sample, RealtimeSynthesizedSample):
+class MagicWall(RealtimeSynthesizedSample):
     def __init__(self) -> None:
         super().__init__(name="magic_wall")
 
@@ -195,7 +202,7 @@ class MagicWall(sample.Sample, RealtimeSynthesizedSample):
             samplebuffer = yield from self.render_samples(filtered.generator(), samplebuffer, chunksize, return_remaining_buffer=True)
 
 
-class Cover(sample.Sample, RealtimeSynthesizedSample):
+class Cover(RealtimeSynthesizedSample):
     def __init__(self) -> None:
         super().__init__(name="cover")
 
@@ -210,7 +217,7 @@ class Cover(sample.Sample, RealtimeSynthesizedSample):
             samplebuffer = yield from self.render_samples(filtered.generator(), samplebuffer, chunksize, return_remaining_buffer=True)
 
 
-class Finished(sample.Sample, RealtimeSynthesizedSample):
+class Finished(RealtimeSynthesizedSample):
     def __init__(self) -> None:
         super().__init__(name="finished")
 
@@ -229,7 +236,7 @@ class Finished(sample.Sample, RealtimeSynthesizedSample):
             yield memoryview(samplebuffer)
 
 
-class ExtraLife(sample.Sample):
+class ExtraLife(Sample):
     def __init__(self) -> None:
         super().__init__(name="extra_life")
         for n in range(0, 16):
@@ -239,7 +246,7 @@ class ExtraLife(sample.Sample):
             self.join(sample_from_osc(filtered.generator()))
 
 
-class GameOver(sample.Sample, RealtimeSynthesizedSample):
+class GameOver(RealtimeSynthesizedSample):
     def __init__(self) -> None:
         super().__init__(name="game_over")
 
@@ -254,7 +261,7 @@ class GameOver(sample.Sample, RealtimeSynthesizedSample):
         yield from self.render_samples(modulated.generator(), b"", chunksize, stopcondition=stopcondition)
 
 
-class WalkDirt(sample.Sample):
+class WalkDirt(Sample):
     def __init__(self) -> None:
         super().__init__(name="walk_dirt")
         osc = WhiteNoise(0x5000, amplitude=0.3)
@@ -262,7 +269,7 @@ class WalkDirt(sample.Sample):
         self.join(sample_from_osc(filtered.generator()))
 
 
-class WalkEmpty(sample.Sample):
+class WalkEmpty(Sample):
     def __init__(self) -> None:
         super().__init__(name="walk_empty")
         osc = WhiteNoise(0x1200, amplitude=0.2)
@@ -270,7 +277,7 @@ class WalkEmpty(sample.Sample):
         self.join(sample_from_osc(filtered.generator()))
 
 
-class Explosion(sample.Sample):
+class Explosion(Sample):
     def __init__(self) -> None:
         super().__init__(name="explosion")
         osc = WhiteNoise(0x1432, amplitude=0.8)
@@ -278,7 +285,7 @@ class Explosion(sample.Sample):
         self.join(sample_from_osc(filtered.generator()))
 
 
-class VoodooExplosion(sample.Sample):
+class VoodooExplosion(Sample):
     def __init__(self) -> None:
         super().__init__(name="voodoo_explosion")
         osc5 = WhiteNoise(1200, amplitude=0.4)
@@ -290,7 +297,7 @@ class VoodooExplosion(sample.Sample):
         self.join(sample_from_osc(filtered.generator()))
 
 
-class CollectDiamond(sample.Sample):
+class CollectDiamond(Sample):
     def __init__(self) -> None:
         super().__init__(name="collect_diamond")
         osc = FastTriangle(0x1478 * _sidfreq, amplitude=0.8)
@@ -298,7 +305,7 @@ class CollectDiamond(sample.Sample):
         self.join(sample_from_osc(filtered.generator()))
 
 
-class Boulder(sample.Sample):
+class Boulder(Sample):
     def __init__(self) -> None:
         super().__init__(name="boulder")
         osc = WhiteNoise(0x0932, amplitude=0.8)
@@ -306,7 +313,7 @@ class Boulder(sample.Sample):
         self.join(sample_from_osc(filtered.generator()))
 
 
-class Crack(sample.Sample):
+class Crack(Sample):
     def __init__(self) -> None:
         super().__init__(name="crack")
         osc = WhiteNoise(0x2F32, amplitude=0.8)
@@ -314,7 +321,7 @@ class Crack(sample.Sample):
         self.join(sample_from_osc(filtered.generator()))
 
 
-class BoxPush(sample.Sample):
+class BoxPush(Sample):
     def __init__(self) -> None:
         super().__init__(name="boxpush")
         osc = WhiteNoise(2637, amplitude=0.6)
@@ -322,7 +329,7 @@ class BoxPush(sample.Sample):
         self.join(sample_from_osc(filtered.generator()))
 
 
-class Diamond(sample.Sample, RealtimeSynthesizedSample):
+class Diamond(RealtimeSynthesizedSample):
     def __init__(self) -> None:
         super().__init__(name="diamond")
 
@@ -337,15 +344,21 @@ class Diamond(sample.Sample, RealtimeSynthesizedSample):
         yield from self.render_samples(filtered.generator(), b"", chunksize, stopcondition=stopcondition)
 
 
-class Timeout(sample.Sample):
-    def __init__(self, timeout) -> None:
+class Timeout(Sample):
+    def __init__(self, timeout: int) -> None:
         super().__init__(name="timeout_" + str(timeout))
+        self._timeout = timeout
         osc = FastTriangle((timeout * 256 + 0x1E00) * _sidfreq, amplitude=0.99)
         filtered = EnvelopeFilter(osc, 0.002, 0.2, 0.1, 0.5, 0.8, stop_at_end=True)
         self.join(sample_from_osc(filtered.generator()))
 
+    def copy(self) -> 'Timeout':
+        cpy = Timeout(self._timeout)
+        cpy.copy_from(self)
+        return cpy
 
-class Slime(sample.Sample):
+
+class Slime(Sample):
     def __init__(self) -> None:
         super().__init__(name="slime")
         fm = FastTriangle(5, 0.5)

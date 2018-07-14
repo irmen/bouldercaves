@@ -28,7 +28,7 @@ import tempfile
 from collections import defaultdict
 from typing import Generator, Union, Dict, Tuple, Any
 from .synthesizer import params as synth_params
-from .synthesizer import sample
+from .synthesizer.sample import Sample
 from .synthesizer.tools import streaming
 
 
@@ -38,7 +38,7 @@ __all__ = ["init_audio", "play_sample", "silence_audio", "shutdown_audio"]
 # stubs for optional audio library modules:
 sounddevice = None
 pyaudio = None
-norm_chunk_duration = 1 / 50     # seconds
+norm_chunk_duration = 1 / 30     # seconds
 
 # audio parameters
 synth_params.norm_samplerate = 22050
@@ -73,7 +73,7 @@ class SampleMixer:
         self._sid = 0
         self.sample_limits = defaultdict(int)  # type: Dict[str, int]
 
-    def add_sample(self, sample: sample.Sample, repeat: bool=False, sid: int=None) -> Union[int, None]:
+    def add_sample(self, sample: Sample, repeat: bool=False, sid: int=None) -> Union[int, None]:
         if not self.allow_sample(sample, repeat):
             return None
         with self.add_lock:
@@ -84,7 +84,7 @@ class SampleMixer:
             self.sample_counts[sample.name] += 1
             return sid
 
-    def allow_sample(self, sample: sample.Sample, repeat: bool=False) -> bool:
+    def allow_sample(self, sample: Sample, repeat: bool=False) -> bool:
         if repeat and self.sample_counts[sample.name] >= 1:  # don't allow more than one repeating sample
             return False
         max_samples = self.sample_limits[sample.name] or 4
@@ -128,7 +128,7 @@ class SampleMixer:
                     chunks_to_mix.append(chunk)
                 except StopIteration:
                     self.remove_sample(i)
-            chunks_to_mix = chunks_to_mix or [memoryview(silence)]
+            chunks_to_mix = chunks_to_mix or [silence]      # type: ignore
             assert all(len(c) == self.chunksize for c in chunks_to_mix)
             mixed = chunks_to_mix[0]
             if len(chunks_to_mix) > 1:
@@ -154,7 +154,8 @@ class AudioApi:
         self.samplewidth = synth_params.norm_samplewidth
         self.nchannels = synth_params.norm_nchannels
         self.chunkduration = norm_chunk_duration
-        self.samp_queue = queue.Queue(maxsize=100)      # type: queue.Queue[Union[Tuple[str, int], str, Dict[str, Any]]]
+        self.samp_queue = queue.Queue(maxsize=100)      # type: queue.Queue[Dict[str, Any]]
+        self._job_id_seq = 1
 
     def __str__(self) -> str:
         api_ver = self.query_api_version()
@@ -166,21 +167,22 @@ class AudioApi:
     def chunksize(self) -> int:
         return int(self.samplerate * self.samplewidth * self.nchannels * self.chunkduration)
 
-    def play(self, sample: sample.Sample, repeat: bool=False) -> int:
-        job = {"sample": sample, "repeat": repeat}
-        job_id = id(job)
+    def play(self, sample: Sample, repeat: bool=False) -> int:
+        job = {"action": "play", "sample": sample, "repeat": repeat}
+        job_id = self._job_id_seq
+        self._job_id_seq += 1
         job["id"] = job_id
         self.samp_queue.put(job)
         return job_id
 
     def silence(self) -> None:
-        self.samp_queue.put("silence")
+        self.samp_queue.put({"action": "silence"})
 
     def close(self) -> None:
-        self.samp_queue.put("stop")
+        self.samp_queue.put({"action": "close"})
 
     def stop(self, sid: int) -> None:
-        self.samp_queue.put(("stopsample", sid))
+        self.samp_queue.put({"action": "stop", "sid": sid})
 
     def query_api_version(self) -> str:
         return "unknown"
@@ -208,19 +210,20 @@ class PyAudio(AudioApi):
                     while True:
                         try:
                             job = self.samp_queue.get_nowait()
-                            if job == "stop":
+                            if job["action"] == "close":
                                 break
-                            elif job == "silence":
+                            elif job["action"] == "silence":
                                 self.mixer.clear_sources()
                                 continue
-                            elif isinstance(job, tuple):
-                                if job[0] == "stopsample":
-                                    self.mixer.clear_source(job[1])
+                            elif job["action"] == "stop":
+                                self.mixer.clear_source(job["sid"])
                                 continue
+                            elif job["action"] == "play":
+                                self.mixer.add_sample(job["sample"], job["repeat"], job["id"])
+                            else:
+                                raise ValueError("invalid action: " + job["action"])
                         except queue.Empty:
                             pass
-                        else:
-                            self.mixer.add_sample(job["sample"], job["repeat"], job["id"])
                         data = next(self.mixer.mixed_chunks)
                         if isinstance(data, memoryview):
                             data = data.tobytes()   # PyAudio stream can't deal with memoryview
@@ -270,19 +273,20 @@ class SounddeviceThread(AudioApi):
                     while True:
                         try:
                             job = self.samp_queue.get_nowait()
-                            if job == "stop":
+                            if job["action"] == "close":
                                 break
-                            elif job == "silence":
+                            elif job["action"] == "silence":
                                 self.mixer.clear_sources()
                                 continue
-                            elif isinstance(job, tuple):
-                                if job[0] == "stopsample":
-                                    self.mixer.clear_source(job[1])
+                            elif job["action"] == "stop":
+                                self.mixer.clear_source(job["sid"])
                                 continue
+                            elif job["action"] == "play":
+                                self.mixer.add_sample(job["sample"], job["repeat"], job["id"])
+                            else:
+                                raise ValueError("invalid action: " + job["action"])
                         except queue.Empty:
                             pass
-                        else:
-                            self.mixer.add_sample(job["sample"], job["repeat"], job["id"])
                         data = next(self.mixer.mixed_chunks)
                         stream.write(data)
                 finally:
@@ -306,7 +310,7 @@ class Sounddevice(AudioApi):
     using callback stream, without a separate audio output thread"""
     def __init__(self):
         super().__init__()
-        del self.samp_queue
+        del self.samp_queue     # this one doesn't use a thread with a command queue
         global sounddevice
         import sounddevice
         if self.samplewidth == 1:
@@ -319,10 +323,11 @@ class Sounddevice(AudioApi):
             dtype = "int32"
         else:
             raise ValueError("invalid sample width")
-        self._empty_sound_data = b"\0" * self.chunksize() * self.nchannels * self.samplewidth
+        self._empty_sound_data = b"\0" * self.chunksize()
         self.mixer = SampleMixer(chunksize=self.chunksize())
         self.stream = sounddevice.RawOutputStream(self.samplerate, channels=self.nchannels, dtype=dtype,
-                                                  blocksize=self.chunksize() // self.nchannels // self.samplewidth, callback=self.streamcallback)
+                                                  blocksize=self.chunksize() // self.nchannels // self.samplewidth,
+                                                  callback=self.streamcallback)
         self.stream.start()
 
     def query_api_version(self):
@@ -392,7 +397,7 @@ class Output:
         self.audio_api.set_sample_play_limit(samplename, max_simultaneously)
 
 
-samples = {}    # type: Dict[str, Union[str, sample.Sample]]
+samples = {}    # type: Dict[str, Union[str, Sample]]
 output = None
 
 
@@ -403,7 +408,7 @@ def init_audio(samples_to_load, preferred_api=None) -> Output:
     if any(isinstance(smp, str) for smp, _ in samples_to_load.values()):
         print("Loading sound files...")
     for name, (filename, max_simultaneously) in samples_to_load.items():
-        if isinstance(filename, sample.Sample):
+        if isinstance(filename, Sample):
             samples[name] = filename
         else:
             data = pkgutil.get_data(__name__, "sounds/" + filename)
@@ -411,7 +416,7 @@ def init_audio(samples_to_load, preferred_api=None) -> Output:
                 with tempfile.NamedTemporaryFile() as tmp:
                     tmp.write(data)
                     tmp.flush()
-                    samples[name] = sample.Sample(streaming.AudiofileToWavStream(tmp.name), name).stereo()
+                    samples[name] = Sample(streaming.AudiofileToWavStream(tmp.name), name).stereo()
             else:
                 raise SystemExit("corrupt package; sound data is missing")
         output.set_sample_play_limit(name, max_simultaneously)
@@ -432,7 +437,7 @@ def shutdown_audio():
 
 
 if __name__ == "__main__":
-    smp = sample.Sample.from_raw_frames([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 2, 44100, 1)
+    smp = Sample.from_raw_frames([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 2, 44100, 1)
     chunks = smp.chunked_frame_data(chunksize=51, repeat=True)
     for _ in range(60):
         print(next(chunks).tobytes())
