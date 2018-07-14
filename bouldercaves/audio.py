@@ -27,9 +27,8 @@ import time
 import tempfile
 from collections import defaultdict
 from typing import Generator, Union, Dict, Tuple, Any
-from .synthesizer import params as synth_params
+from .synthesizer import streaming, params as synth_params
 from .synthesizer.sample import Sample
-from .synthesizer.tools import streaming
 
 
 __all__ = ["init_audio", "play_sample", "silence_audio", "shutdown_audio"]
