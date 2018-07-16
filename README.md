@@ -67,7 +67,7 @@ You can choose between *sampled sounds* and *synthesized sounds* via a command l
 
 The sampled sounds require the 'oggdec' tool and the sound files. If you use the 
 sound synthesizer however, both of these are not needed at all - all sounds are generated
-by the program. For this I'm using a slightly tweaked version of [my software FM-synthesizer](https://github.com/irmen/synthesizer).
+by the program. For this I'm using a copy of [my software FM-synthesizer](https://github.com/irmen/synthesizer).
 
 The Python zip app script creates two versions of this game, one with the sound files included,
 and another one ()that is much smaller) without the sound files because it uses the synthesizer.

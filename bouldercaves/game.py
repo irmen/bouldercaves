@@ -21,7 +21,7 @@ from typing import Tuple, Sequence, List, Iterable, Callable, Optional
 from .gamelogic import GameState, Direction, GameStatus, HighScores
 from .caves import colorpalette, Palette
 from . import audio, synthsamples, tiles, objects, bdcff
-from .synthesizer import sample
+from .synthplayer import sample
 
 __version__ = "5.0.dev0"
 
@@ -548,7 +548,7 @@ def start(sargs: Sequence[str]=None) -> None:
         raise SystemExit
 
     # validate required libraries
-    audio_api = audio.best_api()
+    audio.check_api()
     args.c64colors |= args.authentic
     if args.c64colors:
         print("Using the original Commodore-64 colors.")

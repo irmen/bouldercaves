@@ -11,10 +11,10 @@ import random
 import itertools
 import collections.abc
 from typing import Callable, Generator, Iterator
-from .synthesizer.synth import FastTriangle, WhiteNoise, Linear, Triangle, Sine, SquareH, \
+from .synthplayer.synth import FastTriangle, WhiteNoise, Linear, Triangle, Sine, SquareH, \
     EnvelopeFilter, AmpModulationFilter, MixingFilter
-from .synthesizer import params as synth_params
-from .synthesizer.sample import Sample
+from .synthplayer import params as synth_params
+from .synthplayer.sample import Sample
 from . import audio
 
 
