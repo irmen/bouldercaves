@@ -23,7 +23,7 @@ from .caves import colorpalette, Palette
 from . import audio, synthsamples, tiles, objects, bdcff
 from .synthplayer import sample
 
-__version__ = "5.0.dev0"
+__version__ = "5.0"
 
 
 class BoulderWindow(tkinter.Tk):
@@ -636,6 +636,8 @@ def start(sargs: Sequence[str]=None) -> None:
             max_simul = samples[name][1]
             samples[name] = (sample, max_simul)     # type: ignore
 
+    if os.name == "nt":
+        audio.prepare_oggdec_exe()
     audio.init_audio(samples)
     title = "Boulder Caves {version:s} {sound:s} {playtest:s} - by Irmen de Jong"\
         .format(version=__version__,

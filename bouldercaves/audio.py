@@ -22,10 +22,12 @@ License: GNU GPL 3.0, see LICENSE
 import pkgutil
 import time
 import tempfile
+import os
 from typing import Union, Dict, Tuple
 from .synthplayer import streaming, params as synth_params
 from .synthplayer.sample import Sample
 from .synthplayer.playback import Output, best_api
+from . import user_data_dir
 
 
 __all__ = ["init_audio", "play_sample", "silence_audio", "shutdown_audio"]
@@ -52,10 +54,13 @@ class SoundEngine:
             else:
                 data = pkgutil.get_data(__name__, "sounds/" + filename)
                 if data:
-                    with tempfile.NamedTemporaryFile() as tmp:
+                    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".ogg")
+                    try:
                         tmp.write(data)
-                        tmp.flush()
+                        tmp.close()
                         samples[name] = Sample(streaming.AudiofileToWavStream(tmp.name), name).stereo()
+                    finally:
+                        os.remove(tmp.name)
                 else:
                     raise SystemExit("corrupt package; sound data is missing")
             self.output.set_sample_play_limit(name, max_simultaneously)
@@ -75,6 +80,17 @@ class SoundEngine:
 
 
 sound_engine = None
+
+
+def prepare_oggdec_exe():
+    # on windows, make sure the embedded oggdec.exe is made available
+    if os.name == "nt":
+        filename = user_data_dir + "oggdec.exe"
+        if not os.path.isfile(filename):
+            oggdecexe = pkgutil.get_data(__name__, "sounds/oggdec.exe")
+            with open(filename, "wb") as exefile:
+                exefile.write(oggdecexe)
+        streaming.AudiofileToWavStream.oggdec_executable = filename
 
 
 def init_audio(samples_to_load) -> SoundEngine:
@@ -105,6 +121,8 @@ if __name__ == "__main__":
     chunks = smp.chunked_frame_data(chunksize=51, repeat=True)
     for _ in range(60):
         print(next(chunks).tobytes())
+    if os.name == "nt":
+        prepare_oggdec_exe()
     sound_engine = init_audio({
         "explosion": ("explosion.ogg", 99),
         "amoeba": ("amoeba.ogg", 99),
