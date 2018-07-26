@@ -209,7 +209,7 @@ class AudiofileToWavStream(io.RawIOBase):
         if self.stream:
             self.stream.read(100000)   # read possible surplus data to clean the pipe
             self.stream.close()
-            if os.name=="nt":
+            if os.name == "nt":
                 time.sleep(0.02)    # windows sometimes keeps the file locked for a bit
 
     @property
