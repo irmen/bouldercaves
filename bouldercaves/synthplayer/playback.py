@@ -14,9 +14,8 @@ Written by Irmen de Jong (irmen@razorvine.net) - License: GNU LGPL 3.
 import audioop      # type: ignore
 import queue
 import threading
-import tempfile
 import time
-import os
+import io
 from collections import defaultdict
 from typing import Generator, Union, Dict, Tuple, Any, Type, List, Callable, Iterable, Optional
 from .import params
@@ -374,12 +373,15 @@ class SounddeviceThread_Seq(AudioApi):
             try:
                 while True:
                     data = b""
+                    repeat = False
+                    command = None
                     try:
                         command = self.command_queue.get(timeout=0.2)
                         if command is None or command["action"] == "stop":
                             break
                         elif command["action"] == "play":
                             data = command["sample"].view_frame_data() or b""
+                            repeat = command["repeat"]
                     except queue.Empty:
                         self.all_played.set()
                         data = b""
@@ -388,6 +390,21 @@ class SounddeviceThread_Seq(AudioApi):
                         if self.playing_callback:
                             sample = Sample.from_raw_frames(data, self.samplewidth, self.samplerate, self.nchannels)
                             self.playing_callback(sample)
+                    if repeat:
+                        # remove all other samples from the queue and reschedule this one
+                        commands_to_keep = []
+                        while True:
+                            try:
+                                c2 = self.command_queue.get(block=False)
+                                if c2["action"] == "play":
+                                    continue
+                                commands_to_keep.append(c2)
+                            except queue.Empty:
+                                break
+                        for cmd in commands_to_keep:
+                            self.command_queue.put(cmd)
+                        if command:
+                            self.command_queue.put(command)
             finally:
                 self.all_played.set()
                 stream.stop()
@@ -399,7 +416,7 @@ class SounddeviceThread_Seq(AudioApi):
 
     def play(self, sample: Sample, repeat: bool=False, delay: float=0.0) -> int:
         self.all_played.clear()
-        self.command_queue.put({"action": "play", "sample": sample})
+        self.command_queue.put({"action": "play", "sample": sample, "repeat": repeat})
         return 0
 
     def silence(self) -> None:
@@ -516,12 +533,15 @@ class PyAudio_Seq(AudioApi):
                 try:
                     while True:
                         data = b""
+                        repeat = False
+                        command = None
                         try:
                             command = self.command_queue.get(timeout=0.2)
                             if command is None or command["action"] == "stop":
                                 break
                             elif command["action"] == "play":
                                 data = command["sample"].view_frame_data() or b""
+                                repeat = command["repeat"]
                         except queue.Empty:
                             self.all_played.set()
                             data = b""
@@ -532,6 +552,21 @@ class PyAudio_Seq(AudioApi):
                             if self.playing_callback:
                                 sample = Sample.from_raw_frames(data, self.samplewidth, self.samplerate, self.nchannels)
                                 self.playing_callback(sample)
+                        if repeat:
+                            # remove all other samples from the queue and reschedule this one
+                            commands_to_keep = []
+                            while True:
+                                try:
+                                    c2 = self.command_queue.get(block=False)
+                                    if c2["action"] == "play":
+                                        continue
+                                    commands_to_keep.append(c2)
+                                except queue.Empty:
+                                    break
+                            for cmd in commands_to_keep:
+                                self.command_queue.put(cmd)
+                            if command:
+                                self.command_queue.put(command)
                 finally:
                     self.all_played.set()
                     stream.close()
@@ -544,7 +579,7 @@ class PyAudio_Seq(AudioApi):
 
     def play(self, sample: Sample, repeat: bool=False, delay: float=0.0) -> int:
         self.all_played.clear()
-        self.command_queue.put({"action": "play", "sample": sample})
+        self.command_queue.put({"action": "play", "sample": sample, "repeat": repeat})
         return 0
 
     def silence(self) -> None:
@@ -596,8 +631,9 @@ class Winsound_Seq(AudioApi):
         import winsound as _winsound
         global winsound
         winsound = _winsound        # type: ignore
-        self.threads = []       # type: List[threading.Thread]
         self.played_callback = None
+        self.sample_queue = queue.Queue(maxsize=queue_size)     # type: queue.Queue[Sample]
+        threading.Thread(target=self._play, daemon=True).start()
 
     def play(self, sample: Sample, repeat: bool=False, delay: float=0.0) -> int:
         # plays the sample in a background thread so that we can continue while the sound plays.
@@ -606,35 +642,32 @@ class Winsound_Seq(AudioApi):
             raise ValueError("winsound player doesn't support repeating samples")
         if delay != 0.0:
             raise ValueError("winsound player doesn't support delayed playing")
-        self.wait_all_played()
-        t = threading.Thread(target=self._play, args=(sample,), daemon=True)
-        self.threads.append(t)
-        t.start()
-        time.sleep(0.0005)
+        self.sample_queue.put(sample)
         return 0
 
-    def _play(self, sample: Sample) -> None:
-        with tempfile.NamedTemporaryFile(delete=False, mode="wb") as sample_file:
-            sample.write_wav(sample_file)   # type: ignore
-            sample_file.flush()
-            winsound.PlaySound(sample_file.name, winsound.SND_FILENAME)     # type: ignore
-            if self.played_callback:
-                self.played_callback(sample)
-        os.unlink(sample_file.name)
+    def _play(self) -> None:
+        # this runs in a background thread so a sample playback doesn't block the program
+        # (can't use winsound async because we're playing from a memory buffer)
+        while True:
+            sample = self.sample_queue.get()
+            with io.BytesIO() as sample_data:
+                sample.write_wav(sample_data)   # type: ignore
+                winsound.PlaySound(sample_data.getbuffer(), winsound.SND_MEMORY)     # type: ignore
+                if self.played_callback:
+                    self.played_callback(sample)
 
     def stop(self, sid_or_name: Union[int, str]) -> None:
-        raise NotImplementedError("sequential play mode doesn't support stopping individual samples")
+        raise NotImplementedError("winsound sequential play mode doesn't support stopping individual samples")
 
     def set_sample_play_limit(self, samplename: str, max_simultaneously: int) -> None:
-        raise NotImplementedError("sequential play mode doesn't support setting sample limits")
+        raise NotImplementedError("winsound sequential play mode doesn't support setting sample limits")
 
     def wait_all_played(self) -> None:
-        while self.threads:
-            t = self.threads.pop()
-            t.join()
+        while not self.sample_queue.empty():
+            time.sleep(0.2)
 
     def still_playing(self) -> bool:
-        return bool(self.threads)
+        return not self.sample_queue.empty()
 
 
 class Output:
