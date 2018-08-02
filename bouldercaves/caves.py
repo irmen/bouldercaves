@@ -4,6 +4,7 @@ Included here are the (encoded) caves from Boulderdash I  on the Commodore-64.
 More info including the decoding algorithm:
 https://www.elmerproductions.com/sp/peterb/rawCaveData.html#rawCaveDataFormat
 https://www.elmerproductions.com/sp/peterb/insideBoulderdash.html
+http://www.bd-fans.com/FanStuff.html#Programming
 
 Written by Irmen de Jong (irmen@razorvine.net)
 License: GNU GPL 3.0, see LICENSE

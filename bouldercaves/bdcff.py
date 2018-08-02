@@ -4,8 +4,9 @@ Boulder Caves - a Boulder Dash (tm) clone.
 Parser for 'Boulder Dash Common File Format' BDCFF cave files.
 Implementation info:
 https://www.boulder-dash.nl/
-http://www.emeraldmines.net/BDCFF/
+http://www.emeraldmines.net/BDCFF/    (offline now, unfortunately)
 http://www.gratissaugen.de/erbsen/bdcff.html
+http://www.gratissaugen.de/erbsen/BD-Inside-FAQ.html
 
 Written by Irmen de Jong (irmen@razorvine.net)
 License: GNU GPL 3.0, see LICENSE
