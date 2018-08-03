@@ -66,8 +66,8 @@ class SoundEngine:
             self.output.set_sample_play_limit(name, max_simultaneously)
         print("Sound API initialized:", self.output.audio_api)
 
-    def play_sample(self, samplename, repeat=False):
-        self.output.play_sample(samples[samplename], repeat)
+    def play_sample(self, samplename, repeat=False, after=0.0):
+        self.output.play_sample(samples[samplename], repeat, after)
 
     def silence(self, sid_or_name=None):
         if sid_or_name:
@@ -99,8 +99,8 @@ def init_audio(samples_to_load) -> SoundEngine:
     return sound_engine
 
 
-def play_sample(samplename, repeat=False):
-    return sound_engine.play_sample(samplename, repeat)
+def play_sample(samplename, repeat=False, after=0.0):
+    return sound_engine.play_sample(samplename, repeat, after)
 
 
 def silence_audio(sid_or_name=None):

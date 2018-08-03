@@ -29,6 +29,9 @@ the screen fast enough, try adjusting the parameters on the command line.
 
 ![a level](screenshots/screenshot2.png?raw=true "Screenshot of a level in progress")
 
+Here is a [demo gameplay video](https://www.youtube.com/watch?v=KMvRBM28OP4) that shows what the
+game looks, sounds and plays like.
+
 
 ## Objective and rules of the game
 

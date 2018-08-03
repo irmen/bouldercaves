@@ -166,7 +166,7 @@ class GameState:
 
     def restart(self) -> None:
         audio.silence_audio()
-        audio.play_sample("music", repeat=True)
+        audio.play_sample("music", repeat=True, after=1)
         self.frame = 0
         self.demo_or_highscore = True
         self.game.set_screen_colors(0, 0)
