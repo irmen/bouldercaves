@@ -306,6 +306,7 @@ class EditorWindow(tkinter.Tk):
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.c_tiles = []      # type: List[str]
         self.tile_images = []  # type: List[tkinter.PhotoImage]
+        self.tile_images_small = []   # type: List[tkinter.PhotoImage]
         self.canvas_tag_to_tilexy = {}      # type: Dict[int, Tuple[int, int]]
         self.c64colors = False
         self.create_tile_images(Palette())

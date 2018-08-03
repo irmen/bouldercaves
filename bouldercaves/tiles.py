@@ -118,8 +118,11 @@ def text2tiles(text: str) -> Sequence[int]:
     return [num_sprites + ord(c) for c in text]
 
 
-def load_sprites(c64colorpalette: Palette=None, scale: float=1.0) -> Sequence[bytes]:
-    tiles_filename = "c64_gfx.png" if c64colorpalette else "boulder_rush.png"
+def load_sprites(c64colorpalette: Palette=None, scale: float=1.0, alt_c64tileset=False) -> Sequence[bytes]:
+    if c64colorpalette:
+        tiles_filename = "c64_gfx_alt.png" if alt_c64tileset else "c64_gfx.png"
+    else:
+        tiles_filename = "boulder_rush.png"
     sprite_src_images = []
     with Image.open(io.BytesIO(pkgutil.get_data(__name__, "gfx/" + tiles_filename) or b"")) as tile_image:
         if c64colorpalette:

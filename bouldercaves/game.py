@@ -33,7 +33,8 @@ class BoulderWindow(tkinter.Tk):
     visible_rows = 22
     scalexy = 2.0
 
-    def __init__(self, title: str, fps: int=30, scale: float=2, c64colors: bool=False, smallwindow: bool=False) -> None:
+    def __init__(self, title: str, fps: int=30, scale: float=2,
+                 c64colors: bool=False, c64_alternate_tiles: bool=False, smallwindow: bool=False) -> None:
         scale = scale / 2
         self.smallwindow = smallwindow
         if smallwindow:
@@ -46,6 +47,7 @@ class BoulderWindow(tkinter.Tk):
         self.update_timestep = 1 / fps
         self.scalexy = scale
         self.c64colors = c64colors
+        self.c64_alternate_tiles = c64_alternate_tiles
         if self.visible_columns <= 4 or self.visible_columns > 100 or self.visible_rows <= 4 or self.visible_rows > 100:
             raise ValueError("invalid visible size")
         if self.scalexy not in (1, 1.5, 2, 2.5, 3):
@@ -302,13 +304,15 @@ class BoulderWindow(tkinter.Tk):
 
     def create_colored_tiles(self, colors: Palette) -> None:
         if self.c64colors:
-            source_images = tiles.load_sprites(colors if self.c64colors else None, scale=self.scalexy)
+            source_images = tiles.load_sprites(colors if self.c64colors else None, scale=self.scalexy,
+                                               alt_c64tileset=self.c64_alternate_tiles)
             for i, image in enumerate(source_images):
                 self.tile_images[i] = tkinter.PhotoImage(data=image)
 
     def create_tile_images(self) -> None:
         initial_palette = Palette(2, 4, 13, 5, 6)
-        source_images = tiles.load_sprites(initial_palette if self.c64colors else None, scale=self.scalexy)
+        source_images = tiles.load_sprites(initial_palette if self.c64colors else None, scale=self.scalexy,
+                                           alt_c64tileset=self.c64_alternate_tiles)
         self.tile_images = [tkinter.PhotoImage(data=image) for image in source_images]
         source_images = tiles.load_font(self.scalexy if self.smallwindow else 2 * self.scalexy)
         self.tile_images.extend([tkinter.PhotoImage(data=image) for image in source_images])
@@ -534,6 +538,7 @@ def start(sargs: Sequence[str]=None) -> None:
     ap.add_argument("-f", "--fps", type=int, help="frames per second (default=%(default)d)", default=30)
     ap.add_argument("-s", "--size", type=int, help="graphics size (default=%(default)d)", default=3, choices=(1, 2, 3, 4, 5))
     ap.add_argument("-c", "--c64colors", help="use Commodore-64 colors", action="store_true")
+    ap.add_argument("-o", "--othertiles", help="use alternate Commodore-64 tileset", action="store_true")
     ap.add_argument("-a", "--authentic", help="use C-64 colors AND limited window size", action="store_true")
     ap.add_argument("-y", "--synth", help="use synthesized sounds instead of samples", action="store_true")
     ap.add_argument("-l", "--level", help="select start level (cave number). When using this, no highscores will be recorded.", type=int, default=1)
@@ -643,7 +648,10 @@ def start(sargs: Sequence[str]=None) -> None:
         .format(version=__version__,
                 sound="[using synthesizer]" if args.synth else "",
                 playtest="[playtesting]" if args.playtest else "")
-    window = BoulderWindow(title, args.fps, args.size + 1, args.c64colors | args.authentic, args.authentic)
+    window = BoulderWindow(title, args.fps, args.size + 1,
+                           c64colors=args.c64colors | args.authentic,
+                           c64_alternate_tiles=args.othertiles,
+                           smallwindow=args.authentic)
     if args.game:
         window.gamestate.use_bdcff(args.game)
     if args.level:
@@ -652,6 +660,8 @@ def start(sargs: Sequence[str]=None) -> None:
         window.gamestate.use_playtesting()
     cs = window.gamestate.caveset
     print("Playing caveset '{name}' (by {author}, {date})".format(name=cs.name, author=cs.author, date=cs.date))
+    if args.othertiles:
+        print("Using alternate tileset (created by Marcel Sásik)")
     window.start()
     window.mainloop()
 
