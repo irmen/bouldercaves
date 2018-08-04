@@ -2,7 +2,7 @@
 A Boulder Dash (tm) clone in pure python. Includes a cave editor so you can make your own game!
 
 Requirements to run this:
-- Python 3.5 +
+- Python 3.5 or newer
 - ``pillow`` (or ``pil``) python library
 - ``sounddevice`` python library, if you want to play with sound.
 
