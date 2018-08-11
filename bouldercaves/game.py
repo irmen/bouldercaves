@@ -62,7 +62,10 @@ class BoulderWindow(tkinter.Tk):
             # tell windows to use a new toolbar icon
             import ctypes
             myappid = 'net.Razorvine.Bouldercaves.game'  # arbitrary string
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            try:
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            except AttributeError:
+                pass    # that function is not available on windows versions older than win7
         if smallwindow:
             self.tilesheet_score = tiles.Tilesheet(self.visible_columns * 2, 2, self.visible_columns * 2, 2)
             score_canvas_height = 16 * self.scalexy

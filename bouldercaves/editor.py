@@ -174,7 +174,10 @@ class EditorWindow(tkinter.Tk):
             # tell windows to use a new toolbar icon
             import ctypes
             myappid = 'net.Razorvine.Bouldercaves.editor'  # arbitrary string
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            try:
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            except AttributeError:
+                pass    # that function is not available on windows versions older than win7
         self.playfield_columns = self.visible_columns
         self.playfield_rows = self.visible_rows
         rightframe = tkinter.Frame(self)
