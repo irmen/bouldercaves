@@ -33,7 +33,7 @@ from . import user_data_dir
 __all__ = ["init_audio", "play_sample", "silence_audio", "shutdown_audio"]
 
 # audio parameters
-synth_params.norm_samplerate = 22050
+synth_params.norm_samplerate = 44100
 streaming.AudiofileToWavStream.ffprobe_executable = ""  # force use of oggdec instead of ffmpeg
 streaming.AudiofileToWavStream.ffmpeg_executable = ""  # force use of oggdec instead of ffmpeg
 

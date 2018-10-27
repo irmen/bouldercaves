@@ -29,7 +29,7 @@ else
 fi
 
 echo "Converting source sound files..."
-FFMPEG_OPTS="-v error -hide_banner -ar 22050 -ac 1 -y"
+FFMPEG_OPTS="-v error -hide_banner -ar 44100 -ac 1 -y"
 OEXT="ogg"
 
 ffmpeg -i ${GDASH}../music/bd1.ogg ${FFMPEG_OPTS} ${OUT}bdmusic.${OEXT}
