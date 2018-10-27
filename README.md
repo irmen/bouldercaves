@@ -75,6 +75,19 @@ by the program. For this I'm using a copy of [my software FM-synthesizer](https:
 The Python zip app script creates two versions of this game, one with the sound files included,
 and another one ()that is much smaller) without the sound files because it uses the synthesizer.
 
+### Hearing no sound? Configure the correct output audio device
+On some systems, the portaudio system audio library seems to report a wrong 
+default output audio device. In this case, you may get an ``IOError``
+(describing the problem). You can also get another error (or no sound output at all,
+without any errors at all...) If this happens, you can configure the output audio device
+that should be used:
+
+Either set the ``PY_SYNTHPLAYER_AUDIO_DEVICE`` environment variable to the correct device number,
+or set the ``synthplayer.playback.default_audio_device`` parameter at the start of your code.
+(The environment variable has priority over the code parameter)
+
+To find the correct device number you can use the command ``python -m sounddevice``.
+
 
 ## The title screen
 

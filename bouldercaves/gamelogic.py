@@ -1168,7 +1168,7 @@ class DemoMovementInfo(MovementInfo):
         for step in demo:
             d = step & 0x0f
             if d == 0:
-                raise StopIteration
+                break
             direction = {
                 0x0f: Direction.NOWHERE,
                 0x07: Direction.RIGHT,
