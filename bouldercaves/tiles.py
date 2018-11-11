@@ -162,7 +162,7 @@ def load_sprites(c64colorpalette: Palette=None, scale: float=1.0, alt_c64tileset
                 ci = ci.resize((int(16 * scale), int(16 * scale)), scaling_method)
             out = io.BytesIO()
             ci = ci.convert(mode="P")
-            ci.save(out, "png", compress_level=0)
+            ci.save(out, "gif")
             sprite_src_images.append(out.getvalue())
             tile_num += 1
     if len(sprite_src_images) != num_sprites:
@@ -184,6 +184,6 @@ def load_font(scale: float=1.0) -> Sequence[bytes]:
             if scale != 1:
                 ci = ci.resize((int(8 * scale), int(8 * scale)), scaling_method)
             out = io.BytesIO()
-            ci.save(out, "png")
+            ci.save(out, "gif")
             font_src_images.append(out.getvalue())
     return font_src_images
