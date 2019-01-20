@@ -54,6 +54,7 @@ def sample_from_osc(osc: Iterator[int], chunksize: int=0) -> Sample:
 
 class TitleMusic(Sample):
     # The title music. It is generated real-time while being played.
+    # notes and frequencies taken from https://www.elmerproductions.com/sp/peterb/sounds.html#Theme%20tune
     title_music = [
         (22, 34), (29, 38), (34, 41), (37, 46), (20, 36), (31, 39), (32, 41), (39, 48),
         (18, 42), (18, 44), (30, 46), (18, 49), (32, 44), (51, 55), (33, 45), (49, 53),
