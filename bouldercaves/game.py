@@ -23,7 +23,7 @@ from .caves import colorpalette, Palette
 from . import audio, synthsamples, tiles, objects, bdcff
 from .synthplayer import sample
 
-__version__ = "5.3"
+__version__ = "5.4"
 
 
 class BoulderWindow(tkinter.Tk):

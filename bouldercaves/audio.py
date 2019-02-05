@@ -23,6 +23,7 @@ import pkgutil
 import time
 import tempfile
 import os
+import subprocess
 from typing import Union, Dict, Tuple
 from .synthplayer import streaming, params as synth_params
 from .synthplayer.sample import Sample
@@ -34,8 +35,13 @@ __all__ = ["init_audio", "play_sample", "silence_audio", "shutdown_audio"]
 
 # audio parameters
 synth_params.norm_samplerate = 44100
-streaming.AudiofileToWavStream.ffprobe_executable = ""  # force use of oggdec instead of ffmpeg
-streaming.AudiofileToWavStream.ffmpeg_executable = ""  # force use of oggdec instead of ffmpeg
+try:
+    subprocess.call("oggdec", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    streaming.AudiofileToWavStream.ffprobe_executable = ""  # force use of oggdec instead of ffmpeg
+    streaming.AudiofileToWavStream.ffmpeg_executable = ""  # force use of oggdec instead of ffmpeg
+except IOError:
+    # no oggdec, stick with ffmpeg
+    pass
 
 
 samples = {}    # type: Dict[str, Union[str, Sample]]
