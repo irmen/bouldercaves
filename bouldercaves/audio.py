@@ -52,8 +52,8 @@ synth_params.norm_samplerate = 44100
 try:
     if not prepare_oggdec_exe():
         subprocess.call("oggdec", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        streaming.AudiofileToWavStream.ffprobe_executable = ""  # force use of oggdec instead of ffmpeg
-        streaming.AudiofileToWavStream.ffmpeg_executable = ""  # force use of oggdec instead of ffmpeg
+    streaming.AudiofileToWavStream.ffprobe_executable = ""  # force use of oggdec instead of ffmpeg
+    streaming.AudiofileToWavStream.ffmpeg_executable = ""  # force use of oggdec instead of ffmpeg
 except IOError:
     # no oggdec, stick with ffmpeg
     pass
