@@ -33,12 +33,27 @@ from . import user_data_dir
 
 __all__ = ["init_audio", "play_sample", "silence_audio", "shutdown_audio"]
 
+
+def prepare_oggdec_exe():
+    # on windows, make sure the embedded oggdec.exe is made available
+    if os.name == "nt":
+        filename = user_data_dir + "oggdec.exe"
+        if not os.path.isfile(filename):
+            oggdecexe = pkgutil.get_data(__name__, "sounds/oggdec.exe")
+            with open(filename, "wb") as exefile:
+                exefile.write(oggdecexe)
+        streaming.AudiofileToWavStream.oggdec_executable = filename
+        return True
+    return False
+
+
 # audio parameters
 synth_params.norm_samplerate = 44100
 try:
-    subprocess.call("oggdec", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    streaming.AudiofileToWavStream.ffprobe_executable = ""  # force use of oggdec instead of ffmpeg
-    streaming.AudiofileToWavStream.ffmpeg_executable = ""  # force use of oggdec instead of ffmpeg
+    if not prepare_oggdec_exe():
+        subprocess.call("oggdec", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        streaming.AudiofileToWavStream.ffprobe_executable = ""  # force use of oggdec instead of ffmpeg
+        streaming.AudiofileToWavStream.ffmpeg_executable = ""  # force use of oggdec instead of ffmpeg
 except IOError:
     # no oggdec, stick with ffmpeg
     pass
@@ -86,17 +101,6 @@ class SoundEngine:
 
 
 sound_engine = None
-
-
-def prepare_oggdec_exe():
-    # on windows, make sure the embedded oggdec.exe is made available
-    if os.name == "nt":
-        filename = user_data_dir + "oggdec.exe"
-        if not os.path.isfile(filename):
-            oggdecexe = pkgutil.get_data(__name__, "sounds/oggdec.exe")
-            with open(filename, "wb") as exefile:
-                exefile.write(oggdecexe)
-        streaming.AudiofileToWavStream.oggdec_executable = filename
 
 
 def init_audio(samples_to_load) -> SoundEngine:
