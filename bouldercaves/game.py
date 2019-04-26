@@ -23,7 +23,7 @@ from .caves import colorpalette, Palette
 from . import audio, synthsamples, tiles, objects, bdcff
 from .synthplayer import sample
 
-__version__ = "5.4"
+__version__ = "5.5"
 
 
 class BoulderWindow(tkinter.Tk):
@@ -515,6 +515,9 @@ class BoulderWindow(tkinter.Tk):
             y += 1
         self.popup_tiles_save = None
         self.popup_frame = 0
+        if self.gamestate.game_status in (GameStatus.REVEALING_PLAY, GameStatus.REVEALING_DEMO):
+            # when going to reveal, now draw the actual cave
+            self.gamestate.draw_new_cave(self.gamestate.level)
         if self.on_popup_closed:
             self.on_popup_closed()
             self.on_popup_closed = None

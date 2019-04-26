@@ -336,12 +336,12 @@ class GameState:
             "dormant": True,
             "dead": None
         }
-        # clear the previous cave data and replace with data from new cave
-        self.game.clear_tilesheet()
-        self.draw_rectangle(objects.STEEL, 0, 0, self.width, self.height, objects.STEEL)
-        for i, (gobj, direction) in enumerate(cave.map):
-            y, x = divmod(i, cave.width)
-            self.draw_single(gobj, x, y, initial_direction=direction)
+        have_level_intro_popup = level_intro_popup and self.level_description
+        if have_level_intro_popup:
+            # don't reveal the cave already
+            self.game.clear_tilesheet()
+        else:
+            self.draw_new_cave(self.level)
         self.game.create_colored_tiles(cave.colors)
         self.game.set_screen_colors(cave.colors.rgb_screen, cave.colors.rgb_border)
         self.check_initial_amoeba_dormant()
@@ -350,11 +350,21 @@ class GameState:
             self.game.prepare_reveal()
             audio.play_sample("cover", repeat=True)
 
-        if level_intro_popup and self.level_description:
+        if have_level_intro_popup:
+            self.game.clear_tilesheet()
             audio.play_sample("diamond2")
             self.game.popup("{:s}\n\n{:s}".format(self.level_name, self.level_description), on_close=prepare_reveal)
         elif not self.playtesting:
             prepare_reveal()
+
+    def draw_new_cave(self, levelnumber):
+        # clear the previous cave data and replace with data from new cave
+        self.game.clear_tilesheet()
+        self.draw_rectangle(objects.STEEL, 0, 0, self.width, self.height, objects.STEEL)
+        cave = self.caveset.cave(levelnumber)
+        for i, (gobj, direction) in enumerate(cave.map):
+            y, x = divmod(i, cave.width)
+            self.draw_single(gobj, x, y, initial_direction=direction)
 
     def check_initial_amoeba_dormant(self) -> None:
         if self.amoeba["dormant"]:
