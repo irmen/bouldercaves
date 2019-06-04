@@ -1,16 +1,16 @@
-from PIL import Image, ImageDraw
+from PIL import Image
 
-x,y = 32, 35
+x, y = 32, 35
 for num in range(1, 14):
     img = Image.open("ss{}.png".format(num))
-    img=img.crop((x,y, x+16*16, y+16))
+    img = img.crop((x, y, x+16*16, y+16))
 
     for tilenum in range(8):
         tile = img.crop((tilenum*32, 0, tilenum*32+16, 16))
         img.paste(tile, (tilenum*16, 0))
 
     img = img.crop((0, 0, 16*8, 16))
-    img=img.convert('P', palette=Image.ADAPTIVE, colors=4)
+    img = img.convert('P', palette=Image.ADAPTIVE, colors=4)
     palettevalues = img.getpalette()
     palette = [(r, g, b) for r, g, b in zip(palettevalues[0:16 * 3:3], palettevalues[1:16 * 3:3], palettevalues[2:16 * 3:3])]
     if (255, 255, 255) in palette:
@@ -43,19 +43,19 @@ right = Image.open("ss4_crop.png")
 c64.paste(right, (0, 30*16))
 
 assorted = Image.open("ss6_crop.png")
-boulder = assorted.crop((0,0,16,16))
+boulder = assorted.crop((0, 0, 16, 16))
 c64.paste(boulder, (16, 0))
-dirt = assorted.crop((16,0,32,16))
+dirt = assorted.crop((16, 0, 32, 16))
 c64.paste(dirt, (32, 0))
-steelwall = assorted.crop((32,0,48,16))
+steelwall = assorted.crop((32, 0, 48, 16))
 c64.paste(steelwall, (4*16, 0))
 c64.paste(steelwall, (6*16, 2*16))
-brickwall = assorted.crop((48,0,64,16))
+brickwall = assorted.crop((48, 0, 64, 16))
 c64.paste(brickwall, (5*16, 0))
-inbox = assorted.crop((5*16,0,6*16,16))
+inbox = assorted.crop((5*16, 0, 6*16, 16))
 c64.paste(inbox, (7*16, 2*16))
-explosion1 = assorted.crop((6*16,0, 7*16, 16))
-explosion2 = assorted.crop((7*16,0, 8*16, 16))
+explosion1 = assorted.crop((6*16, 0, 7*16, 16))
+explosion2 = assorted.crop((7*16, 0, 8*16, 16))
 c64.paste(explosion1, (3*16, 5*16))
 c64.paste(explosion1, (7*16, 5*16))
 c64.paste(explosion2, (4*16, 5*16))
@@ -66,7 +66,7 @@ c64.paste(rockfordface, (0, 27*16))
 c64.paste(rockfordface, (0, 28*16))
 
 assorted = Image.open("ss7_crop.png")
-explosion3 = assorted.crop((0,0, 16,16))
+explosion3 = assorted.crop((0, 0, 16, 16))
 c64.paste(explosion3, (5*16, 5*16))
 diamondbirth1 = assorted.crop((1*16, 0, 2*16, 16))
 diamondbirth2 = assorted.crop((2*16, 0, 3*16, 16))
@@ -97,7 +97,7 @@ c64.paste(magicwall1, (4*16, 23*16))
 c64.paste(magicwall2, (5*16, 23*16))
 c64.paste(magicwall3, (6*16, 23*16))
 c64.paste(magicwall4, (7*16, 23*16))
-rockford = assorted.crop((4*16,0, 5*16,16))
+rockford = assorted.crop((4*16, 0, 5*16, 16))
 c64.paste(rockford, (3*16, 4*16))
 
 assorted = Image.open("ss11_crop.png")
@@ -118,9 +118,7 @@ lockeddiamond = assorted.crop((5*16, 0, 6*16, 16))
 mutantstone = assorted.crop((6*16, 0, 7*16, 16))
 c64.paste(bomb, (0, 6*16))
 c64.paste(acid, (4*16, 2*16))
-c64.paste(diamondkey, (3*16,16))
-c64.paste(lockeddiamond, (2*16,16))
-
-
+c64.paste(diamondkey, (3*16, 16))
+c64.paste(lockeddiamond, (2*16, 16))
 
 c64.save("bouldercaves/gfx/c64_gfx.png")

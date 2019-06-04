@@ -5,16 +5,12 @@ Written by Irmen de Jong (irmen@razorvine.net) - License: GNU GPL 3.0, see LICEN
 """
 
 import time
-import audioop
-import array
 import random
 import itertools
-import collections.abc
-from typing import Callable, Generator, Iterator
-from .synthplayer.synth import FastTriangle, WhiteNoise, Linear, Triangle, Sine, SquareH, \
-    EnvelopeFilter, AmpModulationFilter, MixingFilter
+from typing import Callable, Generator
 from .synthplayer import params as synth_params
 from .synthplayer.sample import Sample
+from .synthplayer.oscillators import *
 from . import audio
 
 
@@ -25,31 +21,9 @@ class NoteFinished(Exception):
     pass
 
 
-def monochannel_from_osc(osc: Iterator[int], chunksize: int=0) -> bytes:
-    assert isinstance(osc, collections.abc.Iterator), "you need to provide an iterator as osc instead of the filter itself"
-    scale = 2 ** (synth_params.norm_samplewidth * 8 - 1) - 1
-    sounddata = array.array('h')
-    if chunksize:
-        try:
-            for _ in range(chunksize):
-                sounddata.append(int(scale * next(osc)))
-        except StopIteration:
-            pass
-    else:
-        for v in osc:
-            sounddata.append(int(scale * v))
-    sounddatab = sounddata.tobytes()
-    if len(sounddatab) == 0:
-        raise NoteFinished
-    return sounddatab
-
-
-def sample_from_osc(osc: Iterator[int], chunksize: int=0) -> Sample:
-    # A single oscillator gives one channel and the sound output is in stereo,
-    # so we duplicate the mono channel into a stereo sample here.
-    mono = monochannel_from_osc(osc, chunksize)
-    stereo = audioop.tostereo(mono, synth_params.norm_samplewidth, 1, 1)
-    return Sample.from_raw_frames(stereo, synth_params.norm_samplewidth, synth_params.norm_samplerate, 2)
+def sample_from_osc(osc: Oscillator) -> Sample:
+    s = Sample.from_oscillator(osc, 5)     # 5 seconds is the maximum it will be.
+    return s.stereo()
 
 
 class TitleMusic(Sample):
@@ -97,7 +71,8 @@ class TitleMusic(Sample):
         notes = itertools.cycle(self.title_music) if repeat else iter(self.title_music)
         attack, decay, sustain, release = self.adsr_times
 
-        samplebuffer = b""
+        num_frames = chunksize // synth_params.norm_samplewidth // synth_params.norm_nchannels
+        sample_residue = Sample(None, nchannels=2)
         for v1, v2 in notes:
             if stopcondition():
                 break
@@ -107,33 +82,15 @@ class TitleMusic(Sample):
             osc2 = FastTriangle(vf2 * _sidfreq, amplitude=0.5)
             f1 = EnvelopeFilter(osc1, attack, decay, sustain, 1.0, release, stop_at_end=True)
             f2 = EnvelopeFilter(osc2, attack, decay, sustain, 1.0, release, stop_at_end=True)
-            osc_chunksize = chunksize // synth_params.norm_samplewidth // synth_params.norm_nchannels
-            f1_i = f1.generator()
-            f2_i = f2.generator()
-
-            while True:
-                # render this note in chunks of the asked size
-                try:
-                    while len(samplebuffer) < chunksize:
-                        # fill up the sample buffer so we have at least one full chunk
-                        sample1 = monochannel_from_osc(f1_i, chunksize=osc_chunksize)
-                        sample2 = monochannel_from_osc(f2_i, chunksize=osc_chunksize)
-                        sample1 = audioop.tostereo(sample1, synth_params.norm_samplewidth, 1, 0)
-                        sample2 = audioop.tostereo(sample2, synth_params.norm_samplewidth, 0, 1)
-                        sample1 = audioop.add(sample1, sample2, synth_params.norm_samplewidth)
-                        samplebuffer += sample1
-                except NoteFinished:
-                    # go to next note
-                    break
-                if samplebuffer:
-                    chunk = samplebuffer[:chunksize]
-                    samplebuffer = samplebuffer[chunksize:]
-                    assert len(chunk) == chunksize
-                    yield memoryview(chunk)
-                else:
-                    break
-        if samplebuffer:
-            yield memoryview(samplebuffer)
+            sample1 = Sample.from_oscillator(f1, 1, synth_params.norm_samplerate)       # length is max. 1 second
+            sample2 = Sample.from_oscillator(f2, 1, synth_params.norm_samplerate)       # length is max. 1 second
+            sample_residue.join(sample1.stereo_mix(sample2, "R"))
+            while len(sample_residue) >= num_frames:
+                yield sample_residue.view_frame_data()[:chunksize]
+                sample_residue = Sample.from_raw_frames(sample_residue.view_frame_data()[chunksize:],
+                                                        sample_residue.samplewidth, sample_residue.samplerate, sample_residue.nchannels)
+        if len(sample_residue):
+            yield sample_residue.view_frame_data()
 
 
 class RealtimeSynthesizedSample(Sample):
@@ -144,16 +101,18 @@ class RealtimeSynthesizedSample(Sample):
                            stopcondition: Callable[[], bool]=lambda: False) -> Generator[memoryview, None, None]:
         raise NotImplementedError("subclass should implement this")
 
-    def render_samples(self, osc: Iterator[int], samplebuffer: bytes,
+    def render_samples(self, osc: Oscillator, samplebuffer: bytes,
                        sample_chunksize: int, stopcondition: Callable[[], bool]=lambda: False,
                        return_remaining_buffer: bool=False) -> Generator[memoryview, None, bytes]:
-        osc_chunksize = sample_chunksize // synth_params.norm_samplewidth // synth_params.norm_nchannels
+        num_frames = sample_chunksize // synth_params.norm_samplewidth // synth_params.norm_nchannels
         while not stopcondition():
             # render this sample in chunks of the asked size
             try:
                 while len(samplebuffer) < sample_chunksize:
                     # fill up the sample buffer so we have at least one full chunk
-                    sample = sample_from_osc(osc, chunksize=osc_chunksize)
+                    print("NUM_FRAMES", num_frames)  # XXX
+                    sample = sample_from_osc(osc)
+                    print(sample, len(sample))
                     samplebuffer += sample.view_frame_data()    # type: ignore
             except NoteFinished:
                 # go to next sample
@@ -183,7 +142,7 @@ class Amoeba(RealtimeSynthesizedSample):
             freq = random.randint(0x0800, 0x1200)
             osc = FastTriangle(freq * _sidfreq, amplitude=0.75)
             filtered = EnvelopeFilter(osc, 0.024, 0.006, 0.0, 0.5, 0.003, stop_at_end=True)
-            samplebuffer = yield from self.render_samples(filtered.generator(), samplebuffer, chunksize, return_remaining_buffer=True)
+            samplebuffer = yield from self.render_samples(filtered, samplebuffer, chunksize, return_remaining_buffer=True)
 
 
 class MagicWall(RealtimeSynthesizedSample):
@@ -200,7 +159,7 @@ class MagicWall(RealtimeSynthesizedSample):
             freq |= 0b1000011000000000
             osc = FastTriangle(freq * _sidfreq, amplitude=0.4)
             filtered = EnvelopeFilter(osc, 0.002, 0.008, 0.0, 0.6, 0.03, stop_at_end=True)
-            samplebuffer = yield from self.render_samples(filtered.generator(), samplebuffer, chunksize, return_remaining_buffer=True)
+            samplebuffer = yield from self.render_samples(filtered, samplebuffer, chunksize, return_remaining_buffer=True)
 
 
 class Cover(RealtimeSynthesizedSample):
@@ -215,7 +174,7 @@ class Cover(RealtimeSynthesizedSample):
             freq = random.randint(0x6000, 0xd800)
             osc = FastTriangle(freq * _sidfreq, amplitude=0.7)
             filtered = EnvelopeFilter(osc, 0.002, 0.02, 0.0, 0.5, 0.02, stop_at_end=True)
-            samplebuffer = yield from self.render_samples(filtered.generator(), samplebuffer, chunksize, return_remaining_buffer=True)
+            samplebuffer = yield from self.render_samples(filtered, samplebuffer, chunksize, return_remaining_buffer=True)
 
 
 class Finished(RealtimeSynthesizedSample):
@@ -232,7 +191,7 @@ class Finished(RealtimeSynthesizedSample):
             freq = 0x8000 - n * 180
             osc = FastTriangle(freq * _sidfreq, amplitude=0.8)
             filtered = EnvelopeFilter(osc, 0.002, 0.004, 0.0, 0.6, 0.02, stop_at_end=True)
-            samplebuffer = yield from self.render_samples(filtered.generator(), samplebuffer, chunksize, return_remaining_buffer=True)
+            samplebuffer = yield from self.render_samples(filtered, samplebuffer, chunksize, return_remaining_buffer=True)
         if samplebuffer:
             yield memoryview(samplebuffer)
 
@@ -244,7 +203,7 @@ class ExtraLife(Sample):
             freq = 0x1400 + n * 1024
             osc = FastTriangle(freq * _sidfreq, amplitude=0.8)
             filtered = EnvelopeFilter(osc, 0.002, 0.024, 0.0, 0.6, 0.03, stop_at_end=True)
-            self.join(sample_from_osc(filtered.generator()))
+            self.join(sample_from_osc(filtered))
 
 
 class GameOver(RealtimeSynthesizedSample):
@@ -259,7 +218,7 @@ class GameOver(RealtimeSynthesizedSample):
         filtered = EnvelopeFilter(osc, 0.1, 0.3, 1.5, 1.0, 0.07, stop_at_end=True)
         ampmod = SquareH(10, 9, amplitude=0.5, bias=0.5)
         modulated = AmpModulationFilter(filtered, ampmod)
-        yield from self.render_samples(modulated.generator(), b"", chunksize, stopcondition=stopcondition)
+        yield from self.render_samples(modulated, b"", chunksize, stopcondition=stopcondition)
 
 
 class WalkDirt(Sample):
@@ -267,7 +226,7 @@ class WalkDirt(Sample):
         super().__init__(name="walk_dirt")
         osc = WhiteNoise(0x5000, amplitude=0.3)
         filtered = EnvelopeFilter(osc, 0.034, 0.006, 0.0, 0.5, 0.008, stop_at_end=True)
-        self.join(sample_from_osc(filtered.generator()))
+        self.join(sample_from_osc(filtered))
 
 
 class WalkEmpty(Sample):
@@ -275,7 +234,7 @@ class WalkEmpty(Sample):
         super().__init__(name="walk_empty")
         osc = WhiteNoise(0x1200, amplitude=0.2)
         filtered = EnvelopeFilter(osc, 0.034, 0.006, 0.0, 0.5, 0.008, stop_at_end=True)
-        self.join(sample_from_osc(filtered.generator()))
+        self.join(sample_from_osc(filtered))
 
 
 class Explosion(Sample):
@@ -283,7 +242,7 @@ class Explosion(Sample):
         super().__init__(name="explosion")
         osc = WhiteNoise(0x1432, amplitude=0.8)
         filtered = EnvelopeFilter(osc, 0.008, 0.1, 0.0, 0.5, 1.5, stop_at_end=True)
-        self.join(sample_from_osc(filtered.generator()))
+        self.join(sample_from_osc(filtered))
 
 
 class VoodooExplosion(Sample):
@@ -295,7 +254,7 @@ class VoodooExplosion(Sample):
         f1 = EnvelopeFilter(osc5, 0.02, 0.02, 0, 0.72, 1.5, stop_at_end=True)
         f2 = EnvelopeFilter(osc4, 0.18, 0.16, 0, 0.48, 1.2, stop_at_end=True)
         filtered = MixingFilter(f1, f2)
-        self.join(sample_from_osc(filtered.generator()))
+        self.join(sample_from_osc(filtered))
 
 
 class CollectDiamond(Sample):
@@ -303,7 +262,7 @@ class CollectDiamond(Sample):
         super().__init__(name="collect_diamond")
         osc = FastTriangle(0x1478 * _sidfreq, amplitude=0.8)
         filtered = EnvelopeFilter(osc, 0.002, 0.006, 0.0, 0.7, 0.65, stop_at_end=True)
-        self.join(sample_from_osc(filtered.generator()))
+        self.join(sample_from_osc(filtered))
 
 
 class Boulder(Sample):
@@ -311,7 +270,7 @@ class Boulder(Sample):
         super().__init__(name="boulder")
         osc = WhiteNoise(0x0932, amplitude=0.8)
         filtered = EnvelopeFilter(osc, 0.08, 0.08, 0.0, 0.4, 0.65, stop_at_end=True)
-        self.join(sample_from_osc(filtered.generator()))
+        self.join(sample_from_osc(filtered))
 
 
 class Crack(Sample):
@@ -319,7 +278,7 @@ class Crack(Sample):
         super().__init__(name="crack")
         osc = WhiteNoise(0x2F32, amplitude=0.8)
         filtered = EnvelopeFilter(osc, 0.008, 0.075, 0.0, 0.4, 0.65, stop_at_end=True)
-        self.join(sample_from_osc(filtered.generator()))
+        self.join(sample_from_osc(filtered))
 
 
 class BoxPush(Sample):
@@ -327,7 +286,7 @@ class BoxPush(Sample):
         super().__init__(name="boxpush")
         osc = WhiteNoise(2637, amplitude=0.6)
         filtered = EnvelopeFilter(osc, 0.2, 0.2, 0.0, 0.25, 0, stop_at_end=True)
-        self.join(sample_from_osc(filtered.generator()))
+        self.join(sample_from_osc(filtered))
 
 
 class Diamond(RealtimeSynthesizedSample):
@@ -342,7 +301,7 @@ class Diamond(RealtimeSynthesizedSample):
         freq |= 0b1000011000000000
         osc = FastTriangle(freq * _sidfreq, amplitude=0.7)
         filtered = EnvelopeFilter(osc, 0.002, 0.006, 0.0, 0.7, 0.6, stop_at_end=True)
-        yield from self.render_samples(filtered.generator(), b"", chunksize, stopcondition=stopcondition)
+        yield from self.render_samples(filtered, b"", chunksize, stopcondition=stopcondition)
 
 
 class Timeout(Sample):
@@ -351,7 +310,7 @@ class Timeout(Sample):
         self._timeout = timeout
         osc = FastTriangle((timeout * 256 + 0x1E00) * _sidfreq, amplitude=0.99)
         filtered = EnvelopeFilter(osc, 0.002, 0.2, 0.1, 0.5, 0.8, stop_at_end=True)
-        self.join(sample_from_osc(filtered.generator()))
+        self.join(sample_from_osc(filtered))
 
     def copy(self) -> 'Timeout':
         cpy = Timeout(self._timeout)
@@ -365,7 +324,7 @@ class Slime(Sample):
         fm = FastTriangle(5, 0.5)
         osc = Sine(261.62556, 0.25, fm_lfo=fm)
         filtered = EnvelopeFilter(osc, 0, 0, 0, 1, 0.41, stop_at_end=True)
-        self.join(sample_from_osc(filtered.generator()))
+        self.join(sample_from_osc(filtered))
 
 
 def demo():
