@@ -4,7 +4,10 @@ A Boulder Dash (tm) clone in pure python. Includes a cave editor so you can make
 Requirements to run this:
 - Python 3.5 or newer
 - ``pillow`` (or ``pil``) python library
-- ``sounddevice`` python library, if you want to play with sound.
+- a supported audio playback library, if you want to play with sound. Supported are:
+    - ``soundcard``
+    - ``sounddevice``
+    - ``pyaudio``
 
 *Detailed instructions how to run the game are [at the bottom of this text.](#how-to-install-and-run-this-game)*
 
@@ -76,7 +79,7 @@ The Python zip app script creates two versions of this game, one with the sound 
 and another one ()that is much smaller) without the sound files because it uses the synthesizer.
 
 ### Hearing no sound? Configure the correct output audio device
-On some systems, the portaudio system audio library seems to report a wrong 
+On some systems, the lowlevel system audio library seems to report a wrong 
 default output audio device. In this case, you may get an ``IOError``
 (describing the problem). You can also get another error (or no sound output at all,
 without any errors at all...) If this happens, you can configure the output audio device
@@ -125,7 +128,7 @@ in the 'caves' folder.
 Did you download only a ```*.pyz``` file? Do this:
 1. install Python 3.5 or newer from https://www.python.org/downloads/
 1. open a command prompt and type:
-   ``pip install --user pillow sounddevice``
+   ``pip install --user pillow sounddevice``   (or ``soundcard`` instead of ``sounddevice`` if you prefer that audio api)
 1. double-click on the ``*.pyz`` file that you downloaded.
 
 If you downloaded the source code, you can simply launch the game
@@ -147,7 +150,7 @@ just launch the ``startgame-venv.py`` script and it will take care of that for y
 
 Alternatively:
 
-1. make sure you have the ``pillow`` (or ``pil``) and ``sounddevice`` python libraries 
+1. make sure you have the ``pillow`` (or ``pil``) and ``sounddevice`` (or ``soundcard``) python libraries 
    installed. You can often find them in your package manager or install them with pip.
 1. if you want to play the version with synthesized sounds, you're all set.
 1. if you want to play the version with sampled sounds, make sure you have the
