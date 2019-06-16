@@ -86,6 +86,7 @@ class TitleMusic(Sample):
             sample2 = Sample.from_oscillator(f2, 1, synth_params.norm_samplerate)       # length is max. 1 second
             sample_residue.join(sample1.stereo_mix(sample2, "R"))
             while len(sample_residue) >= num_frames:
+                # TODO optimize this a bit by not using Samples but instead by looping over a memoryview of the frames (just like the super class does)
                 yield sample_residue.view_frame_data()[:chunksize]
                 sample_residue = Sample.from_raw_frames(sample_residue.view_frame_data()[chunksize:],
                                                         sample_residue.samplewidth, sample_residue.samplerate, sample_residue.nchannels)
