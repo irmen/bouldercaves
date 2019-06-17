@@ -48,7 +48,7 @@ class MiniaudioMixed(AudioApi, MiniaudioUtils):
             3: miniaudio.ma_format_s24,
             4: miniaudio.ma_format_s32
         }[self.samplewidth]
-        buffersize_msec = self.nchannels * 1000 * self.frames_per_chunk // self.samplerate
+        buffersize_msec = 1000 * self.nchannels * self.frames_per_chunk // self.samplerate
         self.mixed_chunks = self.mixer.chunks()
         self.device = miniaudio.PlaybackDevice(ma_output_format, self.nchannels, self.samplerate, buffersize_msec)
         stream = self.generator()
