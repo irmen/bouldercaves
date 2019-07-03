@@ -25,9 +25,9 @@ import tempfile
 import os
 import subprocess
 from typing import Union, Dict, Tuple
-from .synthplayer import streaming, params as synth_params
-from .synthplayer.sample import Sample
-from .synthplayer.playback import Output, best_api
+from synthplayer import streaming, params as synth_params
+from synthplayer.sample import Sample
+from synthplayer.playback import Output, best_api
 from . import user_data_dir
 
 

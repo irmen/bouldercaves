@@ -3,8 +3,9 @@ A Boulder Dash (tm) clone in pure python. Includes a cave editor so you can make
 
 Requirements to run this:
 - Python 3.5 or newer
-- ``pillow`` (or ``pil``) python library
-- a supported audio playback library, if you want to play with sound. Supported are:
+- ``pillow`` (to deal with images)
+- ``synthplayer`` (software FM synthesizer)
+- one of the supported audio playback libraries:
     - ``miniaudio``
     - ``soundcard``
     - ``sounddevice``
@@ -74,7 +75,7 @@ You can choose between *sampled sounds* and *synthesized sounds* via a command l
 
 The sampled sounds require the 'oggdec' tool and the sound files. If you use the 
 sound synthesizer however, both of these are not needed at all - all sounds are generated
-by the program. For this I'm using an included copy of [my software FM-synthesizer](https://github.com/irmen/synthesizer).
+by the program.
 
 The Python zip app script creates two versions of this game, one with the sound files included,
 and another one ()that is much smaller) without the sound files because it uses the synthesizer.
@@ -129,7 +130,8 @@ in the 'caves' folder.
 Did you download only a ```*.pyz``` file? Do this:
 1. install Python 3.5 or newer from https://www.python.org/downloads/
 1. open a command prompt and type:
-   ``pip install --user pillow miniaudio``   (or ``sounddevice``, or ``soundcard`` instead of ``miniaudio`` if you prefer that audio api)
+   ``pip install --user pillow "synthplayer==2.2.1" "miniaudio<=1.3"``
+   (or use "``sounddevice``" or "``soundcard``" instead of "``miniaudio``" if you prefer another audio api)
 1. double-click on the ``*.pyz`` file that you downloaded.
 
 If you downloaded the source code, you can simply launch the game
@@ -151,11 +153,12 @@ just launch the ``startgame-venv.py`` script and it will take care of that for y
 
 Alternatively:
 
-1. make sure you have installed the python libraries: ``pillow`` (or ``pil``) and ``miniaudio`` (or one of the other supported 
-   sound libraries). You can often find them in your package manager or install them with pip.
+1. make sure you have installed the python libraries: ``pillow``,  ``synthplayer==2.2.1`` and ``miniaudio<=1.3``
+   (or one of the other supported sound libraries). You can often find them in your package manager or install them with pip.
+   This can be done easily with ``pip install -r requirements.txt``
 1. if you want to play the version with synthesized sounds, you're all set.
-1. if you want to play the version with sampled sounds, make sure you have the
-   ``oggdec`` tool installed as well (usually available as part of the ``vorbis-tools`` package)
-   or use the ``miniaudio`` sound library (which has ogg decoding built in)
+1. if you want to play the version with sampled sounds, make sure you're using the ``miniaudio``
+   library (which has ogg decoding built in). Otherwise you'll need the external 
+   ``oggdec`` tool (usually available as part of the ``vorbis-tools`` package).
 1. type ``python3 startgame.py``  or just execute the python zip app ``*.pyz`` file if you
    downloaded that.  If ``python3`` doesn't work just try ``python`` instead. 

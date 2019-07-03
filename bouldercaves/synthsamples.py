@@ -8,9 +8,9 @@ import time
 import random
 import itertools
 from typing import Callable, Generator
-from .synthplayer import params as synth_params
-from .synthplayer.sample import Sample
-from .synthplayer.oscillators import *
+from synthplayer import params as synth_params
+from synthplayer.sample import Sample
+from synthplayer.oscillators import *
 from . import audio
 
 

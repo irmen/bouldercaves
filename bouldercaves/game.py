@@ -21,9 +21,8 @@ from typing import Tuple, Sequence, List, Iterable, Callable, Optional
 from .gamelogic import GameState, Direction, GameStatus, HighScores
 from .caves import colorpalette, Palette
 from . import audio, synthsamples, tiles, objects, bdcff
-from .synthplayer import sample
 
-__version__ = "5.7"
+__version__ = "5.7.1"
 
 
 class BoulderWindow(tkinter.Tk):
@@ -406,7 +405,6 @@ class BoulderWindow(tkinter.Tk):
             self.gamestate.update(self.graphics_frame)
         self.gamestate.update_scorebar()
         music_sample = audio.samples["music"]
-        assert isinstance(music_sample, sample.Sample)
         if self.gamestate.game_status == GameStatus.WAITING and \
                 self.last_demo_or_highscore_frame + self.update_fps * max(15, music_sample.duration) < self.graphics_frame:
             self.gamestate.tile_music_ended()

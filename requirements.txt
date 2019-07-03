@@ -1,2 +1,3 @@
 pillow
-sounddevice
+miniaudio<=1.3
+synthplayer==2.2.1
