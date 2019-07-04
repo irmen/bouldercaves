@@ -1,3 +1,3 @@
 pillow
-miniaudio<=1.3
-synthplayer==2.2.1
+miniaudio>=1.5
+synthplayer>=2.3

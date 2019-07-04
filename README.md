@@ -130,7 +130,7 @@ in the 'caves' folder.
 Did you download only a ```*.pyz``` file? Do this:
 1. install Python 3.5 or newer from https://www.python.org/downloads/
 1. open a command prompt and type:
-   ``pip install --user pillow "synthplayer==2.2.1" "miniaudio<=1.3"``
+   ``pip install --user pillow synthplayer miniaudio"``
    (or use "``sounddevice``" or "``soundcard``" instead of "``miniaudio``" if you prefer another audio api)
 1. double-click on the ``*.pyz`` file that you downloaded.
 
@@ -153,7 +153,7 @@ just launch the ``startgame-venv.py`` script and it will take care of that for y
 
 Alternatively:
 
-1. make sure you have installed the python libraries: ``pillow``,  ``synthplayer==2.2.1`` and ``miniaudio<=1.3``
+1. make sure you have installed the python libraries: ``pillow``,  ``synthplayer`` and ``miniaudio``
    (or one of the other supported sound libraries). You can often find them in your package manager or install them with pip.
    This can be done easily with ``pip install -r requirements.txt``
 1. if you want to play the version with synthesized sounds, you're all set.
