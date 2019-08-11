@@ -1,0 +1,97 @@
+Scanning tiles
+---------------
+
+The scanner is a feature, which is integrated into the routine of loading. So we
+take the animation of Rockford, for example. You paint an animation to move
+Rockford to the left and then, if you load BoulderDaesh, it recognises, that you
+have not painted the animation to move Rockford to the right. Now BoulderDaesh
+copies the animation for the left and turns it around. This work also the other
+way round.
+
+The following blocks will be copied:
+
+   Earth <=> Fake_Earth
+   Metal <=> Fake_Metal <=> Metal_Moving_Block
+   Stone <=> Stonie asleep
+   Wall <=> Growing Wall left/right <=> Growing Wall up/down
+   Rockford left <=> Rockford right  (all Animation-steps)
+   Diamond_0 <=> Egg_0 <=> Egg_1 <=> Egg_2 <=> Egg_3
+
+From each of these types, there must exist one of the equivalents. If there is a
+type missing, than the requester sends the message: "Graphic incomplete"
+
+   Out <=> Fake Out <=> In  (not only open, but also closed)
+
+If there does not exist any type of In/Out, then the closed type consists of metal.
+
+   IMPORTANT:
+
+Each copy within a block cannot take place, if there is a pixel in it, which is
+not the colour of the background.
+Each block, which only consists of the colour of the background, is empty.
+All block, which are not mentioned here, must be available to start the game.
+
+5. Animations
+
+For all animations there is space for eight steps. If you need less than eight
+steps for your animation, please take a zero (colour of the background) for all
+steps you do not need and the animation will be ended earlier. Please pay
+attention the fact, that after an empty block all the other graphics of this
+animation will be ignored.
+
+
+
+Block Position Table
+--------------------
+
+
+The blocks are given from left to right and after the end of the line it will
+turn to the beginning of the next line.
+
+
+
+    0       Space - Background (Should be blank)
+    1       Ground(dirt)
+    2       Metal
+    3       Metal moving (while Leveltilulit)
+    4       Metal Fake
+    5       Stone
+    6       Stone Ghost sleeping
+    7       Wall
+    8       Growing Wall left/right
+    9       Growing Wall up/down
+   10       Explosion 0 (The single blocks for the diamond creation explosion)
+   11       Explosion 1
+   12       Explosion 2
+   13       Explosion 3
+   14       Explosion 4
+   15       Plop 0      (The single blocks for the creation of Rockford and
+   16       Plop 1       the stone creation explosion.)
+   17       Plop 2
+   18       Twin/rockford Clone
+   19       Earth Fake
+   20- 27   Diamond Ghost (butterfly) Animation  (8 Blocks)
+   28- 35   Diamond Animation              (8 Blocks)
+   36- 43   Ghost (firefly) Animation      (8 Blocks)
+   44- 51   Water Animation                (8 Blocks)
+   52- 59   Slime Animation                (8 Blocks)
+   60- 67   Rockford left Animation        (8 Blocks)
+   68- 75   Rockford right Animation       (8 Blocks)
+   76- 83   Stone Ghost Runs Animation     (8 Blocks)
+   84- 91   Level In Animation             (8 Blocks)
+   92- 99   Level Out Animation            (8 Blocks)
+  100-107   Level Out Fake Animation       (8 Blocks)
+  108-115   Magic Wall Animation           (8 Blocks)
+  116-123   User Block Animation           (8 Blocks)
+  124-126   Rockford stands (in each case 3 half blocks for head and legs)
+  127       Rockford stands (Main State)
+  128       Gravitation Arrow Up
+  129       Gravitation Arrow Down
+  130       Gravitation Arrow Left
+  131       Gravitation Arrow Right
+  132-139   Bonus Life Animation           (8 Blocks)
+  140-147   Space Animation                (8 Blocks)
+  148       Egg
+  149       Egg broken 0
+  150       Egg broken 1
+  151       Egg broken 2

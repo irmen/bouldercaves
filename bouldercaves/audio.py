@@ -1,13 +1,7 @@
 """
 Various audio output options. Here the specific audio library code is located.
-Supported audio output libraries:
-- pyaudio
-- sounddevice (both thread+blocking stream, and nonblocking callback stream variants)
-
 It can play multiple samples at the same time via real-time mixing, and you can
-loop samples as well without noticable overhead (great for continous effects or music)
-Wav (PCM) files and .ogg files can be loaded (requires oggdec from the
-vorbis-tools package to decode those)
+loop samples as well without noticeable overhead (great for continuous effects or music)
 
 High level api functions:
   init_audio
