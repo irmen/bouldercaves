@@ -2,7 +2,7 @@
 A Boulder Dash (tm) clone in pure python. Includes a cave editor so you can make your own game!
 
 Requirements to run this:
-- Python 3.5 or newer
+- Python 3.6 or newer
 - ``pillow`` (to deal with images)
 - ``synthplayer`` (software FM synthesizer)
 - one of the supported audio playback libraries:
@@ -128,7 +128,7 @@ in the 'caves' folder.
 **Windows**
 
 Did you download only a ```*.pyz``` file? Do this:
-1. install Python 3.5 or newer from https://www.python.org/downloads/
+1. install Python 3.6 or newer from https://www.python.org/downloads/
 1. open a command prompt and type:
    ``pip install --user pillow synthplayer miniaudio"``
    (or use "``sounddevice``" or "``soundcard``" instead of "``miniaudio``" if you prefer another audio api)
@@ -142,7 +142,7 @@ it requires you to have installed the libraries yourself (step 2 above).
 
 **Mac OS, Linux, ...**
 
-Make sure you have Python 3.5 or newer installed, with Tkinter (Python's default GUI toolkit).
+Make sure you have Python 3.6 or newer installed, with Tkinter (Python's default GUI toolkit).
 On Linux it's probably easiest to install these via your distribution's package manager.
 On Mac OS, personally I'm using [Homebrew](https://brew.sh) to install things
 (I've used the "``brew install python3 --with-tcl-tk``" command to make sure it doesn't use Apple's

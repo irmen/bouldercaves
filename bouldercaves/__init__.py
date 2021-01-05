@@ -10,8 +10,8 @@ except ImportError:
     tkinter.messagebox.showerror("missing Python library", "The 'pillow' or 'pil' python library is required.")
     raise SystemExit
 
-if sys.version_info < (3, 5):
-    raise SystemExit("python 3.5 or newer is required to run this game")
+if sys.version_info < (3, 6):
+    raise SystemExit("python 3.6 or newer is required to run this game")
 
 user_data_dir = os.path.expanduser("~/.bouldercaves/")
 os.makedirs(user_data_dir, exist_ok=True)

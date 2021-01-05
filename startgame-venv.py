@@ -20,7 +20,7 @@ else:
 
 print("Creating virtual python environment in: ", venv_dir)
 
-builder = venv.EnvBuilder(system_site_packages=True, symlinks=symlink, upgrade=True, with_pip=True)
+builder = venv.EnvBuilder(system_site_packages=False, symlinks=symlink, upgrade=True, with_pip=True)
 builder.create(venv_dir)
 
 print("Installing game dependencies...")
