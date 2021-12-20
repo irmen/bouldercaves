@@ -1,5 +1,13 @@
-# Boulder Caves
+# Boulder Caves [frozen]
 A Boulder Dash (tm) clone in pure python. Includes a cave editor so you can make your own game!
+
+
+**Repository frozen - no more updates here:**
+Someone else started an improved version of this game here
+https://github.com/Agetian/bouldercaves - use that instead to get fixes and new features.
+
+
+
 
 Requirements to run this:
 - Python 3.6 or newer
